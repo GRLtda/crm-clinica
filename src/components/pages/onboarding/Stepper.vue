@@ -30,37 +30,42 @@ defineProps({
     </div>
   </div>
 </template>
-
 <style scoped>
-/* Os estilos permanecem os mesmos, eles se adaptam bem aos ícones */
 .stepper {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  max-width: 550px;
+  /* 1. Altera a justificação para agrupar os itens no centro */
+  justify-content: center;
+  align-items: center;
   width: 100%;
   margin: 0 auto;
+  gap: 0.5rem; /* Adiciona um pequeno espaço entre o conteúdo e a linha */
 }
+
 .step-item {
   display: flex;
   align-items: center;
-  flex: 1;
-  min-width: 0;
+  /* 2. Removemos o flex: 1 para que o item não se estique mais */
 }
+
 .step-item:last-child {
-  flex: 0;
+  flex-grow: 0;
+  flex-shrink: 0;
 }
+
 .step-item:last-child .step-line {
   display: none;
 }
+
 .step-content {
   display: flex;
   align-items: center;
   gap: 0.75rem;
 }
+
 .step-circle {
   width: 32px;
   height: 32px;
+  flex-shrink: 0; /* Impede que o círculo seja esmagado */
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -71,35 +76,46 @@ defineProps({
   color: var(--cinza-texto);
   transition: all 0.3s ease;
 }
+
 .step-details {
   display: flex;
   flex-direction: column;
 }
+
 .step-name {
   font-size: 1rem;
   font-weight: 600;
   color: var(--cinza-texto);
+  white-space: nowrap; /* Impede que o texto quebre a linha */
 }
+
 .step-subtitle {
   font-size: 0.75rem;
   color: #9ca3af;
+  white-space: nowrap;
 }
+
 .step-line {
-  flex-grow: 1;
+  /* 3. Define um tamanho fixo para a linha */
+  width: 4rem; /* 64px */
   height: 2px;
   background-color: #e5e7eb;
   margin: 0 1rem;
   transition: background-color 0.3s ease;
 }
+
+/* Estilos de Ativo e Concluído */
 .step-item.active .step-circle,
 .step-item.completed .step-circle {
   background-color: var(--azul-principal);
   border-color: var(--azul-principal);
   color: var(--branco);
 }
+
 .step-item.active .step-name {
   color: var(--preto);
 }
+
 .step-item.completed .step-line {
   background-color: var(--azul-principal);
 }
