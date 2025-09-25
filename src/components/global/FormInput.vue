@@ -5,11 +5,12 @@ defineProps({
   type: { type: String, default: 'text' },
   placeholder: String,
   autocomplete: String,
-})
-const emit = defineEmits(['update:modelValue'])
+  mask: [String, Array], // Adiciona a propriedade 'mask'
+});
+const emit = defineEmits(['update:modelValue']);
 
 function handleInput(event) {
-  emit('update:modelValue', event.target.value)
+  emit('update:modelValue', event.target.value);
 }
 </script>
 
@@ -22,6 +23,7 @@ function handleInput(event) {
       :value="modelValue"
       :autocomplete="autocomplete"
       @input="handleInput"
+      v-mask="mask"
       class="form-input"
     />
   </div>
