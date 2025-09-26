@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import AppHeader from '@/components/global/AppHeader.vue'
-import { ChevronRight, Check, X, Monitor } from 'lucide-vue-next'
+import { ChevronRight, Check, X, Monitor, KeyRound } from 'lucide-vue-next'
 
 const planos = ref([
   {
@@ -52,7 +52,7 @@ const planos = ref([
   <main>
     <section class="hero">
       <div class="container">
-        <div class="badge">✨ Teste 30 dias grátis</div>
+        <!-- <div class="badge">✨ Teste 30 dias grátis</div> -->
         <h1 class="hero-title">Sua clínica no piloto automático</h1>
         <p class="hero-subtitle">
           Impulsione o sucesso da sua clínica com uma solução que elimina tarefas manuais e acelera
@@ -60,7 +60,7 @@ const planos = ref([
         </p>
         <div class="hero-actions">
           <router-link to="/app" class="btn-primary">
-            Entrar <ChevronRight :size="20" />
+            Entrar <KeyRound :size="20" />
           </router-link>
           <button class="btn-secondary">Agentes Digitais <ChevronRight :size="20" /></button>
         </div>

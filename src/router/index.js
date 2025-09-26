@@ -7,6 +7,7 @@ import LandingView from '../views/LandingView.vue'
 import LoginView from '../views/pages/autenticacao/LoginView.vue'
 import RegisterView from '../views/pages/autenticacao/RegisterView.vue'
 import ClinicWizardView from '../views/pages/onboarding/ClinicWizardView.vue'
+import NotFoundView from '../views/NotFoundView.vue';
 
 const routes = [
   { path: '/', name: 'landing', component: LandingView, meta: { public: true } },
@@ -18,6 +19,11 @@ const routes = [
     component: ClinicWizardView,
     meta: { requiresAuth: true },
   },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: NotFoundView
+  },
   ...dashboardRoutes,
 ]
 
@@ -27,26 +33,26 @@ const router = createRouter({
 })
 
 // --- GUARDA DE NAVEGAÇÃO GLOBAL ATUALIZADO ---
-// router.beforeEach((to, from, next) => {
-//   const authStore = useAuthStore();
-//   const isAuthenticated = authStore.isAuthenticated;
-//   const hasClinic = authStore.hasClinic;
+router.beforeEach((to, from, next) => {
+  const authStore = useAuthStore();
+  const isAuthenticated = authStore.isAuthenticated;
+  const hasClinic = authStore.hasClinic;
 
-//   const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
-//   const isAuthPage = to.name === 'login' || to.name === 'register';
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
+  const isAuthPage = to.name === 'login' || to.name === 'register';
 
-//   if (requiresAuth && !isAuthenticated) {
-//     next({ name: 'login' });
-//   } else if (isAuthenticated && isAuthPage) {
-//     next({ name: 'inicio' });
-//   } else if (isAuthenticated && !hasClinic && to.name !== 'clinic-wizard') {
-//     next({ name: 'clinic-wizard' });
-//   } else if (isAuthenticated && hasClinic && to.name === 'clinic-wizard') {
-//     // Esta é a linha que agora vai funcionar e te protegerá
-//     next({ name: 'inicio' });
-//   } else {
-//     next();
-//   }
-// });
+  if (requiresAuth && !isAuthenticated) {
+    next({ name: 'login' });
+  } else if (isAuthenticated && isAuthPage) {
+    next({ name: 'inicio' });
+  } else if (isAuthenticated && !hasClinic && to.name !== 'clinic-wizard') {
+    next({ name: 'clinic-wizard' });
+  } else if (isAuthenticated && hasClinic && to.name === 'clinic-wizard') {
+    // Esta é a linha que agora vai funcionar e te protegerá
+    next({ name: 'inicio' });
+  } else {
+    next();
+  }
+});
 
 export default router
