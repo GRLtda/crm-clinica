@@ -27,30 +27,26 @@ const router = createRouter({
 })
 
 // --- GUARDA DE NAVEGAÇÃO GLOBAL ATUALIZADO ---
-router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore()
-  const isAuthenticated = authStore.isAuthenticated
-  const hasClinic = authStore.hasClinic // Usando nosso novo getter
+// router.beforeEach((to, from, next) => {
+//   const authStore = useAuthStore();
+//   const isAuthenticated = authStore.isAuthenticated;
+//   const hasClinic = authStore.hasClinic;
 
-  const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
-  const isAuthPage = to.name === 'login' || to.name === 'register'
+//   const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
+//   const isAuthPage = to.name === 'login' || to.name === 'register';
 
-  if (requiresAuth && !isAuthenticated) {
-    // 1. Se a rota é protegida e o usuário não está logado, vai para o login.
-    next({ name: 'login' })
-  } else if (isAuthenticated && isAuthPage) {
-    // 2. Se o usuário está logado e tenta acessar login/registro, vai para o dashboard.
-    next({ name: 'inicio' })
-  } else if (isAuthenticated && !hasClinic && to.name !== 'clinic-wizard') {
-    // 3. Se está logado, NÃO tem clínica e NÃO está indo para o wizard, FORÇA o redirecionamento para o wizard.
-    next({ name: 'clinic-wizard' })
-  } else if (isAuthenticated && hasClinic && to.name === 'clinic-wizard') {
-    // 4. Se está logado, JÁ TEM clínica e tenta acessar o wizard, vai para o dashboard para não ficar preso.
-    next({ name: 'inicio' })
-  } else {
-    // 5. Em todos os outros casos, permite a navegação.
-    next()
-  }
-})
+//   if (requiresAuth && !isAuthenticated) {
+//     next({ name: 'login' });
+//   } else if (isAuthenticated && isAuthPage) {
+//     next({ name: 'inicio' });
+//   } else if (isAuthenticated && !hasClinic && to.name !== 'clinic-wizard') {
+//     next({ name: 'clinic-wizard' });
+//   } else if (isAuthenticated && hasClinic && to.name === 'clinic-wizard') {
+//     // Esta é a linha que agora vai funcionar e te protegerá
+//     next({ name: 'inicio' });
+//   } else {
+//     next();
+//   }
+// });
 
 export default router

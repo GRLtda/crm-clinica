@@ -2,19 +2,23 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { useAuthStore } from './stores/auth'
 import { clickOutside } from './directives/click-outside'
-import { VueMaskDirective } from 'v-mask' // 1. Importe a diretiva
+import { phoneMask } from './directives/phone-mask' // 1. Importa nossa diretiva
 
 import App from './App.vue'
 import router from './router'
 
+// Estilos
 import './css/normalize.css'
 import './css/global.css'
 
 const app = createApp(App)
-const pinia = createPinia()
-app.directive('mask', VueMaskDirective); // 2. Registre a diretiva globalmente
-app.directive('click-outside', clickOutside) // 2. Registre a diretiva
-app.use(pinia)
+
+// --- DIRETIVAS ---
+app.directive('click-outside', clickOutside)
+app.directive('phone-mask', phoneMask) // 2. Registra a nova diretiva
+
+app.use(createPinia())
+
 const authStore = useAuthStore()
 authStore.checkAuth()
 

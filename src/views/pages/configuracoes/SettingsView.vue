@@ -1,6 +1,9 @@
 <script setup>
 import { ref } from 'vue'
 import GeneralSettings from '@/components/pages/configuracoes/tabs/GeneralSettings.vue'
+import WorkingHoursSettings from '@/components/pages/configuracoes/tabs/WorkingHoursSettings.vue'; // 1. Importar
+import AnamnesisTemplates from '@/components/pages/configuracoes/tabs/AnamnesisTemplates.vue'; // 1. Importar
+
 // 1. Importar os ícones
 import { SlidersHorizontal, Clock, FileText } from 'lucide-vue-next'
 
@@ -31,8 +34,8 @@ const activeTab = ref('geral')
 
     <div class="tab-content">
       <GeneralSettings v-if="activeTab === 'geral'" />
-      <div v-if="activeTab === 'horario'"></div>
-      <div v-if="activeTab === 'anamnese'"></div>
+      <WorkingHoursSettings v-if="activeTab === 'horario'" />
+      <AnamnesisTemplates v-if="activeTab === 'anamnese'" />
     </div>
   </div>
 </template>

@@ -1,11 +1,11 @@
 <script setup>
-import { ref, watch } from 'vue'; // Importe o 'watch'
-import { useClinicStore } from '@/stores/clinic';
-import FormInput from '@/components/global/FormInput.vue';
-import { fetchAddressByCEP } from '@/api/external'; // Importe a nova função
+import { ref, watch } from 'vue'
+import { useClinicStore } from '@/stores/clinic'
+import FormInput from '@/components/global/FormInput.vue'
+import { fetchAddressByCEP } from '@/api/external'
 
-const emit = defineEmits(['success']);
-const clinicStore = useClinicStore();
+const emit = defineEmits(['success'])
+const clinicStore = useClinicStore()
 
 const clinicData = ref({
   name: '',
@@ -19,24 +19,24 @@ const clinicData = ref({
     city: '',
     state: '',
   },
-});
-watch(() => clinicData.value.address.cep, async (newCep) => {
-  // Remove a máscara para verificar o tamanho
-  const numericCep = newCep.replace(/\D/g, '');
-  if (numericCep.length === 8) {
-    const address = await fetchAddressByCEP(numericCep);
-    if (address) {
-      clinicData.value.address.street = address.street;
-      clinicData.value.address.district = address.neighborhood;
-      clinicData.value.address.city = address.city;
-      clinicData.value.address.state = address.state;
-      // Opcional: focar no campo de número após preencher
-      // document.querySelector('input[label="Número"]').focus();
-    }
-  }
-});
-
+})
 const errorMessage = ref(null)
+
+watch(
+  () => clinicData.value.address.cep,
+  async (newCep) => {
+    const numericCep = newCep.replace(/\D/g, '')
+    if (numericCep.length === 8) {
+      const address = await fetchAddressByCEP(numericCep)
+      if (address) {
+        clinicData.value.address.street = address.street
+        clinicData.value.address.district = address.neighborhood
+        clinicData.value.address.city = address.city
+        clinicData.value.address.state = address.state
+      }
+    }
+  },
+)
 
 async function handleCreateClinic() {
   if (!clinicData.value.name || !clinicData.value.responsibleName) {
@@ -66,23 +66,51 @@ async function handleCreateClinic() {
         v-model="clinicData.name"
         label="Nome da Clínica"
         placeholder="Ex: Clínica Bem-Estar"
+        autocomplete="organization"
       />
       <FormInput
         v-model="clinicData.responsibleName"
         label="Nome do Responsável"
         placeholder="Quem é o responsável legal"
+        autocomplete="name"
       />
-      <FormInput v-model="clinicData.cnpj" label="CNPJ" :mask="'##.###.###/####-##'" placeholder="00.000.000/0000-00" />
-      <FormInput v-model="clinicData.address.cep" label="CEP" :mask="'#####-###'" placeholder="00000-000" />
+      <FormInput v-model="clinicData.cnpj" label="CNPJ" placeholder="00.000.000/0000-00" />
+      <FormInput
+        v-model="clinicData.address.cep"
+        label="CEP"
+        placeholder="00000-000"
+        autocomplete="postal-code"
+      />
       <FormInput
         v-model="clinicData.address.street"
         label="Rua / Logradouro"
         placeholder="Ex: Av. Brasil"
+        autocomplete="address-line1"
       />
-      <FormInput v-model="clinicData.address.number" label="Número" placeholder="Ex: 123" />
-      <FormInput v-model="clinicData.address.district" label="Bairro" placeholder="Ex: Centro" />
-      <FormInput v-model="clinicData.address.city" label="Cidade" placeholder="Sua cidade" />
-      <FormInput v-model="clinicData.address.state" label="Estado" placeholder="Seu estado" />
+      <FormInput
+        v-model="clinicData.address.number"
+        label="Número"
+        placeholder="Ex: 123"
+        autocomplete="address-line2"
+      />
+      <FormInput
+        v-model="clinicData.address.district"
+        label="Bairro"
+        placeholder="Ex: Centro"
+        autocomplete="address-level2"
+      />
+      <FormInput
+        v-model="clinicData.address.city"
+        label="Cidade"
+        placeholder="Sua cidade"
+        autocomplete="address-level2"
+      />
+      <FormInput
+        v-model="clinicData.address.state"
+        label="Estado"
+        placeholder="Seu estado"
+        autocomplete="address-level1"
+      />
     </div>
 
     <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
@@ -91,6 +119,7 @@ async function handleCreateClinic() {
 </template>
 
 <style scoped>
+/* Estilos permanecem os mesmos */
 .form-header {
   text-align: left;
   margin-bottom: 2rem;
@@ -103,13 +132,11 @@ p {
   color: var(--cinza-texto);
   line-height: 1.6;
 }
-
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 1rem 1.5rem; /* Espaçamento vertical e horizontal */
+  gap: 1rem 1.5rem;
 }
-
 .error-message {
   color: #ef4444;
   font-size: 0.875rem;

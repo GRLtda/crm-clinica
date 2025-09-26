@@ -1,5 +1,5 @@
 <script setup>
-import { defineProps } from 'vue';
+import { defineProps } from 'vue'
 
 defineProps({
   imageUrl: {
@@ -10,8 +10,8 @@ defineProps({
   panelWidth: {
     type: String,
     default: 'default', // 'default' ou 'large'
-  }
-});
+  },
+})
 </script>
 
 <template>
@@ -29,10 +29,7 @@ defineProps({
         </div>
       </div>
     </div>
-    <div
-      class="image-panel"
-      :style="{ backgroundImage: `url(${imageUrl})` }"
-    ></div>
+    <div class="image-panel" :style="{ backgroundImage: `url(${imageUrl})` }"></div>
   </div>
 </template>
 
@@ -51,12 +48,33 @@ defineProps({
   padding: 2rem;
   overflow-y: auto;
 }
-.form-content { width: 100%; }
+.form-content {
+  width: 100%;
+}
 /* Larguras do painel */
-.panel-default .form-content { max-width: 450px; }
-.panel-large .form-content { max-width: 700px; } /* Espaço para formulários maiores */
+.panel-default .form-content {
+  max-width: 450px;
+}
+.panel-large .form-content {
+  max-width: 700px;
+} /* Espaço para formulários maiores */
 
-.content-title { margin-bottom: 2.5rem; font-size: 2rem; font-weight: 700; text-align: left; }
-.content-footer { margin-top: 2rem; font-size: 0.875rem; color: var(--cinza-texto); text-align: center; }
-.image-panel { width: 55%; background-size: cover; background-position: center; background-repeat: no-repeat; }
+.content-title {
+  margin-bottom: 2.5rem;
+  font-size: 2rem;
+  font-weight: 700;
+  text-align: left;
+}
+.content-footer {
+  margin-top: 2rem;
+  font-size: 0.875rem;
+  color: var(--cinza-texto);
+  text-align: center;
+}
+.image-panel {
+  width: 55%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
 </style>

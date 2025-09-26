@@ -44,6 +44,7 @@ async function handleLogin() {
         v-model="email"
         label="Email"
         type="email"
+        name="email"
         placeholder="seuemail@exemplo.com"
         autocomplete="email"
       />
@@ -51,6 +52,7 @@ async function handleLogin() {
         v-model="password"
         label="Senha"
         type="password"
+        name="password"
         placeholder="Sua senha"
         autocomplete="current-password"
       />
