@@ -24,3 +24,8 @@ export const getAnamnesisTemplateById = (templateId) => {
 export const updateAnamnesisTemplate = (templateId, templateData) => {
   return apiClient.put(`/anamnesis-templates/${templateId}`, templateData)
 }
+
+export const assignAnamnesis = (patientId, templateId) => {
+  const payload = { templateId, mode: 'Paciente' };
+  return apiClient.post(`/patients/${patientId}/anamnesis`, payload);
+};

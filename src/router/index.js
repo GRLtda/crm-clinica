@@ -7,7 +7,9 @@ import LandingView from '../views/LandingView.vue'
 import LoginView from '../views/pages/autenticacao/LoginView.vue'
 import RegisterView from '../views/pages/autenticacao/RegisterView.vue'
 import ClinicWizardView from '../views/pages/onboarding/ClinicWizardView.vue'
+import AnswerAnamnesisView from '../views/public/AnswerAnamnesisView.vue'; // Nova página
 import NotFoundView from '../views/NotFoundView.vue';
+
 
 const routes = [
   { path: '/', name: 'landing', component: LandingView, meta: { public: true } },
@@ -18,6 +20,12 @@ const routes = [
     name: 'clinic-wizard',
     component: ClinicWizardView,
     meta: { requiresAuth: true },
+  },
+  {
+    path: '/responder-anamnese/:token',
+    name: 'answer-anamnesis',
+    component: AnswerAnamnesisView,
+    meta: { public: true }
   },
   {
     path: '/:pathMatch(.*)*',

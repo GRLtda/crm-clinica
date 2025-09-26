@@ -6,6 +6,7 @@ import {
   deleteAnamnesisTemplate as apiDeleteTemplate,
   getAnamnesisTemplateById as apiGetTemplateById,
   updateAnamnesisTemplate as apiUpdateTemplate,
+  assignAnamnesis as apiAssignAnamnesis
 } from '@/api/anamnesis'
 
 export const useAnamnesisStore = defineStore('anamnesis', () => {
@@ -81,6 +82,17 @@ export const useAnamnesisStore = defineStore('anamnesis', () => {
     }
   }
 
+  async function assignAnamnesis(patientId, templateId) {
+    try {
+      const response = await apiAssignAnamnesis(patientId, templateId);
+      // A resposta contém o token de acesso do paciente
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error("Erro ao atribuir anamnese:", error);
+      return { success: false, error };
+    }
+  }
+
   return {
     templates,
     isLoading,
@@ -89,5 +101,6 @@ export const useAnamnesisStore = defineStore('anamnesis', () => {
     deleteTemplate,
     fetchTemplateById,
     updateTemplate,
+    assignAnamnesis
   }
 })

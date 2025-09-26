@@ -3,9 +3,10 @@ import { ref, onMounted, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { usePatientsStore } from '@/stores/patients';
 import { useToast } from 'vue-toastification';
-import { ArrowLeft, Edit } from 'lucide-vue-next';
+import { ArrowLeft, Edit, Clipboard } from 'lucide-vue-next';
 import StepPersonalData from '@/components/pages/pacientes/steps/StepPersonalData.vue';
 import StepAddressData from '@/components/pages/pacientes/steps/StepAddressData.vue';
+import AssignAnamnesisModal from '@/components/pages/pacientes/modals/AssignAnamnesisModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -13,6 +14,7 @@ const patientsStore = usePatientsStore();
 const toast = useToast();
 
 const isEditing = ref(false);
+const isAssignModalOpen = ref(false);
 const editablePatient = ref(null);
 
 const patient = computed(() => patientsStore.selectedPatient);
@@ -36,7 +38,7 @@ async function handleSaveChanges() {
   if (success) {
     toast.success("Paciente atualizado com sucesso!");
     isEditing.value = false;
-    await patientsStore.fetchPatientById(patient.value._id); // Recarrega os dados para exibir
+    await patientsStore.fetchPatientById(patient.value._id);
   } else {
     toast.error("Erro ao atualizar o paciente.");
   }
@@ -52,6 +54,12 @@ const formattedBirthDate = computed(() => {
 
 <template>
   <div class="patient-detail-view">
+    <AssignAnamnesisModal
+      v-if="isAssignModalOpen"
+      :patient-id="patient?._id"
+      @close="isAssignModalOpen = false"
+    />
+
     <div v-if="patientsStore.isLoading && !patient">Carregando dados do paciente...</div>
 
     <div v-else-if="patient">
@@ -66,14 +74,17 @@ const formattedBirthDate = computed(() => {
           </div>
         </div>
         <div class="header-actions">
+          <button @click="isAssignModalOpen = true" class="btn-secondary">
+            <Clipboard :size="16" /> Aplicar Anamnese
+          </button>
           <button v-if="!isEditing" @click="isEditing = true" class="btn-primary">
             <Edit :size="16" /> Editar Paciente
           </button>
         </div>
       </header>
 
-      <div v-if="isEditing && editablePatient">
-        <form @submit.prevent="handleSaveChanges" class="edit-form">
+      <div v-if="isEditing && editablePatient" class="edit-form">
+        <form @submit.prevent="handleSaveChanges">
           <StepPersonalData v-model="editablePatient" />
           <div class="separator"></div>
           <StepAddressData v-model="editablePatient.address" />
@@ -114,7 +125,9 @@ const formattedBirthDate = computed(() => {
 .back-button:hover { background-color: #f9fafb; }
 .title { font-size: 1.75rem; font-weight: 700; margin: 0; }
 .subtitle { color: var(--cinza-texto); margin-top: 0.25rem; }
+.header-actions { display: flex; gap: 0.75rem; }
 .btn-primary { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; border-radius: 0.75rem; border: none; background-color: var(--azul-principal); color: var(--branco); font-size: 1rem; font-weight: 600; cursor: pointer; }
+.btn-secondary { display: inline-flex; align-items: center; gap: 0.5rem; background-color: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-size: 1rem; font-weight: 600; cursor: pointer; }
 .details-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem; }
 .detail-card { background-color: var(--branco); border: 1px solid #e5e7eb; border-radius: 1rem; padding: 1.5rem; }
 .detail-card h3 { font-size: 1.125rem; font-weight: 600; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.75rem; margin-bottom: 1rem; }
@@ -122,5 +135,4 @@ const formattedBirthDate = computed(() => {
 .edit-form { background-color: var(--branco); border: 1px solid #e5e7eb; border-radius: 1rem; padding: 2rem; }
 .separator { height: 1px; background-color: #e5e7eb; margin: 2rem 0; }
 .form-actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem; }
-.btn-secondary { background-color: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-size: 1rem; font-weight: 600; cursor: pointer; }
 </style>
