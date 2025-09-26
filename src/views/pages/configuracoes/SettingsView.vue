@@ -1,8 +1,8 @@
 <script setup>
 import { ref } from 'vue'
 import GeneralSettings from '@/components/pages/configuracoes/tabs/GeneralSettings.vue'
-import WorkingHoursSettings from '@/components/pages/configuracoes/tabs/WorkingHoursSettings.vue'; // 1. Importar
-import AnamnesisTemplates from '@/components/pages/configuracoes/tabs/AnamnesisTemplates.vue'; // 1. Importar
+import WorkingHoursSettings from '@/components/pages/configuracoes/tabs/WorkingHoursSettings.vue' // 1. Importar
+import AnamnesisTemplates from '@/components/pages/configuracoes/tabs/AnamnesisTemplates.vue' // 1. Importar
 
 // 1. Importar os ícones
 import { SlidersHorizontal, Clock, FileText } from 'lucide-vue-next'

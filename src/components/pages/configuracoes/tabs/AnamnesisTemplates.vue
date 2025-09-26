@@ -1,40 +1,40 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
-import { useAnamnesisStore } from '@/stores/anamnesis';
-import { useToast } from 'vue-toastification';
-import { FilePlus2, Pencil, Trash2 } from 'lucide-vue-next';
-import CreateAnamnesisModal from '../modals/CreateAnamnesisModal.vue';
+import { ref, onMounted, computed } from 'vue'
+import { useAnamnesisStore } from '@/stores/anamnesis'
+import { useToast } from 'vue-toastification'
+import { FilePlus2, Pencil, Trash2 } from 'lucide-vue-next'
+import CreateAnamnesisModal from '../modals/CreateAnamnesisModal.vue'
 
-const anamnesisStore = useAnamnesisStore();
-const toast = useToast();
-const templates = computed(() => anamnesisStore.templates);
+const anamnesisStore = useAnamnesisStore()
+const toast = useToast()
+const templates = computed(() => anamnesisStore.templates)
 
-const isModalOpen = ref(false);
-const editingTemplateId = ref(null);
-const templateIdToDelete = ref(null);
+const isModalOpen = ref(false)
+const editingTemplateId = ref(null)
+const templateIdToDelete = ref(null)
 
 onMounted(() => {
-  anamnesisStore.fetchTemplates();
-});
+  anamnesisStore.fetchTemplates()
+})
 
 function openCreateModal() {
-  editingTemplateId.value = null;
-  isModalOpen.value = true;
+  editingTemplateId.value = null
+  isModalOpen.value = true
 }
 
 function openEditModal(templateId) {
-  editingTemplateId.value = templateId;
-  isModalOpen.value = true;
+  editingTemplateId.value = templateId
+  isModalOpen.value = true
 }
 
 async function handleDelete(templateId) {
-  const { success } = await anamnesisStore.deleteTemplate(templateId);
+  const { success } = await anamnesisStore.deleteTemplate(templateId)
   if (success) {
-    toast.success('Modelo excluído com sucesso!');
+    toast.success('Modelo excluído com sucesso!')
   } else {
-    toast.error('Não foi possível excluir o modelo.');
+    toast.error('Não foi possível excluir o modelo.')
   }
-  templateIdToDelete.value = null; // Fecha o popover após a ação
+  templateIdToDelete.value = null // Fecha o popover após a ação
 }
 </script>
 
@@ -62,11 +62,15 @@ async function handleDelete(templateId) {
     <div v-else-if="templates.length > 0" class="templates-grid">
       <div v-for="template in templates" :key="template._id" class="template-card">
         <span class="template-name">{{ template.name }}</span>
-        <div class="template-actions" v-click-outside="() => templateIdToDelete = null">
+        <div class="template-actions" v-click-outside="() => (templateIdToDelete = null)">
           <button @click="openEditModal(template._id)" class="btn-icon" title="Editar">
             <Pencil :size="16" />
           </button>
-          <button @click="templateIdToDelete = template._id" class="btn-icon btn-delete" title="Excluir">
+          <button
+            @click="templateIdToDelete = template._id"
+            class="btn-icon btn-delete"
+            title="Excluir"
+          >
             <Trash2 :size="16" />
           </button>
 
@@ -78,7 +82,9 @@ async function handleDelete(templateId) {
               </p>
               <div class="confirmation-buttons">
                 <button @click="templateIdToDelete = null" class="btn-cancel">Cancelar</button>
-                <button @click="handleDelete(template._id)" class="btn-confirm-delete">Excluir</button>
+                <button @click="handleDelete(template._id)" class="btn-confirm-delete">
+                  Excluir
+                </button>
               </div>
             </div>
           </Transition>
@@ -89,7 +95,9 @@ async function handleDelete(templateId) {
     <div v-else class="empty-state">
       <div class="icon-wrapper"><FilePlus2 :size="48" /></div>
       <h3 class="empty-title">Nenhum modelo de anamnese encontrado</h3>
-      <p class="empty-description">Crie seu primeiro modelo para agilizar o preenchimento de prontuários.</p>
+      <p class="empty-description">
+        Crie seu primeiro modelo para agilizar o preenchimento de prontuários.
+      </p>
       <button @click="openCreateModal" class="create-button">Criar Anamnese</button>
     </div>
   </div>
@@ -120,7 +128,9 @@ async function handleDelete(templateId) {
   cursor: pointer;
   transition: background-color 0.3s ease;
 }
-.btn-primary:hover { background-color: var(--azul-escuro); }
+.btn-primary:hover {
+  background-color: var(--azul-escuro);
+}
 
 .templates-grid {
   display: grid;
@@ -138,7 +148,9 @@ async function handleDelete(templateId) {
   transition: box-shadow 0.2s ease;
 }
 .template-card:hover {
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 0.1),
+    0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
 .template-name {
   font-weight: 600;
@@ -156,7 +168,7 @@ async function handleDelete(templateId) {
   background-color: var(--branco);
   border: 1px solid #e5e7eb;
   border-radius: 0.75rem;
-  box-shadow: 0 4px S10px rgba(0,0,0,0.1);
+  box-shadow: 0 4px S10px rgba(0, 0, 0, 0.1);
   padding: 1rem;
   z-index: 10;
   display: flex;
@@ -198,10 +210,14 @@ async function handleDelete(templateId) {
   color: var(--branco);
   border-color: #ef4444;
 }
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
+.fade-enter-active,
+.fade-leave-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
 }
-.fade-enter-from, .fade-leave-to {
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
   transform: translateY(-5px);
 }
@@ -212,7 +228,9 @@ async function handleDelete(templateId) {
   border-radius: 50%;
   cursor: pointer;
   color: var(--cinza-texto);
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 .btn-icon:hover {
   background-color: #f3f4f6;
@@ -222,10 +240,45 @@ async function handleDelete(templateId) {
   background-color: #fee2e2;
   color: #ef4444;
 }
-.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4rem; border: 2px dashed #d1d5db; border-radius: 1rem; background-color: rgba(239, 246, 255, 0.5); text-align: center; }
-.icon-wrapper { color: var(--azul-principal); margin-bottom: 1.5rem; }
-.empty-title { font-family: var(--fonte-titulo); font-size: 1.25rem; font-weight: 600; color: var(--preto); margin-bottom: 0.5rem; }
-.empty-description { max-width: 400px; color: var(--cinza-texto); margin-bottom: 2rem; }
-.create-button { padding: 0.75rem 1.5rem; border-radius: 0.75rem; border: none; background-color: var(--azul-principal); color: var(--branco); font-size: 1rem; font-weight: 600; cursor: pointer; transition: background-color 0.3s ease; }
-.create-button:hover { background-color: var(--azul-escuro); }
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem;
+  border: 2px dashed #d1d5db;
+  border-radius: 1rem;
+  background-color: rgba(239, 246, 255, 0.5);
+  text-align: center;
+}
+.icon-wrapper {
+  color: var(--azul-principal);
+  margin-bottom: 1.5rem;
+}
+.empty-title {
+  font-family: var(--fonte-titulo);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--preto);
+  margin-bottom: 0.5rem;
+}
+.empty-description {
+  max-width: 400px;
+  color: var(--cinza-texto);
+  margin-bottom: 2rem;
+}
+.create-button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  border: none;
+  background-color: var(--azul-principal);
+  color: var(--branco);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+.create-button:hover {
+  background-color: var(--azul-escuro);
+}
 </style>

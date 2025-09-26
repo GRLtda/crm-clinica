@@ -5,12 +5,12 @@
 /* 2. Define as variáveis globais */
 :root {
   /* Cores */
-  --branco: #FFFFFF;
-  --preto: #0D0D0D;
-  --azul-principal: #3B82F6;
-  --azul-escuro: #1E40AF;
-  --cinza-claro: #F3F4F6;
-  --cinza-texto: #6B7281;
+  --branco: #ffffff;
+  --preto: #0d0d0d;
+  --azul-principal: #3b82f6;
+  --azul-escuro: #1e40af;
+  --cinza-claro: #f3f4f6;
+  --cinza-texto: #6b7281;
 
   /* Fontes */
   --fonte-principal: 'Poppins', sans-serif;
@@ -25,7 +25,12 @@ body {
 }
 
 /* 4. Aplica a nova fonte a todos os elementos de título */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--fonte-titulo);
   font-weight: 700; /* Garante que os títulos fiquem em negrito */
 }

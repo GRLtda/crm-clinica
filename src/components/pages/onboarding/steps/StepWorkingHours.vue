@@ -1,53 +1,57 @@
 <script setup>
-import { ref, computed } from 'vue'; // 1. Importar o 'computed'
-import { useClinicStore } from '@/stores/clinic';
-import { Check } from 'lucide-vue-next';
-import CustomSelect from '@/components/global/CustomSelect.vue';
+import { ref, computed } from 'vue' // 1. Importar o 'computed'
+import { useClinicStore } from '@/stores/clinic'
+import { Check } from 'lucide-vue-next'
+import CustomSelect from '@/components/global/CustomSelect.vue'
 
-const emit = defineEmits(['success']);
-const clinicStore = useClinicStore();
-const errorMessage = ref(null);
+const emit = defineEmits(['success'])
+const clinicStore = useClinicStore()
+const errorMessage = ref(null)
 
-const dayEnum = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+const dayEnum = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
 
 const timeOptions = Array.from({ length: 24 * 2 }, (_, i) => {
-  const hours = Math.floor(i / 2).toString().padStart(2, '0');
-  const minutes = (i % 2 === 0 ? '00' : '30');
-  return `${hours}:${minutes}`;
-});
+  const hours = Math.floor(i / 2)
+    .toString()
+    .padStart(2, '0')
+  const minutes = i % 2 === 0 ? '00' : '30'
+  return `${hours}:${minutes}`
+})
 
-const workingHours = ref(dayEnum.map(day => ({
-  day: day,
-  startTime: '09:00',
-  endTime: '18:00',
-  isOpen: !['Sábado', 'Domingo'].includes(day),
-})));
+const workingHours = ref(
+  dayEnum.map((day) => ({
+    day: day,
+    startTime: '09:00',
+    endTime: '18:00',
+    isOpen: !['Sábado', 'Domingo'].includes(day),
+  })),
+)
 
 // 2. Lógica da calculadora
 const totalOpenDays = computed(() => {
-  return workingHours.value.filter(day => day.isOpen).length;
-});
+  return workingHours.value.filter((day) => day.isOpen).length
+})
 
 const totalWeeklyHours = computed(() => {
   return workingHours.value
-    .filter(day => day.isOpen)
+    .filter((day) => day.isOpen)
     .reduce((total, day) => {
-      const start = parseFloat(day.startTime.replace(':', '.'));
-      const end = parseFloat(day.endTime.replace(':', '.'));
-      const dailyHours = end > start ? end - start : 0;
-      return total + dailyHours;
-    }, 0);
-});
+      const start = parseFloat(day.startTime.replace(':', '.'))
+      const end = parseFloat(day.endTime.replace(':', '.'))
+      const dailyHours = end > start ? end - start : 0
+      return total + dailyHours
+    }, 0)
+})
 
 async function handleSaveHours() {
-  errorMessage.value = null;
-  const openDays = workingHours.value.filter(day => day.isOpen);
-  const { success } = await clinicStore.updateClinicDetails({ workingHours: openDays });
+  errorMessage.value = null
+  const openDays = workingHours.value.filter((day) => day.isOpen)
+  const { success } = await clinicStore.updateClinicDetails({ workingHours: openDays })
 
   if (success) {
-    emit('success');
+    emit('success')
   } else {
-    errorMessage.value = 'Não foi possível salvar os horários.';
+    errorMessage.value = 'Não foi possível salvar os horários.'
   }
 }
 </script>
@@ -60,7 +64,12 @@ async function handleSaveHours() {
     </div>
 
     <div class="days-grid">
-      <div v-for="day in workingHours" :key="day.day" class="day-card" :class="{ closed: !day.isOpen }">
+      <div
+        v-for="day in workingHours"
+        :key="day.day"
+        class="day-card"
+        :class="{ closed: !day.isOpen }"
+      >
         <div class="card-header">
           <label class="checkbox-wrapper">
             <input type="checkbox" v-model="day.isOpen" />
@@ -74,9 +83,7 @@ async function handleSaveHours() {
             <span class="separator">às</span>
             <CustomSelect v-model="day.endTime" :options="timeOptions" />
           </div>
-          <div v-else class="closed-text">
-            Fechado
-          </div>
+          <div v-else class="closed-text">Fechado</div>
         </div>
       </div>
     </div>
@@ -98,9 +105,18 @@ async function handleSaveHours() {
 </template>
 
 <style scoped>
-.form-header { text-align: left; margin-bottom: 1rem; }
-h2 { font-size: 1.5rem; margin-bottom: 0.5rem; }
-p { color: var(--cinza-texto); line-height: 1.6; }
+.form-header {
+  text-align: left;
+  margin-bottom: 1rem;
+}
+h2 {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+p {
+  color: var(--cinza-texto);
+  line-height: 1.6;
+}
 
 /* Novo layout em grade */
 .days-grid {
@@ -117,9 +133,20 @@ p { color: var(--cinza-texto); line-height: 1.6; }
   transition: all 0.2s ease;
 }
 
-.day-card.closed { background-color: #f9fafb; opacity: 0.7; }
-.card-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
-.day-name { font-weight: 600; color: #374151; }
+.day-card.closed {
+  background-color: #f9fafb;
+  opacity: 0.7;
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.day-name {
+  font-weight: 600;
+  color: #374151;
+}
 .card-body {
   min-height: 40px; /* Altura suficiente para os seletores */
   display: flex;
@@ -132,8 +159,14 @@ p { color: var(--cinza-texto); line-height: 1.6; }
   color: var(--cinza-texto);
   width: 100%;
 }
-.time-inputs { display: flex; align-items: center; gap: 0.75rem; }
-.separator { color: var(--cinza-texto); }
+.time-inputs {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.separator {
+  color: var(--cinza-texto);
+}
 
 /* Sumário */
 .hours-summary {
@@ -145,19 +178,78 @@ p { color: var(--cinza-texto); line-height: 1.6; }
   border-radius: 1rem;
   border: 1px solid #e5e7eb;
 }
-.summary-item { display: flex; flex-direction: column; gap: 0.25rem; }
-.summary-label { font-size: 0.875rem; color: var(--cinza-texto); }
-.summary-value { font-size: 1.25rem; font-weight: 600; color: var(--preto); }
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.summary-label {
+  font-size: 0.875rem;
+  color: var(--cinza-texto);
+}
+.summary-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--preto);
+}
 
 /* Estilos de checkbox (sem alterações) */
-.checkbox-wrapper { position: relative; display: inline-block; width: 22px; height: 22px; cursor: pointer; }
-.checkbox-wrapper input { opacity: 0; width: 0; height: 0; }
-.checkmark { position: absolute; top: 0; left: 0; height: 22px; width: 22px; background-color: var(--branco); border: 1px solid #d1d5db; border-radius: 0.375rem; display: flex; align-items: center; justify-content: center; color: var(--branco); transition: all 0.2s ease; }
-.checkbox-wrapper:hover .checkmark { border-color: #9ca3af; }
-.checkbox-wrapper input:checked ~ .checkmark { background-color: var(--azul-principal); border-color: var(--azul-principal); }
+.checkbox-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+}
+.checkbox-wrapper input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.checkmark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 22px;
+  width: 22px;
+  background-color: var(--branco);
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--branco);
+  transition: all 0.2s ease;
+}
+.checkbox-wrapper:hover .checkmark {
+  border-color: #9ca3af;
+}
+.checkbox-wrapper input:checked ~ .checkmark {
+  background-color: var(--azul-principal);
+  border-color: var(--azul-principal);
+}
 
 /* Botão e erros (sem alterações) */
-.error-message { color: #ef4444; font-size: 0.875rem; margin-top: 1rem; text-align: center; }
-.auth-button { width: 100%; padding: 0.875rem; margin-top: 2rem; border-radius: 0.75rem; border: none; background-color: var(--azul-principal); color: var(--branco); font-size: 1rem; font-weight: 600; cursor: pointer; transition: background-color 0.3s ease; }
-.auth-button:hover { background-color: var(--azul-escuro); }
+.error-message {
+  color: #ef4444;
+  font-size: 0.875rem;
+  margin-top: 1rem;
+  text-align: center;
+}
+.auth-button {
+  width: 100%;
+  padding: 0.875rem;
+  margin-top: 2rem;
+  border-radius: 0.75rem;
+  border: none;
+  background-color: var(--azul-principal);
+  color: var(--branco);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+.auth-button:hover {
+  background-color: var(--azul-escuro);
+}
 </style>

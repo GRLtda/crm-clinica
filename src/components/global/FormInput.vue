@@ -6,7 +6,9 @@ defineProps({
   type: { type: String, default: 'text' },
   placeholder: String,
   autocomplete: String,
-  phoneMask: { type: Boolean, default: false }, // Nova propriedade
+  phoneMask: { type: Boolean, default: false },
+  cpfMask: { type: Boolean, default: false },
+  required: { type: Boolean, default: false },
 })
 const emit = defineEmits(['update:modelValue'])
 
@@ -17,7 +19,10 @@ function handleInput(event) {
 
 <template>
   <div class="form-group">
-    <label v-if="label" class="form-label">{{ label }}</label>
+    <label v-if="label" class="form-label">
+      {{ label }}
+      <span v-if="required" class="required-asterisk">*</span>
+    </label>
     <input
       :type="type"
       :name="name"
@@ -26,6 +31,7 @@ function handleInput(event) {
       :autocomplete="autocomplete"
       @input="handleInput"
       v-phone-mask="phoneMask"
+      v-cpf-mask="cpfMask"
       class="form-input"
     />
   </div>
@@ -58,5 +64,9 @@ function handleInput(event) {
   outline: none;
   border-color: var(--azul-principal);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+.required-asterisk {
+  color: #ef4444;
+  margin-left: 0.25rem;
 }
 </style>

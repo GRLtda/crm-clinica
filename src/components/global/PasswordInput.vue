@@ -43,7 +43,7 @@ function handleInput(event) {
 </script>
 
 <template>
-  <div class="password-input-group">
+  <div class="password-input-group" v-auto-animate>
     <label v-if="label" class="form-label">{{ label }}</label>
     <div class="input-wrapper">
       <input
@@ -146,7 +146,6 @@ function handleInput(event) {
 .feedback-wrapper {
   max-height: 0;
   overflow: hidden;
-  transition: max-height 0.4s ease-in-out;
 }
 .feedback-wrapper.visible {
   max-height: 10rem; /* Um valor alto o suficiente para caber todo o conteúdo */

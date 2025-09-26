@@ -6,6 +6,9 @@ import DefaultLayout from '../layouts/DefaultLayout.vue'
 // Views do Dashboard
 import Inicio from '../views/pages/inicio.vue'
 import SettingsView from '../views/pages/configuracoes/SettingsView.vue'
+import PatientsListView from '../views/pages/pacientes/PatientsListView.vue'
+import CreatePatientView from '../views/pages/pacientes/CreatePatientView.vue'
+import PatientDetailView from '../views/pages/pacientes/PatientDetailView.vue'
 
 const dashboardRoutes = [
   {
@@ -23,6 +26,10 @@ const dashboardRoutes = [
         name: 'configuracoes',
         component: SettingsView,
       },
+      { path: 'pacientes', name: 'pacientes', component: PatientsListView },
+      { path: 'pacientes/novo', name: 'novo-paciente', component: CreatePatientView },
+      { path: 'pacientes/:id', name: 'detalhes-paciente', component: PatientDetailView },
+
       // Futuramente, a rota /app/pacientes entrará aqui
       // {
       //   path: 'pacientes',
