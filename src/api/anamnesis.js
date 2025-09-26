@@ -1,8 +1,26 @@
 import apiClient from './index';
 
-// Busca a lista de todos os modelos de anamnese
+// Busca a lista de todos os modelos
 export const getAnamnesisTemplates = () => {
-  return apiClient.get('/anamnesis-templates'); // [cite: 28]
+  return apiClient.get('/anamnesis-templates');
 };
 
-// Futuramente, adicionaremos as outras funções (criar, deletar, etc.)
+// Cria um novo modelo
+export const createAnamnesisTemplate = (templateData) => {
+  return apiClient.post('/anamnesis-templates', templateData);
+};
+
+// Deleta um modelo pelo ID
+export const deleteAnamnesisTemplate = (templateId) => {
+  return apiClient.delete(`/anamnesis-templates/${templateId}`);
+};
+
+// Busca um modelo completo pelo ID
+export const getAnamnesisTemplateById = (templateId) => {
+  return apiClient.get(`/anamnesis-templates/${templateId}`);
+};
+
+// Atualiza um modelo pelo ID
+export const updateAnamnesisTemplate = (templateId, templateData) => {
+  return apiClient.put(`/anamnesis-templates/${templateId}`, templateData);
+};
