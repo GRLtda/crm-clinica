@@ -4,8 +4,10 @@ import { useAuthStore } from '@/stores/auth';
 import { useClinicStore } from '@/stores/clinic';
 import { Check } from 'lucide-vue-next';
 import CustomSelect from '@/components/global/CustomSelect.vue';
+import { useToast } from 'vue-toastification';
 
 const authStore = useAuthStore();
+const toast = useToast();
 const clinicStore = useClinicStore();
 const successMessage = ref('');
 
@@ -50,9 +52,12 @@ async function handleUpdateHours() {
   const openDays = workingHours.value.filter(day => day.isOpen);
   const { success } = await clinicStore.updateClinicDetails({ workingHours: openDays });
   if (success) {
-    successMessage.value = 'Horários atualizados com sucesso!';
+    toast.success('Horários atualizados com sucesso!'); // Usar o toast
+  } else {
+    toast.error('Erro ao atualizar os horários.');
   }
 }
+
 </script>
 
 <template>

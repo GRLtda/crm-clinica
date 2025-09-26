@@ -1,34 +1,57 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useAnamnesisStore } from '@/stores/anamnesis';
+import { useToast } from 'vue-toastification';
 import { FilePlus2, Pencil, Trash2 } from 'lucide-vue-next';
 import CreateAnamnesisModal from '../modals/CreateAnamnesisModal.vue';
 
 const anamnesisStore = useAnamnesisStore();
+const toast = useToast();
 const templates = computed(() => anamnesisStore.templates);
+
 const isModalOpen = ref(false);
+const editingTemplateId = ref(null);
+const templateIdToDelete = ref(null);
 
 onMounted(() => {
   anamnesisStore.fetchTemplates();
 });
 
+function openCreateModal() {
+  editingTemplateId.value = null;
+  isModalOpen.value = true;
+}
+
+function openEditModal(templateId) {
+  editingTemplateId.value = templateId;
+  isModalOpen.value = true;
+}
+
 async function handleDelete(templateId) {
-  if (confirm('Tem certeza que deseja excluir este modelo? Esta ação não pode ser desfeita.')) {
-    await anamnesisStore.deleteTemplate(templateId);
+  const { success } = await anamnesisStore.deleteTemplate(templateId);
+  if (success) {
+    toast.success('Modelo excluído com sucesso!');
+  } else {
+    toast.error('Não foi possível excluir o modelo.');
   }
+  templateIdToDelete.value = null; // Fecha o popover após a ação
 }
 </script>
 
 <template>
   <div>
-    <CreateAnamnesisModal v-if="isModalOpen" @close="isModalOpen = false" />
+    <CreateAnamnesisModal
+      v-if="isModalOpen"
+      :template-id-to-edit="editingTemplateId"
+      @close="isModalOpen = false"
+    />
 
     <div v-if="templates.length > 0" class="header-actions">
       <div>
         <h2>Modelos de Anamnese</h2>
         <p class="header-subtitle">Você tem {{ templates.length }} modelo(s) cadastrado(s).</p>
       </div>
-      <button @click="isModalOpen = true" class="btn-primary">
+      <button @click="openCreateModal" class="btn-primary">
         <FilePlus2 :size="16" />
         Criar Novo Modelo
       </button>
@@ -39,13 +62,26 @@ async function handleDelete(templateId) {
     <div v-else-if="templates.length > 0" class="templates-grid">
       <div v-for="template in templates" :key="template._id" class="template-card">
         <span class="template-name">{{ template.name }}</span>
-        <div class="template-actions">
-          <button class="btn-icon" title="Editar">
+        <div class="template-actions" v-click-outside="() => templateIdToDelete = null">
+          <button @click="openEditModal(template._id)" class="btn-icon" title="Editar">
             <Pencil :size="16" />
           </button>
-          <button @click="handleDelete(template._id)" class="btn-icon btn-delete" title="Excluir">
+          <button @click="templateIdToDelete = template._id" class="btn-icon btn-delete" title="Excluir">
             <Trash2 :size="16" />
           </button>
+
+          <Transition name="fade">
+            <div v-if="templateIdToDelete === template._id" class="delete-confirmation">
+              <h3>Excluir Modelo?</h3>
+              <p class="confirmation-description">
+                Esta ação é permanente e não poderá ser restaurada.
+              </p>
+              <div class="confirmation-buttons">
+                <button @click="templateIdToDelete = null" class="btn-cancel">Cancelar</button>
+                <button @click="handleDelete(template._id)" class="btn-confirm-delete">Excluir</button>
+              </div>
+            </div>
+          </Transition>
         </div>
       </div>
     </div>
@@ -54,7 +90,7 @@ async function handleDelete(templateId) {
       <div class="icon-wrapper"><FilePlus2 :size="48" /></div>
       <h3 class="empty-title">Nenhum modelo de anamnese encontrado</h3>
       <p class="empty-description">Crie seu primeiro modelo para agilizar o preenchimento de prontuários.</p>
-      <button @click="isModalOpen = true" class="create-button">Criar Anamnese</button>
+      <button @click="openCreateModal" class="create-button">Criar Anamnese</button>
     </div>
   </div>
 </template>
@@ -88,7 +124,7 @@ async function handleDelete(templateId) {
 
 .templates-grid {
   display: grid;
-  grid-template-columns: 1fr; /* Agora é uma lista, não mais um grid */
+  grid-template-columns: 1fr;
   gap: 0.75rem;
 }
 .template-card {
@@ -108,8 +144,66 @@ async function handleDelete(templateId) {
   font-weight: 600;
 }
 .template-actions {
+  position: relative;
   display: flex;
   gap: 0.5rem;
+}
+.delete-confirmation {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  width: 240px; /* Aumentado para caber o texto */
+  background-color: var(--branco);
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px S10px rgba(0,0,0,0.1);
+  padding: 1rem;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem; /* Espaço entre os itens */
+}
+.delete-confirmation h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+}
+.confirmation-description {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--cinza-texto);
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+.confirmation-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.confirmation-buttons button {
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid #d1d5db;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-cancel {
+  background-color: var(--branco);
+  color: var(--preto);
+}
+.btn-confirm-delete {
+  background-color: #ef4444;
+  color: var(--branco);
+  border-color: #ef4444;
+}
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+  transform: translateY(-5px);
 }
 .btn-icon {
   padding: 0.5rem;
@@ -128,8 +222,6 @@ async function handleDelete(templateId) {
   background-color: #fee2e2;
   color: #ef4444;
 }
-
-/* Estilos do Empty State (sem alterações) */
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4rem; border: 2px dashed #d1d5db; border-radius: 1rem; background-color: rgba(239, 246, 255, 0.5); text-align: center; }
 .icon-wrapper { color: var(--azul-principal); margin-bottom: 1.5rem; }
 .empty-title { font-family: var(--fonte-titulo); font-size: 1.25rem; font-weight: 600; color: var(--preto); margin-bottom: 0.5rem; }

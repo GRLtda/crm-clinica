@@ -1,15 +1,22 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useAnamnesisStore } from '@/stores/anamnesis';
 import { Plus, Trash2 } from 'lucide-vue-next';
 import FormInput from '@/components/global/FormInput.vue';
 import StyledSelect from '@/components/global/StyledSelect.vue';
+import { useToast } from 'vue-toastification';
 
+const props = defineProps({
+  templateIdToEdit: { type: String, default: null },
+});
 const emit = defineEmits(['close']);
 const anamnesisStore = useAnamnesisStore();
+const toast = useToast();
 
 const templateName = ref('');
 const questions = ref([]);
+
+const isEditMode = computed(() => !!props.templateIdToEdit);
 
 const questionTypes = [
   { value: 'text', label: 'Texto Curto' },
@@ -18,6 +25,17 @@ const questionTypes = [
   { value: 'single_choice', label: 'Múltipla Escolha (1 resposta)' },
   { value: 'multiple_choice', label: 'Múltipla Escolha (várias respostas)' },
 ];
+
+onMounted(async () => {
+  if (isEditMode.value) {
+    const templateData = await anamnesisStore.fetchTemplateById(props.templateIdToEdit);
+    if (templateData) {
+      templateName.value = templateData.name;
+      // Garante que a reatividade seja mantida
+      questions.value = JSON.parse(JSON.stringify(templateData.questions));
+    }
+  }
+});
 
 function addQuestion() {
   questions.value.push({
@@ -32,6 +50,10 @@ function removeQuestion(index) {
 }
 
 function addOption(question) {
+  // Garante que a propriedade options exista
+  if (!question.options) {
+    question.options = [];
+  }
   question.options.push('');
 }
 
@@ -44,18 +66,28 @@ async function saveTemplate() {
     name: templateName.value,
     questions: questions.value,
   };
-  // A chamada da função acontece aqui
-  const { success } = await anamnesisStore.createTemplate(templateData);
-  if (success) {
+
+  let result;
+  if (isEditMode.value) {
+    result = await anamnesisStore.updateTemplate(props.templateIdToEdit, templateData);
+  } else {
+    result = await anamnesisStore.createTemplate(templateData);
+  }
+
+  if (result.success) {
+    toast.success(isEditMode.value ? 'Modelo atualizado com sucesso!' : 'Modelo criado com sucesso!');
     emit('close');
+  } else {
+    toast.error('Ocorreu um erro ao salvar o modelo.');
   }
 }
 </script>
+
 <template>
   <div class="modal-overlay">
     <div class="modal-content">
       <header class="modal-header">
-        <h2>Criar Novo Modelo de Anamnese</h2>
+        <h2>{{ isEditMode ? 'Editar Modelo de Anamnese' : 'Criar Novo Modelo de Anamnese' }}</h2>
         <p>Construa um formulário personalizado para suas consultas.</p>
       </header>
 
@@ -87,7 +119,9 @@ async function saveTemplate() {
 
       <footer class="modal-footer">
         <button @click="$emit('close')" type="button" class="btn-secondary">Cancelar</button>
-        <button @click="saveTemplate" type="button" class="btn-primary">Salvar Modelo</button>
+        <button @click="saveTemplate" type="button" class="btn-primary">
+          {{ isEditMode ? 'Salvar Alterações' : 'Salvar Modelo' }}
+        </button>
       </footer>
     </div>
   </div>
@@ -107,7 +141,7 @@ p { color: var(--cinza-texto); }
 .options-section { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; }
 .option-input-wrapper { display: flex; align-items: center; gap: 0.5rem; }
 .option-input-wrapper .form-group { flex-grow: 1; margin-bottom: 0.5rem; }
-.delete-option-btn { color: #ef4444; cursor: pointer; background: none; border: none; }
+.delete-option-btn { color: #ef4444; cursor: pointer; background: none; border: none; padding: 0.5rem }
 .add-option-btn { background: none; border: none; color: var(--azul-principal); font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.25rem; margin-top: 0.5rem; }
 .add-question-btn { width: 100%; padding: 0.75rem; margin-top: 1.5rem; border-radius: 0.5rem; background: #f9fafb; border: 1px dashed #d1d5db; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 600; color: #374151; }
 .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 1rem; background-color: #f9fafb; }
