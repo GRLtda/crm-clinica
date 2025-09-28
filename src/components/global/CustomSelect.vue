@@ -82,8 +82,8 @@ function selectOption(option) {
   background-color: var(--branco);
   border: 1px solid #e5e7eb;
   border-radius: 0.5rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-  z-index: 10;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  z-index: 110; /* Aumentado para garantir que fique na frente de modais */
   padding: 0.5rem;
 }
 .option-item {

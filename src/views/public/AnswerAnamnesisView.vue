@@ -1,9 +1,164 @@
+<script setup>
+import { ref, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
+import { useAnamnesisStore } from '@/stores/anamnesis';
+import { useToast } from 'vue-toastification';
+
+const route = useRoute();
+const anamnesisStore = useAnamnesisStore();
+const toast = useToast();
+
+const responseData = ref(null);
+const answers = ref([]);
+const submissionStatus = ref('pending'); // pending, success, error
+
+onMounted(async () => {
+  const token = route.params.token;
+  const { success } = await anamnesisStore.fetchPublicTemplate(token);
+
+  if (success && anamnesisStore.publicTemplate) {
+    responseData.value = anamnesisStore.publicTemplate;
+
+    const questions = responseData.value.template?.questions;
+
+    if (Array.isArray(questions)) {
+      answers.value = questions.map(q => ({
+        questionTitle: q.title,
+        answer: q.questionType === 'multiple_choice' ? [] : '',
+      }));
+    } else {
+      submissionStatus.value = 'error';
+    }
+  } else {
+    submissionStatus.value = 'error';
+  }
+});
+
+async function handleSubmit() {
+  const token = route.params.token;
+  const { success } = await anamnesisStore.submitPatientAnswers(token, answers.value);
+  if (success) {
+    submissionStatus.value = 'success';
+  } else {
+    toast.error('Ocorreu um erro ao enviar suas respostas.');
+  }
+}
+</script>
+
 <template>
-  <div>
-    <h1>Formulário de Anamnese</h1>
-    <p>
-      O formulário para o paciente preencher será construído aqui.
-    </p>
-    <p>Token de acesso: {{ $route.params.token }}</p>
+  <div class="public-form-container">
+    <div v-if="submissionStatus === 'success'" class="card">
+      <h2>Obrigado!</h2>
+      <p>Suas respostas foram enviadas com sucesso para a clínica.</p>
+    </div>
+    <div v-else-if="submissionStatus === 'error'" class="card">
+      <h2>Link Inválido ou Expirado</h2>
+      <p>Não foi possível carregar o formulário. Por favor, entre em contato com a clínica.</p>
+    </div>
+    <div v-else-if="responseData" class="card">
+      <header>
+        <h1>{{ responseData.template.name }}</h1>
+        <p>Preencha o formulário abaixo com atenção.</p>
+      </header>
+      <form @submit.prevent="handleSubmit">
+        <div v-for="(question, index) in responseData.template.questions" :key="question.title" class="question-block">
+          <label class="question-title">{{ index + 1 }}. {{ question.title }}</label>
+
+          <input v-if="question.questionType === 'text'" type="text" v-model="answers[index].answer" class="form-input" />
+          <textarea v-if="question.questionType === 'long_text'" v-model="answers[index].answer" class="form-textarea"></textarea>
+
+          <div v-if="question.questionType === 'yes_no'" class="choice-group">
+            <div class="choice-item">
+              <input type="radio" :id="`q-${index}-sim`" value="Sim" v-model="answers[index].answer" />
+              <label :for="`q-${index}-sim`">Sim</label>
+            </div>
+            <div class="choice-item">
+              <input type="radio" :id="`q-${index}-nao`" value="Não" v-model="answers[index].answer" />
+              <label :for="`q-${index}-nao`">Não</label>
+            </div>
+          </div>
+
+          <div v-if="question.questionType === 'single_choice'" class="choice-group">
+            <div v-for="option in question.options" :key="option" class="choice-item">
+              <input type="radio" :id="`q-${index}-${option}`" :value="option" v-model="answers[index].answer" />
+              <label :for="`q-${index}-${option}`">{{ option }}</label>
+            </div>
+          </div>
+
+          <div v-if="question.questionType === 'multiple_choice'" class="choice-group">
+            <div v-for="option in question.options" :key="option" class="choice-item">
+              <input type="checkbox" :id="`q-${index}-${option}`" :value="option" v-model="answers[index].answer" />
+              <label :for="`q-${index}-${option}`">{{ option }}</label>
+            </div>
+          </div>
+        </div>
+        <button type="submit" class="submit-button">Enviar Respostas</button>
+      </form>
+    </div>
+     <div v-else>
+      <p>Carregando formulário...</p>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.public-form-container { display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; background-color: #f3f4f6; padding: 2rem; }
+.card { background: var(--branco); padding: 2.5rem; border-radius: 1rem; box-shadow: 0 4px 10px rgba(0,0,0,0.05); max-width: 800px; width: 100%; }
+header { text-align: center; margin-bottom: 2rem; }
+h1 { font-size: 1.75rem; }
+h2 { font-size: 1.75rem; text-align: center; }
+p { text-align: center; }
+.question-block { margin-bottom: 2rem; }
+.question-title { display: block; font-weight: 600; margin-bottom: 0.75rem; color: #1f2937; text-align: left;}
+.form-input, .form-textarea { width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 1rem; }
+.form-textarea { min-height: 120px; }
+
+.choice-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.choice-item input[type="radio"],
+.choice-item input[type="checkbox"] {
+  display: none;
+}
+.choice-item label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1rem;
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.choice-item label:hover {
+  background-color: #f9fafb;
+}
+.choice-item label::before {
+  content: '';
+  width: 20px;
+  height: 20px;
+  border: 2px solid #d1d5db;
+  background-color: var(--branco);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+.choice-item input[type="radio"] + label::before {
+  border-radius: 50%;
+}
+.choice-item input[type="checkbox"] + label::before {
+  border-radius: 0.25rem;
+}
+.choice-item input:checked + label {
+  border-color: var(--azul-principal);
+  background-color: #eef2ff;
+}
+.choice-item input:checked + label::before {
+  background-color: var(--azul-principal);
+  border-color: var(--azul-principal);
+  box-shadow: inset 0 0 0 3px var(--branco);
+}
+.submit-button { width: 100%; padding: 1rem; border: none; background: var(--azul-principal); color: var(--branco); font-size: 1rem; font-weight: 600; border-radius: 0.5rem; cursor: pointer; margin-top: 1rem; }
+</style>

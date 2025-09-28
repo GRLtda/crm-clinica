@@ -63,7 +63,22 @@ function selectOption(option) {
 .select-button:focus, .select-button:focus-visible { outline: none; border-color: var(--azul-principal); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3); }
 .arrow-icon { color: #6b7281; transition: transform 0.2s ease; }
 .arrow-icon.is-open { transform: rotate(180deg); }
-.options-list { position: absolute; top: calc(100% + 0.5rem); left: 0; width: 100%; max-height: 200px; overflow-y: auto; background-color: var(--branco); border: 1px solid #e5e7eb; border-radius: 0.75rem; box-shadow: 0 4px 6px rgba(0,0,0,0.05); z-index: 10; padding: 0.5rem; list-style: none; margin: 0; }
+.options-list {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  background-color: var(--branco);
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  z-index: 110; /* Aumentado para garantir que fique na frente de modais */
+  padding: 0.5rem;
+  list-style: none;
+  margin: 0;
+}
 .option-item { padding: 0.75rem; border-radius: 0.5rem; cursor: pointer; font-weight: 500; }
 .option-item:hover { background-color: #f3f4f6; }
 .fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }

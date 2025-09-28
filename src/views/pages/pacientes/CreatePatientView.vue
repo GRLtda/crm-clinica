@@ -51,8 +51,10 @@ function prevStep() {
 }
 
 async function submitForm() {
+  // Cria uma cópia "profunda" dos dados para não alterar o que está na tela
   const payload = JSON.parse(JSON.stringify(patientData.value));
 
+  // Remove a formatação dos campos mascarados
   if (payload.cpf) {
     payload.cpf = payload.cpf.replace(/\D/g, '');
   }
@@ -60,13 +62,14 @@ async function submitForm() {
     payload.phone = payload.phone.replace(/\D/g, '');
   }
 
-  const { success, error } = await patientsStore.createPatient(payload);
+  // Envia o payload limpo para a store
+  const { success } = await patientsStore.createPatient(payload);
 
   if (success) {
     toast.success('Paciente cadastrado com sucesso!');
     router.push('/app/pacientes');
   } else {
-    const errorMessage = error?.response?.data?.message || 'Erro ao cadastrar paciente. Verifique os dados.';
+    const errorMessage = error?.response?.data?.message || 'Erro ao cadastrar paciente.';
     toast.error(errorMessage);
   }
 }

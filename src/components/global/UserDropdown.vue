@@ -16,7 +16,7 @@ function handleLogout() {
   <div class="dropdown-menu">
     <ul>
       <li>
-        <button @click="authStore.logout()" class="dropdown-item">
+        <button @click="handleLogout()" class="dropdown-item">
           <LogOut :size="16" />
           <span>Sair</span>
         </button>

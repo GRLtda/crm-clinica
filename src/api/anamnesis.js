@@ -29,3 +29,18 @@ export const assignAnamnesis = (patientId, templateId) => {
   const payload = { templateId, mode: 'Paciente' };
   return apiClient.post(`/patients/${patientId}/anamnesis`, payload);
 };
+
+// Busca o formulário público usando o token do paciente
+export const getPublicAnamnesis = (token) => {
+  return apiClient.get(`/anamnesis/public/${token}`);
+};
+
+// Paciente envia as respostas do formulário
+export const submitPublicAnamnesis = (token, answers) => {
+  return apiClient.put(`/anamnesis/public/${token}`, { answers });
+};
+
+export const getAnamnesisForPatient = (patientId) => {
+  // Conforme sua documentação, a rota é GET /api/anamnesis/patients/:patientId/anamnesis
+  return apiClient.get(`/patients/${patientId}/anamnesis`);
+};

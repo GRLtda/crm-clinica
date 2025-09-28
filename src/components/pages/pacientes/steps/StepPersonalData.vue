@@ -39,7 +39,7 @@ const genderOptions = [
       />
       <FormInput
         :modelValue="modelValue.cpf"
-        @update:modelValue="updateValue('cpf', $event)"
+        @update:modelValue="updateField('cpf', $event)"
         label="CPF"
         placeholder="000.000.000-00"
         cpf-mask
