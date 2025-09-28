@@ -10,6 +10,7 @@ import {
 
 export const usePatientsStore = defineStore('patients', () => {
   const patients = ref([]);
+  const allPatients = ref([]); // Para preencher seletores
   const selectedPatient = ref(null);
   const pagination = ref({
     total: 0,
@@ -26,9 +27,15 @@ export const usePatientsStore = defineStore('patients', () => {
         page: params.page || pagination.value.page,
         limit: params.limit || pagination.value.limit,
       });
-      patients.value = response.data.data;
-      const { total, page, pages, limit } = response.data;
-      pagination.value = { total, page, pages, limit };
+      // Garante que a resposta da API tenha o formato esperado
+      if (response.data && Array.isArray(response.data.data)) {
+        patients.value = response.data.data;
+        const { total, page, pages, limit } = response.data;
+        pagination.value = { total, page, pages, limit };
+      } else {
+        console.warn('A resposta da API de pacientes não tem o formato esperado.', response.data);
+        patients.value = [];
+      }
     } catch (error) {
       console.error("Erro ao buscar pacientes:", error);
       patients.value = [];
@@ -37,15 +44,24 @@ export const usePatientsStore = defineStore('patients', () => {
     }
   }
 
-  // A função que estava faltando ou incompleta
+  async function fetchAllPatients() {
+    try {
+      const response = await apiGetPatients({ limit: 1000 }); // Limite alto para buscar todos
+      if (response.data && Array.isArray(response.data.data)) {
+        allPatients.value = response.data.data;
+      }
+    } catch (error) {
+      console.error("Erro ao buscar todos os pacientes:", error);
+    }
+  }
+
   async function createPatient(patientData) {
     isLoading.value = true;
     try {
       await apiCreatePatient(patientData);
-      await fetchPatients(); // Atualiza a lista após a criação
+      await fetchPatients(); // Atualiza a lista paginada
       return { success: true };
-    } catch (error)
- {
+    } catch (error) {
       console.error("Erro ao criar paciente:", error);
       return { success: false, error };
     } finally {
@@ -70,7 +86,6 @@ export const usePatientsStore = defineStore('patients', () => {
     isLoading.value = true;
     try {
       const response = await apiUpdatePatient(patientId, patientData);
-      // Atualiza o paciente selecionado, se ele estiver carregado
       if (selectedPatient.value && selectedPatient.value._id === patientId) {
         selectedPatient.value = response.data;
       }
@@ -83,7 +98,6 @@ export const usePatientsStore = defineStore('patients', () => {
     }
   }
 
-  // NOVA AÇÃO: Deleta um paciente
   async function deletePatient(patientId) {
     try {
       await apiDeletePatient(patientId);
@@ -95,6 +109,17 @@ export const usePatientsStore = defineStore('patients', () => {
     }
   }
 
-  // Certifique-se de que a função está sendo retornada aqui
-  return { patients, selectedPatient, pagination, isLoading, fetchPatients, createPatient, fetchPatientById, updatePatient, deletePatient };
+  return {
+    patients,
+    allPatients,
+    selectedPatient,
+    pagination,
+    isLoading,
+    fetchPatients,
+    fetchAllPatients,
+    createPatient,
+    fetchPatientById,
+    updatePatient,
+    deletePatient
+  };
 });
