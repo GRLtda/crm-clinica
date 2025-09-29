@@ -1,21 +1,12 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import AppHeader from '@/components/global/AppHeader.vue'
-import {
-  ChevronRight,
-  Check,
-  X,
-  Monitor,
-  KeyRound,
-  Rocket,
-  Gem,
-  Building,
-} from 'lucide-vue-next'
+import { ChevronRight, Check, X, Monitor, KeyRound, Rocket, Gem, Building } from 'lucide-vue-next'
 
 const planos = ref([
   {
     name: 'Essencial',
-    icon: Rocket, // Ícone adicionado
+    icon: Rocket,
     price: 'R$ 99',
     period: '/mês',
     description: 'Perfeito para clínicas que estão começando.',
@@ -26,7 +17,7 @@ const planos = ref([
   },
   {
     name: 'Profissional',
-    icon: Gem, // Ícone adicionado
+    icon: Gem,
     price: 'R$ 199',
     period: '/mês',
     description: 'Ideal para clínicas em fase de crescimento.',
@@ -42,7 +33,7 @@ const planos = ref([
   },
   {
     name: 'Empresarial',
-    icon: Building, // Ícone adicionado
+    icon: Building,
     price: 'Contato',
     period: '',
     description: 'Para clínicas com múltiplas unidades e necessidades.',
@@ -58,23 +49,23 @@ const planos = ref([
   },
 ])
 
-// Lógica para o efeito 3D na imagem
+// Lógica para o efeito 3D
 const platformImageWrapper = ref(null)
+// Lógica para o carrossel
+const plansGrid = ref(null)
+const currentSlide = ref(0)
+let scrollTimeout = null
 
 function handleMouseMove(event) {
   if (!platformImageWrapper.value) return
-
   const el = platformImageWrapper.value
   const { width, height, left, top } = el.getBoundingClientRect()
   const x = event.clientX - left
   const y = event.clientY - top
-
   const mouseX = x / width - 0.5
   const mouseY = y / height - 0.5
-
-  const rotateY = mouseX * 20 // Multiplicador para a intensidade do efeito
+  const rotateY = mouseX * 20
   const rotateX = -mouseY * 20
-
   el.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.05, 1.05, 1.05)`
   el.style.transition = 'transform 0.1s linear'
 }
@@ -84,10 +75,39 @@ function resetTilt() {
   platformImageWrapper.value.style.transform = `perspective(1000px) rotateX(0) rotateY(0) scale3d(1, 1, 1)`
   platformImageWrapper.value.style.transition = 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)'
 }
+
+// Funções do Carrossel
+function updateCurrentSlide() {
+  if (!plansGrid.value) return
+  clearTimeout(scrollTimeout)
+  scrollTimeout = setTimeout(() => {
+    const scrollLeft = plansGrid.value.scrollLeft
+    const slideWidth = plansGrid.value.children[0].offsetWidth
+    const newSlide = Math.round(scrollLeft / slideWidth)
+    currentSlide.value = newSlide
+  }, 100)
+}
+
+function scrollToSlide(index) {
+  if (!plansGrid.value) return
+  plansGrid.value.scrollTo({
+    left: index * plansGrid.value.children[0].offsetWidth,
+    behavior: 'smooth',
+  })
+  currentSlide.value = index
+}
+
+onMounted(() => {
+  plansGrid.value?.addEventListener('scroll', updateCurrentSlide)
+})
+
+onBeforeUnmount(() => {
+  plansGrid.value?.removeEventListener('scroll', updateCurrentSlide)
+})
 </script>
 
 <template>
-    <AppHeader class="header-slide-down" />
+  <AppHeader class="header-slide-down" />
   <main>
     <section class="hero">
       <div class="container">
@@ -97,9 +117,7 @@ function resetTilt() {
           o seu faturamento.
         </p>
         <div class="hero-actions animate-slide-up">
-          <router-link to="/app" class="btn-primary">
-            Entrar <KeyRound :size="20" />
-          </router-link>
+          <router-link to="/app" class="btn-primary"> Entrar <KeyRound :size="20" /> </router-link>
           <button class="btn-secondary">Agentes Digitais <ChevronRight :size="20" /></button>
         </div>
       </div>
@@ -138,7 +156,7 @@ function resetTilt() {
       <div class="container-plans">
         <h2 class="section-title">Planos flexíveis para sua necessidade</h2>
         <p class="section-subtitle">Comece de graça e evolua conforme sua clínica cresce.</p>
-        <div class="plans-grid">
+        <div class="plans-grid" ref="plansGrid">
           <div
             v-for="plano in planos"
             :key="plano.name"
@@ -171,6 +189,16 @@ function resetTilt() {
             </button>
           </div>
         </div>
+        <div class="carousel-dots">
+          <button
+            v-for="(plano, index) in planos"
+            :key="index"
+            class="dot"
+            :class="{ active: currentSlide === index }"
+            @click="scrollToSlide(index)"
+            :aria-label="`Ir para o plano ${plano.name}`"
+          ></button>
+        </div>
       </div>
     </section>
   </main>
@@ -188,7 +216,6 @@ function resetTilt() {
     opacity: 1;
   }
 }
-
 @keyframes slideUp {
   from {
     transform: translateY(30px);
@@ -200,15 +227,14 @@ function resetTilt() {
   }
 }
 
-.header-animation-wrapper {
+:global(.header-slide-down) {
   animation: slideDown 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
 }
 
 .animate-slide-up {
-  opacity: 0; /* Começa invisível */
+  opacity: 0;
   animation: slideUp 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
 }
-
 .hero-title {
   animation-delay: 0.2s;
 }
@@ -219,40 +245,11 @@ function resetTilt() {
   animation-delay: 0.6s;
 }
 
-/* Efeitos de fundo na tag <main> */
+/* ESTILOS GERAIS */
 main {
   position: relative;
   overflow: hidden;
   background: radial-gradient(ellipse at 50% 40%, #dbeafe 0%, var(--branco) 50%);
-}
-main::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: url('@/assets/noise.jpg');
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
-  opacity: 0.3;
-  pointer-events: none;
-  z-index: 0;
-}
-main::after {
-  content: '';
-  position: absolute;
-  top: -100px;
-  left: -100px;
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(147, 197, 253, 0.3) 0%, transparent 70%);
-  border-radius: 50%;
-  filter: blur(80px);
-  pointer-events: none;
-  z-index: 1;
-  animation: pulse-light 8s infinite alternate ease-in-out;
 }
 .hero,
 .plans-section,
@@ -268,15 +265,6 @@ main::after {
   max-width: 800px;
   margin: 0 auto;
   padding: 0 1rem;
-}
-.badge {
-  display: inline-block;
-  border: 1px solid #e5e7eb;
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  margin-bottom: 1.5rem;
 }
 .hero-title {
   font-size: 3.75rem;
@@ -307,7 +295,7 @@ main::after {
   border-radius: 2rem;
   cursor: pointer;
   transition: all 0.3s ease;
-  text-decoration: none; /* Para o router-link */
+  text-decoration: none;
 }
 .btn-primary {
   background-color: var(--azul-principal);
@@ -325,7 +313,7 @@ main::after {
   background-color: #e5e7eb;
 }
 
-/* Seção de Plataforma */
+/* SEÇÃO PLATAFORMA */
 .platform-section {
   padding: 6rem 0;
 }
@@ -384,51 +372,9 @@ main::after {
   display: block;
 }
 
-/* Seção de planos */
+/* SEÇÃO DE PLANOS */
 .plans-section {
   padding: 6rem 0;
-}
-.plans-section::before {
-  content: '';
-  position: absolute;
-  bottom: -150px;
-  right: -150px;
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(200, 220, 255, 0.2) 0%, transparent 60%);
-  border-radius: 50%;
-  filter: blur(100px);
-  pointer-events: none;
-  z-index: 1;
-  animation: pulse-light-alt 10s infinite alternate-reverse ease-in-out;
-}
-@keyframes pulse-light {
-  0% {
-    transform: scale(1) translate(0, 0);
-    opacity: 0.3;
-  }
-  50% {
-    transform: scale(1.05) translate(20px, 10px);
-    opacity: 0.4;
-  }
-  100% {
-    transform: scale(1) translate(0, 0);
-    opacity: 0.3;
-  }
-}
-@keyframes pulse-light-alt {
-  0% {
-    transform: scale(1) translate(0, 0);
-    opacity: 0.2;
-  }
-  50% {
-    transform: scale(1.1) translate(-15px, -5px);
-    opacity: 0.3;
-  }
-  100% {
-    transform: scale(1) translate(0, 0);
-    opacity: 0.2;
-  }
 }
 .container-plans {
   max-width: 1200px;
@@ -470,7 +416,7 @@ main::after {
   font-size: 1.25rem;
   font-weight: 600;
   margin-bottom: 1rem;
-  display: flex; /* Para alinhar ícone e texto */
+  display: flex;
   align-items: center;
   gap: 0.75rem;
 }
@@ -498,11 +444,6 @@ main::after {
   list-style: none;
   margin-bottom: 2rem;
   padding: 0;
-}
-.plan-card:not(.featured) .plan-features:has(+ .plan-features) {
-  margin-bottom: 1rem;
-}
-.plan-features:last-of-type {
   flex-grow: 1;
 }
 .plan-features li {
@@ -513,9 +454,6 @@ main::after {
 }
 .benefit svg {
   color: var(--azul-principal);
-}
-.limitation {
-  color: var(--cinza-texto);
 }
 .limitation svg {
   color: #ef4444;
@@ -551,5 +489,81 @@ main::after {
 }
 .btn-primary-featured:hover {
   background-color: var(--azul-escuro);
+}
+.carousel-dots {
+  display: none; /* Escondido por padrão no desktop */
+}
+
+/* --- AJUSTES DE RESPONSIVIDADE --- */
+
+/* TABLETS (até 1024px) */
+@media (max-width: 1024px) {
+  .plans-grid {
+    grid-template-columns: 1fr;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+}
+
+/* CELULARES (até 768px) */
+@media (max-width: 768px) {
+  .hero { padding: 8rem 0 5rem 0; }
+  .hero-title { font-size: 2.5rem; }
+  .hero-subtitle { font-size: 1.125rem; }
+  .hero-actions { flex-direction: column; align-items: center; }
+  .hero-actions .btn-primary,
+  .hero-actions .btn-secondary {
+    width: 100%;
+    max-width: 300px;
+    justify-content: center;
+  }
+
+  .platform-section { padding: 4rem 0; }
+  .platform-container { flex-direction: column; text-align: center; }
+  .platform-content { display: flex; flex-direction: column; align-items: center; }
+
+  .plans-section { padding: 4rem 0; }
+  .section-title { font-size: 2rem; }
+
+  /* --- LÓGICA DO CARROSSEL --- */
+  .plans-grid {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2rem;
+    margin: 0 -1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    max-width: none;
+    grid-template-columns: none; /* Reseta o grid */
+  }
+  .plans-grid::-webkit-scrollbar {
+    display: none;
+  }
+  .plan-card {
+    flex: 0 0 90%;
+    scroll-snap-align: center;
+    max-width: 400px;
+  }
+  .carousel-dots {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+  }
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #d1d5db;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: background-color 0.3s ease;
+  }
+  .dot.active {
+    background-color: var(--azul-principal);
+  }
 }
 </style>
