@@ -3,7 +3,17 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePatientsStore } from '@/stores/patients'
 import { useToast } from 'vue-toastification'
-import { UserPlus, MoreHorizontal, Pencil, Trash2 } from 'lucide-vue-next'
+import {
+  UserPlus,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  Hash,
+  User,
+  Phone,
+  SlidersHorizontal,
+} from 'lucide-vue-next'
+import AppPagination from '@/components/global/AppPagination.vue'
 
 const patientsStore = usePatientsStore()
 const router = useRouter()
@@ -12,12 +22,21 @@ const toast = useToast()
 const patients = computed(() => patientsStore.patients)
 const pagination = computed(() => patientsStore.pagination)
 const actionsMenuOpenFor = ref(null)
+const isInitialLoad = ref(true)
 
-onMounted(() => {
-  patientsStore.fetchPatients()
+onMounted(async () => {
+  await patientsStore.fetchPatients(1)
+  isInitialLoad.value = false
 })
 
+function handlePageChange(newPage) {
+  patientsStore.fetchPatients(newPage)
+}
+
 function goToPatient(patientId) {
+  if (actionsMenuOpenFor.value === patientId) {
+    return
+  }
   router.push(`/app/pacientes/${patientId}`)
 }
 
@@ -36,6 +55,13 @@ async function handleDelete(patientId) {
   }
   actionsMenuOpenFor.value = null
 }
+
+const formatCPF = (cpf) => {
+  if (!cpf) return 'N/A'
+  const cpfDigits = cpf.replace(/\D/g, '')
+  if (cpfDigits.length !== 11) return cpf
+  return cpfDigits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+}
 </script>
 
 <template>
@@ -51,50 +77,89 @@ async function handleDelete(patientId) {
       </router-link>
     </header>
 
-    <div class="table-container">
-      <table>
-        <thead>
-          <tr>
-            <th>Nome do Paciente</th>
-            <th>Telefone</th>
-            <th>CPF</th>
-            <th class="actions-header">Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="patientsStore.isLoading">
-            <td colspan="4" class="state-cell">Carregando pacientes...</td>
-          </tr>
-          <tr v-else-if="patients.length === 0">
-            <td colspan="4" class="state-cell">Nenhum paciente encontrado.</td>
-          </tr>
-          <tr v-for="patient in patients" :key="patient._id" class="patient-row">
-            <td @click="goToPatient(patient._id)" class="clickable-cell">{{ patient.name }}</td>
-            <td @click="goToPatient(patient._id)" class="clickable-cell">{{ patient.phone }}</td>
-            <td @click="goToPatient(patient._id)" class="clickable-cell">{{ patient.cpf }}</td>
-            <td class="actions-cell">
-              <div class="actions-wrapper" v-click-outside="() => (actionsMenuOpenFor = null)">
-                <button @click.stop="toggleActionsMenu(patient._id)" class="btn-icon">
-                  <MoreHorizontal :size="20" />
-                </button>
-                <Transition name="fade">
-                  <div v-if="actionsMenuOpenFor === patient._id" class="actions-dropdown">
-                    <router-link
-                      :to="`/app/pacientes/${patient._id}?edit=true`"
-                      class="dropdown-item"
-                    >
-                      <Pencil :size="14" /> Editar
-                    </router-link>
-                    <button @click.stop="handleDelete(patient._id)" class="dropdown-item delete">
-                      <Trash2 :size="14" /> Excluir
-                    </button>
-                  </div>
-                </Transition>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <div class="table-wrapper" :class="{ 'is-loading': patientsStore.isLoading && !isInitialLoad }">
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th class="avatar-header"></th>
+              <th>
+                <div class="th-content">
+                  <Hash :size="14" />
+                  <span>CPF</span>
+                </div>
+              </th>
+              <th>
+                <div class="th-content">
+                  <User :size="14" />
+                  <span>Nome do Paciente</span>
+                </div>
+              </th>
+              <th>
+                <div class="th-content">
+                  <Phone :size="14" />
+                  <span>Telefone</span>
+                </div>
+              </th>
+              <th class="actions-header">
+                <div class="th-content">
+                  <SlidersHorizontal :size="14" />
+                  <span>Ações</span>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="patientsStore.isLoading && isInitialLoad">
+              <td colspan="5" class="state-cell">Carregando pacientes...</td>
+            </tr>
+            <tr v-else-if="patients.length === 0">
+              <td colspan="5" class="state-cell">Nenhum paciente encontrado.</td>
+            </tr>
+            <tr
+              v-for="patient in patients"
+              :key="patient._id"
+              class="patient-row"
+              @click="goToPatient(patient._id)"
+            >
+              <td>
+                <div class="patient-avatar">{{ patient.name.charAt(0).toUpperCase() }}</div>
+              </td>
+              <td>{{ formatCPF(patient.cpf) }}</td>
+              <td class="patient-name">{{ patient.name }}</td>
+              <td>{{ patient.phone }}</td>
+              <td class="actions-cell" @click.stop>
+                <div class="actions-wrapper" v-click-outside="() => (actionsMenuOpenFor = null)">
+                  <button @click.stop="toggleActionsMenu(patient._id)" class="btn-icon">
+                    <MoreHorizontal :size="20" />
+                  </button>
+                  <Transition name="fade">
+                    <div v-if="actionsMenuOpenFor === patient._id" class="actions-dropdown">
+                      <router-link
+                        :to="`/app/pacientes/${patient._id}?edit=true`"
+                        class="dropdown-item"
+                      >
+                        <Pencil :size="14" /> Editar
+                      </router-link>
+                      <button @click.stop="handleDelete(patient._id)" class="dropdown-item delete">
+                        <Trash2 :size="14" /> Excluir
+                      </button>
+                    </div>
+                  </Transition>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <AppPagination
+        v-if="pagination && pagination.pages > 1"
+        :current-page="pagination.page"
+        :total-pages="pagination.pages"
+        :total-items="pagination.total"
+        :limit="pagination.limit"
+        @page-change="handlePageChange"
+      />
     </div>
   </div>
 </template>
@@ -133,14 +198,23 @@ async function handleDelete(patientId) {
   background-color: var(--azul-escuro);
 }
 
-.table-container {
+.table-wrapper {
   background-color: var(--branco);
   border: 1px solid #e5e7eb;
   border-radius: 1rem;
-  /* overflow: hidden; -- REMOVIDO PARA O DROPDOWN FUNCIONAR */
+  overflow: hidden;
+  position: relative;
 }
-tr {
-  border-radius: 1rem 1rem 0 0;
+
+.table-wrapper.is-loading .table-container {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.table-container {
+  overflow-x: auto;
+  height: 70vh;
+  transition: opacity 0.3s ease;
 }
 table {
   width: 100%;
@@ -148,9 +222,11 @@ table {
 }
 th,
 td {
-  padding: 1rem 1.5rem;
+  padding: 0.75rem 1rem;
   text-align: left;
   border-bottom: 1px solid #e5e7eb;
+  vertical-align: middle;
+  white-space: nowrap;
 }
 tbody tr:last-child td {
   border-bottom: none;
@@ -162,14 +238,43 @@ th {
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
-th.actions-header {
-  text-align: right;
+
+.th-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
-.clickable-cell {
+
+.avatar-header {
+  width: 60px;
+}
+th.actions-header {
+  width: 100px;
+}
+th.actions-header .th-content {
+  justify-content: flex-end;
+}
+
+.patient-row {
   cursor: pointer;
 }
 .patient-row:hover td {
   background-color: #f9fafb;
+}
+.patient-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #eef2ff;
+  color: var(--azul-principal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1rem;
+}
+.patient-name {
+  font-weight: 500;
 }
 .state-cell {
   padding: 2rem;
@@ -226,10 +331,13 @@ th.actions-header {
 .dropdown-item:hover {
   background-color: #f3f4f6;
 }
-.dropdown-item.delete:hover {
-  background-color: #fee2e2;
+.dropdown-item.delete {
   color: #ef4444;
 }
+.dropdown-item.delete:hover {
+  background-color: #fee2e2;
+}
+
 .fade-enter-active,
 .fade-leave-active {
   transition:

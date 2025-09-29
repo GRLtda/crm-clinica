@@ -1,3 +1,5 @@
+// api/patients.js
+
 import apiClient from './index'
 
 /**
@@ -7,9 +9,13 @@ import apiClient from './index'
  * @param {number} params.limit - O número de itens por página.
  * @returns {Promise}
  */
-export const getPatients = ({ page = 1, limit = 10 }) => {
+export const getPatients = (params = {}) => {
+  // Alteramos aqui para extrair os parâmetros de forma segura
   return apiClient.get('/patients', {
-    params: { page, limit },
+    params: {
+      page: params.page || 1,
+      limit: params.limit || 10,
+    },
   })
 }
 

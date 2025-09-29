@@ -9,8 +9,9 @@ import {
 } from '@/api/patients';
 
 export const usePatientsStore = defineStore('patients', () => {
+  // --- STATE ---
   const patients = ref([]);
-  const allPatients = ref([]); // Para preencher seletores
+  const allPatients = ref([]); // Para preencher seletores em formulários
   const selectedPatient = ref(null);
   const pagination = ref({
     total: 0,
@@ -20,18 +21,23 @@ export const usePatientsStore = defineStore('patients', () => {
   });
   const isLoading = ref(false);
 
-  async function fetchPatients(params = {}) {
+  // --- ACTIONS ---
+
+  /**
+   * Busca uma lista paginada de pacientes.
+   * @param {object} params - Parâmetros de paginação, como { page: 1, limit: 10 }.
+   */
+  async function fetchPatients(page = 1) {
     isLoading.value = true;
-    patients.value = [];
     try {
       const response = await apiGetPatients({
-        page: params.page || pagination.value.page,
-        limit: params.limit || pagination.value.limit,
+        page: page,
+        limit: pagination.value.limit,
       });
       if (response.data && Array.isArray(response.data.data)) {
         patients.value = response.data.data;
-        const { total, page, pages, limit } = response.data;
-        pagination.value = { total, page, pages, limit };
+        const { total, pages, limit } = response.data;
+        pagination.value = { total, page: response.data.page, pages, limit };
       } else {
         console.warn('A resposta da API de pacientes não tem o formato esperado.', response.data);
         patients.value = [];
@@ -44,9 +50,14 @@ export const usePatientsStore = defineStore('patients', () => {
     }
   }
 
+
+  /**
+   * Busca todos os pacientes sem paginação para uso em seletores.
+   */
   async function fetchAllPatients() {
     try {
-      const response = await apiGetPatients({ limit: 1000 }); // Limite alto para buscar todos
+      // Usa um limite alto para garantir que todos os pacientes sejam retornados.
+      const response = await apiGetPatients({ limit: 1000 });
       if (response.data && Array.isArray(response.data.data)) {
         allPatients.value = response.data.data;
       }
@@ -55,11 +66,16 @@ export const usePatientsStore = defineStore('patients', () => {
     }
   }
 
+  /**
+   * Cria um novo paciente.
+   * @param {object} patientData - Os dados do novo paciente.
+   * @returns {Promise<{success: boolean, error?: any}>}
+   */
   async function createPatient(patientData) {
     isLoading.value = true;
     try {
       await apiCreatePatient(patientData);
-      await fetchPatients(); // Atualiza a lista paginada
+      await fetchPatients(); // Atualiza a lista da primeira página
       return { success: true };
     } catch (error) {
       console.error("Erro ao criar paciente:", error);
@@ -69,6 +85,10 @@ export const usePatientsStore = defineStore('patients', () => {
     }
   }
 
+  /**
+   * Busca um único paciente pelo seu ID.
+   * @param {string} patientId - O ID do paciente.
+   */
   async function fetchPatientById(patientId) {
     isLoading.value = true;
     selectedPatient.value = null;
@@ -82,6 +102,12 @@ export const usePatientsStore = defineStore('patients', () => {
     }
   }
 
+  /**
+   * Atualiza os dados de um paciente.
+   * @param {string} patientId - O ID do paciente a ser atualizado.
+   * @param {object} patientData - Os novos dados do paciente.
+   * @returns {Promise<{success: boolean, data?: any, error?: any}>}
+   */
   async function updatePatient(patientId, patientData) {
     isLoading.value = true;
     try {
@@ -98,10 +124,16 @@ export const usePatientsStore = defineStore('patients', () => {
     }
   }
 
+  /**
+   * Deleta um paciente.
+   * @param {string} patientId - O ID do paciente a ser deletado.
+   * @returns {Promise<{success: boolean, error?: any}>}
+   */
   async function deletePatient(patientId) {
     try {
       await apiDeletePatient(patientId);
-      await fetchPatients(); // Recarrega a lista
+      // Recarrega a página atual para refletir a remoção.
+      await fetchPatients({ page: pagination.value.page });
       return { success: true };
     } catch (error) {
       console.error("Erro ao deletar paciente:", error);
@@ -110,11 +142,13 @@ export const usePatientsStore = defineStore('patients', () => {
   }
 
   return {
+    // State
     patients,
     allPatients,
     selectedPatient,
     pagination,
     isLoading,
+    // Actions
     fetchPatients,
     fetchAllPatients,
     createPatient,

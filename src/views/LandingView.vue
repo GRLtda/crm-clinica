@@ -1,11 +1,21 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import AppHeader from '@/components/global/AppHeader.vue'
-import { ChevronRight, Check, X, Monitor, KeyRound } from 'lucide-vue-next'
+import {
+  ChevronRight,
+  Check,
+  X,
+  Monitor,
+  KeyRound,
+  Rocket,
+  Gem,
+  Building,
+} from 'lucide-vue-next'
 
 const planos = ref([
   {
     name: 'Essencial',
+    icon: Rocket, // Ícone adicionado
     price: 'R$ 99',
     period: '/mês',
     description: 'Perfeito para clínicas que estão começando.',
@@ -16,6 +26,7 @@ const planos = ref([
   },
   {
     name: 'Profissional',
+    icon: Gem, // Ícone adicionado
     price: 'R$ 199',
     period: '/mês',
     description: 'Ideal para clínicas em fase de crescimento.',
@@ -31,6 +42,7 @@ const planos = ref([
   },
   {
     name: 'Empresarial',
+    icon: Building, // Ícone adicionado
     price: 'Contato',
     period: '',
     description: 'Para clínicas com múltiplas unidades e necessidades.',
@@ -45,20 +57,46 @@ const planos = ref([
     limitations: [],
   },
 ])
+
+// Lógica para o efeito 3D na imagem
+const platformImageWrapper = ref(null)
+
+function handleMouseMove(event) {
+  if (!platformImageWrapper.value) return
+
+  const el = platformImageWrapper.value
+  const { width, height, left, top } = el.getBoundingClientRect()
+  const x = event.clientX - left
+  const y = event.clientY - top
+
+  const mouseX = x / width - 0.5
+  const mouseY = y / height - 0.5
+
+  const rotateY = mouseX * 20 // Multiplicador para a intensidade do efeito
+  const rotateX = -mouseY * 20
+
+  el.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.05, 1.05, 1.05)`
+  el.style.transition = 'transform 0.1s linear'
+}
+
+function resetTilt() {
+  if (!platformImageWrapper.value) return
+  platformImageWrapper.value.style.transform = `perspective(1000px) rotateX(0) rotateY(0) scale3d(1, 1, 1)`
+  platformImageWrapper.value.style.transition = 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)'
+}
 </script>
 
 <template>
-  <AppHeader />
+    <AppHeader class="header-slide-down" />
   <main>
     <section class="hero">
       <div class="container">
-        <!-- <div class="badge">✨ Teste 30 dias grátis</div> -->
-        <h1 class="hero-title">Sua clínica no piloto automático</h1>
-        <p class="hero-subtitle">
+        <h1 class="hero-title animate-slide-up">Sua clínica no piloto automático</h1>
+        <p class="hero-subtitle animate-slide-up">
           Impulsione o sucesso da sua clínica com uma solução que elimina tarefas manuais e acelera
           o seu faturamento.
         </p>
-        <div class="hero-actions">
+        <div class="hero-actions animate-slide-up">
           <router-link to="/app" class="btn-primary">
             Entrar <KeyRound :size="20" />
           </router-link>
@@ -80,8 +118,18 @@ const planos = ref([
           </p>
           <a href="#" class="btn-learn-more"> Saiba mais <ChevronRight :size="16" /> </a>
         </div>
-        <div class="platform-image">
-          <img src="" alt="Interface da plataforma do ClínicaCRM" />
+        <div
+          class="platform-image-wrapper"
+          ref="platformImageWrapper"
+          @mousemove="handleMouseMove"
+          @mouseleave="resetTilt"
+        >
+          <div class="platform-image">
+            <img
+              src="https://placehold.co/600x400/FFF/31343C?text=Dashboard"
+              alt="Interface da plataforma do ClínicaCRM"
+            />
+          </div>
         </div>
       </div>
     </section>
@@ -97,7 +145,10 @@ const planos = ref([
             class="plan-card"
             :class="{ featured: plano.featured }"
           >
-            <h3 class="plan-name">{{ plano.name }}</h3>
+            <h3 class="plan-name">
+              <component :is="plano.icon" :size="20" />
+              <span>{{ plano.name }}</span>
+            </h3>
             <p class="plan-price">
               {{ plano.price }}<span class="plan-period">{{ plano.period }}</span>
             </p>
@@ -126,6 +177,48 @@ const planos = ref([
 </template>
 
 <style scoped>
+/* ANIMAÇÕES DE ENTRADA */
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.header-animation-wrapper {
+  animation: slideDown 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+.animate-slide-up {
+  opacity: 0; /* Começa invisível */
+  animation: slideUp 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+.hero-title {
+  animation-delay: 0.2s;
+}
+.hero-subtitle {
+  animation-delay: 0.4s;
+}
+.hero-actions {
+  animation-delay: 0.6s;
+}
+
 /* Efeitos de fundo na tag <main> */
 main {
   position: relative;
@@ -232,7 +325,7 @@ main::after {
   background-color: #e5e7eb;
 }
 
-/* Nova Seção de Plataforma */
+/* Seção de Plataforma */
 .platform-section {
   padding: 6rem 0;
 }
@@ -274,13 +367,21 @@ main::after {
 .btn-learn-more:hover {
   gap: 0.5rem;
 }
-.platform-image {
+
+/* EFEITO 3D NA IMAGEM */
+.platform-image-wrapper {
   flex-basis: 50%;
+  transform-style: preserve-3d;
+}
+.platform-image {
+  border-radius: 1rem;
+  box-shadow: 0 20px 40px rgba(80, 80, 120, 0.2);
+  transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+  overflow: hidden;
 }
 .platform-image img {
   width: 100%;
-  border-radius: 1rem;
-  box-shadow: 0 10px 30px rgba(80, 80, 120, 0.15);
+  display: block;
 }
 
 /* Seção de planos */
@@ -369,6 +470,9 @@ main::after {
   font-size: 1.25rem;
   font-weight: 600;
   margin-bottom: 1rem;
+  display: flex; /* Para alinhar ícone e texto */
+  align-items: center;
+  gap: 0.75rem;
 }
 .plan-price {
   font-size: 3rem;
