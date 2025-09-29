@@ -8,3 +8,7 @@ export const createClinic = (clinicData) => {
 export const updateClinic = (clinicData) => {
   return apiClient.put('/clinics', clinicData) //
 }
+
+export const getClinicSummary = () => {
+  return apiClient.get('/clinics/summary');
+};

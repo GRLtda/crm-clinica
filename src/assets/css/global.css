@@ -15,6 +15,13 @@
   /* Fontes */
   --fonte-principal: 'Poppins', sans-serif;
   --fonte-titulo: 'Inter', sans-serif; /* Nova fonte para títulos */
+  --dp-font-family: 'Poppins', sans-serif;
+  --dp-border-radius: 0.75rem;
+  --dp-input-padding: 0.75rem 1rem;
+  --dp-primary-color: var(--azul-principal);
+  --dp-primary-text-color: var(--branco);
+  --dp-secondary-color: #f3f4f6;
+  --dp-hover-color: #eef2ff;
 }
 
 /* 3. Aplica a fonte principal ao body */

@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 import { RouterLink } from 'vue-router'
 import UserDropdown from '@/components/global/UserDropdown.vue'
 import {
+  LayoutDashboard, // 1. Importar o novo ícone
   MapPin,
   Calendar,
   DollarSign,
@@ -17,13 +18,14 @@ import {
 const authStore = useAuthStore()
 const isDropdownOpen = ref(false)
 
-// Lógica para obter e formatar a data atual
 const dateOptions = { weekday: 'long', month: 'long', day: 'numeric' }
 const today = new Date()
 let formattedDate = today.toLocaleDateString('pt-BR', dateOptions)
 const currentDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1)
 
 const mainNavLinks = [
+  // 2. Adicionar o novo link aqui
+  { icon: LayoutDashboard, text: 'Resumo', to: '/app' },
   { icon: Calendar, text: 'Atendimentos', to: '/app/atendimentos' },
   { icon: DollarSign, text: 'Cobranças', to: '/app/cobrancas' },
   { icon: BarChart2, text: 'Inteligência', to: '/app/inteligencia' },
@@ -107,7 +109,8 @@ const utilityNavLinks = [
 .nav-section:first-child {
   flex-grow: 1;
 }
-.clinic-info {
+.clinic-info,
+.user-info {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -121,7 +124,8 @@ const utilityNavLinks = [
   border-radius: 0.5rem;
   align-self: flex-start;
 }
-.clinic-details {
+.clinic-details,
+.user-details {
   display: flex;
   flex-direction: column;
   flex-grow: 1;
@@ -142,6 +146,7 @@ const utilityNavLinks = [
 }
 ul {
   list-style: none;
+  padding: 0;
 }
 .nav-link {
   display: flex;
@@ -168,12 +173,12 @@ ul {
   position: relative;
 }
 .user-info {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
   border-top: 1px solid #e5e7eb;
   padding-top: 1.5rem;
   margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 .user-avatar {
   width: 36px;
@@ -185,11 +190,6 @@ ul {
   align-items: center;
   justify-content: center;
   font-weight: 600;
-}
-.user-details {
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
 }
 .user-name {
   font-weight: 600;

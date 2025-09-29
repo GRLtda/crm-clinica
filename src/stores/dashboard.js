@@ -1,12 +1,11 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { usePatientsStore } from './patients';
-import { getAppointments } from '@/api/appointments';
+import { getClinicSummary } from '@/api/clinics'; // Importa a nova função
 
 export const useDashboardStore = defineStore('dashboard', () => {
   const stats = ref({
     totalPatients: 0,
-    appointmentsToday: [],
+    appointmentsToday: [], // Continuará sendo o array de agendamentos
     nextAppointment: null,
   });
   const isLoading = ref(false);
@@ -14,20 +13,18 @@ export const useDashboardStore = defineStore('dashboard', () => {
   async function fetchDashboardStats() {
     isLoading.value = true;
     try {
-      // Busca o total de pacientes
-      const patientsStore = usePatientsStore();
-      await patientsStore.fetchPatients({ limit: 1 }); // Busca só 1 para pegar o total
-      stats.value.totalPatients = patientsStore.pagination.total;
+      // Faz uma única chamada para o novo endpoint de sumário
+      const response = await getClinicSummary();
+      const summary = response.data;
 
-      // Busca agendamentos de hoje
-      const today = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
-      const response = await getAppointments({ startDate: today, endDate: today });
+      // Atualiza o estado com os dados recebidos
+      stats.value.totalPatients = summary.totalPatients;
+      stats.value.appointmentsToday = summary.todaysAppointments;
 
-      stats.value.appointmentsToday = response.data;
-
-      // Encontra o próximo agendamento
+      // A lógica para encontrar o próximo agendamento continua a mesma,
+      // mas agora usa a lista 'todaysAppointments' da resposta.
       const now = new Date();
-      stats.value.nextAppointment = response.data
+      stats.value.nextAppointment = summary.todaysAppointments
         .filter(appt => new Date(appt.startTime) > now)
         .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))[0];
 

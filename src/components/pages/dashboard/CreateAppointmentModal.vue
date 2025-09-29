@@ -3,11 +3,12 @@ import { ref, onMounted, computed } from 'vue';
 import { usePatientsStore } from '@/stores/patients';
 import { useAppointmentsStore } from '@/stores/appointments';
 import { useToast } from 'vue-toastification';
-import { User, Calendar, Clock } from 'lucide-vue-next';
+import { User, Calendar } from 'lucide-vue-next';
 import Stepper from '@/components/pages/onboarding/Stepper.vue';
 import StyledSelect from '@/components/global/StyledSelect.vue';
 import CustomSelect from '@/components/global/CustomSelect.vue';
-import FormInput from '@/components/global/FormInput.vue';
+import Datepicker from '@vuepic/vue-datepicker';
+import '@vuepic/vue-datepicker/dist/main.css';
 
 const emit = defineEmits(['close']);
 const patientsStore = usePatientsStore();
@@ -15,6 +16,8 @@ const appointmentsStore = useAppointmentsStore();
 const toast = useToast();
 
 const currentStep = ref(1);
+const validationError = ref(false);
+
 const steps = [
   { name: 'Paciente', subtitle: 'Selecione o paciente', icon: User },
   { name: 'Data e Hora', subtitle: 'Escolha o horário', icon: Calendar },
@@ -22,7 +25,7 @@ const steps = [
 
 const appointmentData = ref({
   patient: null,
-  date: new Date().toISOString().split('T')[0],
+  date: new Date(),
   startTime: '09:00',
   endTime: '10:00',
 });
@@ -45,18 +48,31 @@ onMounted(() => {
 });
 
 function nextStep() {
-  if (currentStep.value < steps.length) currentStep.value++;
+  if (currentStep.value === 1 && !appointmentData.value.patient) {
+    validationError.value = true;
+    toast.error('Por favor, selecione um paciente para continuar.');
+    return;
+  }
+
+  validationError.value = false;
+  if (currentStep.value < steps.length) {
+    currentStep.value++;
+  }
 }
 
 async function handleSubmit() {
-  // Combina data e hora para o formato ISO 8601
-  const startTime = new Date(`${appointmentData.value.date}T${appointmentData.value.startTime}:00`).toISOString();
-  const endTime = new Date(`${appointmentData.value.date}T${appointmentData.value.endTime}:00`).toISOString();
+  const [startHour, startMinute] = appointmentData.value.startTime.split(':');
+  const startTime = new Date(appointmentData.value.date);
+  startTime.setHours(startHour, startMinute, 0, 0);
+
+  const [endHour, endMinute] = appointmentData.value.endTime.split(':');
+  const endTime = new Date(appointmentData.value.date);
+  endTime.setHours(endHour, endMinute, 0, 0);
 
   const payload = {
     patient: appointmentData.value.patient,
-    startTime,
-    endTime,
+    startTime: startTime.toISOString(),
+    endTime: endTime.toISOString(),
   };
 
   const { success } = await appointmentsStore.createAppointment(payload);
@@ -81,10 +97,26 @@ async function handleSubmit() {
       </header>
       <div class="modal-body" v-auto-animate>
         <div v-if="currentStep === 1">
-          <StyledSelect v-model="appointmentData.patient" :options="patientOptions" label="Paciente" />
+          <StyledSelect
+            v-model="appointmentData.patient"
+            :options="patientOptions"
+            label="Paciente"
+            required
+            :error="validationError"
+          />
         </div>
         <div v-if="currentStep === 2" class="date-time-grid">
-          <FormInput v-model="appointmentData.date" type="date" label="Data do Atendimento" />
+          <div class="form-group">
+            <label class="form-label">Data do Atendimento</label>
+            <Datepicker
+              v-model="appointmentData.date"
+              locale="pt-BR" format="dd/MM/yyyy"
+              :enable-time-picker="false"
+              auto-apply
+              :teleport="true"
+              placeholder="Selecione a data"
+            />
+          </div>
           <div class="time-selects">
             <label class="form-label">Horário</label>
             <div class="time-inputs">
@@ -113,9 +145,10 @@ async function handleSubmit() {
 .modal-header { padding: 1.5rem; border-bottom: 1px solid #e5e7eb; }
 .modal-header h2 { font-size: 1.25rem; margin-bottom: 0.25rem; }
 .modal-header p { color: var(--cinza-texto); margin-bottom: 1.5rem; }
-.modal-body { padding: 1.5rem; }
+.modal-body { padding: 1.5rem; min-height: 250px; }
 .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 1rem; background-color: #f9fafb; }
 .date-time-grid { display: grid; grid-template-columns: 1fr 1.5fr; gap: 1.5rem; align-items: flex-end; }
+.form-group { text-align: left; }
 .form-label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.875rem; }
 .time-inputs { display: flex; align-items: center; gap: 0.5rem; }
 .btn-primary { background: var(--azul-principal); color: var(--branco); border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; cursor: pointer; font-weight: 600; }

@@ -5,6 +5,7 @@ import { Eye, EyeOff, Check, X } from 'lucide-vue-next'
 const props = defineProps({
   modelValue: { type: String, required: true },
   label: String,
+  required: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -44,7 +45,11 @@ function handleInput(event) {
 
 <template>
   <div class="password-input-group" v-auto-animate>
-    <label v-if="label" class="form-label">{{ label }}</label>
+    <label v-if="label" class="form-label">
+      {{ label }}
+      <span v-if="required" class="required-asterisk">*</span>
+    </label>
+
     <div class="input-wrapper">
       <input
         :type="inputType"
@@ -102,12 +107,16 @@ function handleInput(event) {
 </template>
 
 <style scoped>
+.required-asterisk {
+  color: #ef4444;
+  margin-left: 0.25rem;
+}
 .password-input-group {
   text-align: left;
   margin-bottom: 1.25rem;
 }
 .form-label {
-  display: block;
+  display: flex;
   margin-bottom: 0.5rem;
   font-weight: 500;
   font-size: 0.875rem;

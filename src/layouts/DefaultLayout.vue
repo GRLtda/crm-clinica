@@ -18,9 +18,9 @@ import Sidebar from '@/components/layout/Sidebar.vue'
   background-color: var(--branco);
 }
 .main-content {
-  flex: 1; /* Ocupa todo o espaço restante */
+  flex: 1;
   padding: 2rem;
   height: 100vh;
-  overflow-y: auto; /* Permite rolagem apenas no conteúdo principal */
+  overflow-y: auto;
 }
 </style>

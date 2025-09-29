@@ -22,12 +22,12 @@ export const usePatientsStore = defineStore('patients', () => {
 
   async function fetchPatients(params = {}) {
     isLoading.value = true;
+    patients.value = [];
     try {
       const response = await apiGetPatients({
         page: params.page || pagination.value.page,
         limit: params.limit || pagination.value.limit,
       });
-      // Garante que a resposta da API tenha o formato esperado
       if (response.data && Array.isArray(response.data.data)) {
         patients.value = response.data.data;
         const { total, page, pages, limit } = response.data;

@@ -75,6 +75,7 @@ function handleRegistrationComplete() {
           name="name"
           placeholder="Seu nome completo"
           autocomplete="name"
+          required="true"
         />
         <FormInput
           v-model="email"
@@ -83,6 +84,7 @@ function handleRegistrationComplete() {
           name="email"
           placeholder="seuemail@exemplo.com"
           autocomplete="email"
+          required="true"
         />
         <FormInput
           v-model="phone"
@@ -92,8 +94,9 @@ function handleRegistrationComplete() {
           placeholder="(11) 99999-9999"
           autocomplete="tel"
           phone-mask
+          required="true"
         />
-        <PasswordInput v-model="password" label="Senha" />
+        <PasswordInput v-model="password" label="Senha" required="true" />
 
         <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
         <button type="submit" class="auth-button">Criar conta</button>

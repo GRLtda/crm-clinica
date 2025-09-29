@@ -47,6 +47,7 @@ async function handleLogin() {
         name="email"
         placeholder="seuemail@exemplo.com"
         autocomplete="email"
+        required="true"
       />
       <FormInput
         v-model="password"
@@ -55,6 +56,7 @@ async function handleLogin() {
         name="password"
         placeholder="Sua senha"
         autocomplete="current-password"
+        required="true"
       />
       <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
       <button type="submit" class="auth-button">Entrar</button>

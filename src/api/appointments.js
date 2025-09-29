@@ -16,3 +16,7 @@ export const getAppointments = ({ startDate, endDate }) => {
 export const createAppointment = (appointmentData) => {
   return apiClient.post('/appointments', appointmentData);
 };
+
+export const updateAppointment = (appointmentId, data) => {
+  return apiClient.put(`/appointments/${appointmentId}`, data);
+};
