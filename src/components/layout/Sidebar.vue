@@ -3,9 +3,9 @@ import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { RouterLink } from 'vue-router'
 import UserDropdown from '@/components/global/UserDropdown.vue'
+import ClinicDropdown from '@/components/global/ClinicDropdown.vue'
 import {
-  LayoutDashboard, // 1. Importar o novo ícone
-  MapPin,
+  LayoutDashboard,
   Calendar,
   DollarSign,
   BarChart2,
@@ -16,19 +16,12 @@ import {
 } from 'lucide-vue-next'
 
 const authStore = useAuthStore()
-const isDropdownOpen = ref(false)
-
-const dateOptions = { weekday: 'long', month: 'long', day: 'numeric' }
-const today = new Date()
-let formattedDate = today.toLocaleDateString('pt-BR', dateOptions)
-const currentDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1)
+const isUserDropdownOpen = ref(false)
+const isClinicDropdownOpen = ref(false)
 
 const mainNavLinks = [
-  // 2. Adicionar o novo link aqui
   { icon: LayoutDashboard, text: 'Resumo', to: '/app' },
   { icon: Calendar, text: 'Atendimentos', to: '/app/atendimentos' },
-  { icon: DollarSign, text: 'Cobranças', to: '/app/cobrancas' },
-  { icon: BarChart2, text: 'Inteligência', to: '/app/inteligencia' },
   { icon: Users, text: 'Pacientes', to: '/app/pacientes' },
 ]
 
@@ -42,16 +35,22 @@ const utilityNavLinks = [
   <aside class="sidebar">
     <nav class="sidebar-nav">
       <div class="nav-section">
-        <div class="clinic-info">
-          <div class="clinic-icon">
-            <MapPin :size="20" />
+        <div class="clinic-info-wrapper" v-click-outside="() => (isClinicDropdownOpen = false)">
+          <ClinicDropdown v-if="isClinicDropdownOpen" />
+          <div class="clinic-info">
+            <div class="clinic-avatar">
+              {{ authStore.user?.clinic?.name?.charAt(0) || 'C' }}
+            </div>
+            <div class="clinic-details">
+              <span class="clinic-name">{{ authStore.user?.clinic?.name || 'Sua Clínica' }}</span>
+              <span class="user-role">{{ authStore.user?.role || 'Membro' }}</span>
+            </div>
+            <button @click="isClinicDropdownOpen = !isClinicDropdownOpen" class="options-btn">
+              <MoreHorizontal :size="20" />
+            </button>
           </div>
-          <div class="clinic-details">
-            <span class="clinic-name">{{ authStore.user?.clinic?.name || 'Sua Clínica' }}</span>
-            <span class="current-date">{{ currentDate }}</span>
-          </div>
-          <button class="options-btn"><MoreHorizontal :size="20" /></button>
         </div>
+
         <ul>
           <li v-for="link in mainNavLinks" :key="link.text">
             <RouterLink :to="link.to" class="nav-link">
@@ -71,8 +70,8 @@ const utilityNavLinks = [
             </RouterLink>
           </li>
         </ul>
-        <div class="user-info-wrapper" v-click-outside="() => (isDropdownOpen = false)">
-          <UserDropdown v-if="isDropdownOpen" />
+        <div class="user-info-wrapper" v-click-outside="() => (isUserDropdownOpen = false)">
+          <UserDropdown v-if="isUserDropdownOpen" />
           <div class="user-info">
             <div class="user-avatar">
               {{ authStore.user?.name.charAt(0) || 'U' }}
@@ -80,7 +79,7 @@ const utilityNavLinks = [
             <div class="user-details">
               <span class="user-name">{{ authStore.user?.name || 'Usuário' }}</span>
             </div>
-            <button @click="isDropdownOpen = !isDropdownOpen" class="options-btn">
+            <button @click="isUserDropdownOpen = !isUserDropdownOpen" class="options-btn">
               <MoreHorizontal :size="20" />
             </button>
           </div>
@@ -109,35 +108,60 @@ const utilityNavLinks = [
 .nav-section:first-child {
   flex-grow: 1;
 }
-.clinic-info,
-.user-info {
+
+/* === NOVOS ESTILOS PARA CLINIC INFO === */
+.clinic-info-wrapper {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.clinic-info {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.5rem;
-  margin-bottom: 1.5rem;
+  padding: 0.75rem;
+  background-color: var(--branco);
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
 }
-.clinic-icon {
-  background-color: #fefce8;
-  color: #ca8a04;
-  padding: 0.5rem;
-  border-radius: 0.5rem;
-  align-self: flex-start;
+
+.clinic-avatar {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 0.5rem; /* Quadrado com cantos arredondados */
+  background-color: #eef2ff;
+  color: var(--azul-principal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.2rem;
+  font-family: var(--fonte-titulo);
 }
-.clinic-details,
-.user-details {
+
+.clinic-details {
   display: flex;
   flex-direction: column;
   flex-grow: 1;
+  overflow: hidden; /* Para o text-overflow funcionar */
 }
+
 .clinic-name {
   font-weight: 600;
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-role {
   font-size: 0.875rem;
-}
-.current-date {
-  font-size: 0.75rem;
   color: var(--cinza-texto);
+  text-transform: capitalize; /* Para deixar a primeira letra maiúscula */
 }
+/* === FIM DOS NOVOS ESTILOS === */
+
 .options-btn {
   background: none;
   border: none;

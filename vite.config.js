@@ -1,15 +1,23 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import path from 'path' // 1. Importe o 'path' do Node.js
+import path from 'path'
 import vueDevTools from 'vite-plugin-vue-devtools'
+import { createHash } from 'node:crypto'
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    vue(),
-    vueDevTools(),
+    vue({
+      // Corrige o problema do crypto.hash
+      template: {
+        compilerOptions: {},
+      },
+      // Patch no getHash interno
+      customElement: false,
+      script: {
+        getHash: (content) => createHash('sha256').update(content).digest('hex'),
+      },
+    }),
   ],
-  // 2. Adicione a configuração de 'resolve' para criar o apelido
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

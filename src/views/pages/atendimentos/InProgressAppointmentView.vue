@@ -398,6 +398,7 @@ const menuItems = [
             :record="currentRecord"
             :patient-id="patientId"
             :appointment-id="appointmentId"
+            :disabled="isViewMode"
           />
         </div>
       </main>

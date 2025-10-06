@@ -1,10 +1,11 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { usePatientsStore } from '@/stores/patients'
 import { useAppointmentsStore } from '@/stores/appointments'
 import { useClinicStore } from '@/stores/clinic'
 import { useToast } from 'vue-toastification'
-import { User, Calendar, Bell, DoorClosedLocked } from 'lucide-vue-next'
+import { User, Calendar, Bell, DoorClosedLocked, Plus } from 'lucide-vue-next'
 
 import Stepper from '@/components/pages/onboarding/Stepper.vue'
 import SearchableSelect from '@/components/global/SearchableSelect.vue'
@@ -18,10 +19,11 @@ const patientsStore = usePatientsStore()
 const appointmentsStore = useAppointmentsStore()
 const clinicStore = useClinicStore()
 const toast = useToast()
+const router = useRouter()
 
 let debounceTimeout = null
 const currentStep = ref(1)
-const validationError = ref(false)
+const errors = ref({}) // Objeto para armazenar erros de validação
 
 const clinicWorkingHours = computed(() => {
   if (!clinicStore.currentClinic?.workingHours) {
@@ -46,8 +48,9 @@ const clinicWorkingHours = computed(() => {
 })
 
 const steps = [
-  { name: 'Paciente', subtitle: 'Selecione o paciente', icon: User },
-  { name: 'Data e Opções', subtitle: 'Defina o horário e lembretes', icon: Calendar },
+  { name: 'Paciente', icon: User },
+  { name: 'Horário', icon: Calendar },
+  { name: 'Lembretes', icon: Bell },
 ]
 
 const appointmentData = ref({
@@ -101,6 +104,11 @@ function handlePatientSearch(query) {
   }, 300)
 }
 
+function goToCreatePatient() {
+  emit('close')
+  router.push('/app/pacientes/novo')
+}
+
 watch(
   () => appointmentData.value.date,
   () => {
@@ -109,23 +117,46 @@ watch(
   },
 )
 
-function nextStep() {
+watch(
+  () => appointmentData.value.startTime,
+  (newStartTime) => {
+    if (newStartTime) {
+      const startIndex = timeOptions.value.findIndex((opt) => opt.value === newStartTime)
+      if (startIndex !== -1 && startIndex + 1 < timeOptions.value.length) {
+        appointmentData.value.endTime = timeOptions.value[startIndex + 1].value
+      } else {
+        appointmentData.value.endTime = null
+      }
+    }
+  },
+)
+
+function validateStep() {
+  errors.value = {}
   if (currentStep.value === 1 && !appointmentData.value.patient) {
-    validationError.value = true
-    toast.error('Por favor, selecione um paciente para continuar.')
-    return
+    errors.value.patient = 'Por favor, selecione um paciente para continuar.'
+    return false
   }
-  validationError.value = false
-  if (currentStep.value < steps.length) {
-    currentStep.value++
+  if (
+    currentStep.value === 2 &&
+    (!appointmentData.value.startTime || !appointmentData.value.endTime)
+  ) {
+    errors.value.time = 'Selecione um horário de início e fim.'
+    return false
+  }
+  return true
+}
+
+function nextStep() {
+  if (validateStep()) {
+    if (currentStep.value < steps.length) {
+      currentStep.value++
+    }
   }
 }
 
 async function handleSubmit() {
-  if (!appointmentData.value.startTime || !appointmentData.value.endTime) {
-    toast.error('Por favor, selecione um horário de início e fim.')
-    return
-  }
+  if (!validateStep()) return
 
   const [startHour, startMinute] = appointmentData.value.startTime.split(':')
   const startTime = new Date(appointmentData.value.date)
@@ -174,76 +205,89 @@ async function handleSubmit() {
           <SearchableSelect
             v-model="appointmentData.patient"
             :options="patientOptions"
-            label="Paciente *"
+            label="Quem é o paciente? *"
             :loading="patientsStore.isLoading"
             @search="handlePatientSearch"
-            :error="validationError"
+            :error="!!errors.patient"
             placeholder="Digite para buscar um paciente"
           />
+          <p v-if="errors.patient" class="error-message">{{ errors.patient }}</p>
+          <div class="divider">
+            <span>OU</span>
+          </div>
+          <button @click="goToCreatePatient" class="btn-outline">
+            <Plus :size="16" />
+            Cadastrar novo paciente
+          </button>
         </div>
 
-        <div v-if="currentStep === 2" class="step-content step-grid">
-          <div class="form-column">
-            <div class="form-group">
-              <label class="form-label">Data do Atendimento</label>
-              <Datepicker
-                v-model="appointmentData.date"
-                locale="pt-BR"
-                format="dd/MM/yyyy"
-                :enable-time-picker="false"
-                auto-apply
-                :teleport="'.modal-content'"
-                placeholder="Selecione a data"
+        <div v-if="currentStep === 2" class="step-content">
+          <div class="form-group">
+            <label class="form-label">Data do Atendimento</label>
+            <Datepicker
+              v-model="appointmentData.date"
+              locale="pt-BR"
+              format="dd/MM/yyyy"
+              :enable-time-picker="false"
+              auto-apply
+              :teleport="'.modal-content'"
+              placeholder="Selecione a data"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Horário</label>
+            <div v-if="timeOptions.length > 0" class="time-inputs">
+              <StyledSelect
+                v-model="appointmentData.startTime"
+                :options="timeOptions"
+                placeholder="Início"
+                class="time-select"
+                :error="!!errors.time"
+              />
+              <span>às</span>
+              <StyledSelect
+                v-model="appointmentData.endTime"
+                :options="endTimeOptions"
+                placeholder="Fim"
+                :disabled="!appointmentData.startTime"
+                class="time-select"
+                :error="!!errors.time"
               />
             </div>
-            <div class="form-group">
-              <label class="form-label">Horário</label>
-              <div v-if="timeOptions.length > 0" class="time-inputs">
-                <StyledSelect
-                  v-model="appointmentData.startTime"
-                  :options="timeOptions"
-                  placeholder="Início"
-                  class="time-select"
-                />
-                <span>às</span>
-                <StyledSelect
-                  v-model="appointmentData.endTime"
-                  :options="endTimeOptions"
-                  placeholder="Fim"
-                  :disabled="!appointmentData.startTime"
-                  class="time-select"
-                />
-              </div>
-              <div v-else class="closed-message"><DoorClosedLocked /> Clínica fechada neste dia.</div>
-            </div>
+            <div v-else class="closed-message"><DoorClosedLocked /> Clínica fechada neste dia.</div>
+            <p v-if="errors.time" class="error-message">{{ errors.time }}</p>
           </div>
-          <div class="form-column reminders-section">
-            <div class="reminder-header">
-              <Bell :size="16" />
-              <label class="form-label">Lembretes Automáticos</label>
-            </div>
-            <Switch
-              v-model="appointmentData.sendReminder"
-              label="Ativar envio de lembretes via WhatsApp"
-            />
+        </div>
 
-            <div class="reminder-options" :class="{ 'is-disabled': !appointmentData.sendReminder }">
-              <label class="checkbox-label">
-                <input
-                  type="checkbox"
-                  v-model="appointmentData.remindersSent.oneDayBefore"
-                  :disabled="!appointmentData.sendReminder"
-                />
-                <span>Enviar 1 dia antes</span>
-              </label>
-              <label class="checkbox-label">
-                <input
-                  type="checkbox"
-                  v-model="appointmentData.remindersSent.threeHoursBefore"
-                  :disabled="!appointmentData.sendReminder"
-                />
-                <span>Enviar 2 horas antes</span>
-              </label>
+        <div v-if="currentStep === 3" class="step-content">
+          <div class="reminders-card">
+            <h3 class="card-title"><Bell :size="18" /> Lembretes Automáticos</h3>
+            <div class="reminders-content">
+              <Switch
+                v-model="appointmentData.sendReminder"
+                label="Ativar envio de lembretes automáticos via WhatsApp"
+              />
+              <div
+                class="reminder-options"
+                :class="{ 'is-disabled': !appointmentData.sendReminder }"
+              >
+                <label class="checkbox-label">
+                  <input
+                    type="checkbox"
+                    v-model="appointmentData.remindersSent.oneDayBefore"
+                    :disabled="!appointmentData.sendReminder"
+                  />
+                  <span>Enviar 1 dia antes</span>
+                </label>
+                <label class="checkbox-label">
+                  <input
+                    type="checkbox"
+                    v-model="appointmentData.remindersSent.threeHoursBefore"
+                    :disabled="!appointmentData.sendReminder"
+                  />
+                  <span>Enviar 2 horas antes</span>
+                </label>
+              </div>
             </div>
           </div>
         </div>
@@ -294,13 +338,26 @@ async function handleSubmit() {
 .modal-content {
   background: var(--branco);
   width: 100%;
-  max-width: 650px;
+  max-width: 550px;
   border-radius: 1rem;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   border: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
+  animation: modal-fade-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+@keyframes modal-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .modal-header {
   padding: 1.5rem;
   border-bottom: 1px solid #e5e7eb;
@@ -315,7 +372,7 @@ async function handleSubmit() {
 }
 .modal-body {
   padding: 2rem;
-  min-height: 280px;
+  min-height: 290px;
 }
 .modal-footer {
   padding: 1rem 1.5rem;
@@ -331,16 +388,6 @@ async function handleSubmit() {
   flex-direction: column;
   gap: 1.5rem;
 }
-.step-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2.5rem;
-}
-.form-column {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
 .form-group {
   text-align: left;
 }
@@ -350,6 +397,12 @@ async function handleSubmit() {
   font-weight: 500;
   font-size: 0.875rem;
   color: #374151;
+}
+.error-message {
+  color: #ef4444;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  text-align: left;
 }
 .time-inputs {
   display: flex;
@@ -361,6 +414,45 @@ async function handleSubmit() {
 }
 .time-inputs .time-select {
   flex-grow: 1;
+}
+
+.divider {
+  text-align: center;
+  margin: 0.5rem 0;
+  color: var(--cinza-texto);
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+.divider::before,
+.divider::after {
+  content: '';
+  flex-grow: 1;
+  height: 1px;
+  background-color: #e5e7eb;
+}
+.divider span {
+  padding: 0 1rem;
+}
+.btn-outline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  background-color: var(--branco);
+  color: #374151;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-outline:hover {
+  border-color: #9ca3af;
+  background-color: #f9fafb;
 }
 
 .closed-message {
@@ -377,31 +469,34 @@ async function handleSubmit() {
   font-size: 0.875rem;
 }
 
-.reminders-section {
+.reminders-card {
   background-color: #f9fafb;
   padding: 1.5rem;
   border-radius: 0.75rem;
   border: 1px solid #e5e7eb;
 }
-.reminder-header {
+.reminders-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.card-title {
+  font-size: 1.125rem;
+  font-weight: 600;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 1.25rem;
+  margin: 0;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 1.5rem;
 }
-.reminder-header .form-label {
-  margin-bottom: 0;
-}
-.reminder-header svg {
-  color: #4b5563;
-}
-
 .reminder-options {
-  margin-top: 1rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
   transition: opacity 0.3s ease-in-out;
+  padding-left: 0.5rem;
 }
 
 .checkbox-label {
@@ -427,10 +522,12 @@ async function handleSubmit() {
   border-radius: 0.4rem;
   border: 2px solid #d1d5db;
   background: #fff;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
   cursor: pointer;
   accent-color: var(--azul-principal);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
   position: relative;
   appearance: none;
   display: inline-block;
@@ -440,7 +537,7 @@ async function handleSubmit() {
 .checkbox-label input[type='checkbox']:checked {
   border-color: var(--azul-principal);
   background: var(--azul-principal);
-  box-shadow: 0 2px 6px rgba(30,64,175,0.08);
+  box-shadow: 0 2px 6px rgba(30, 64, 175, 0.08);
 }
 
 .checkbox-label input[type='checkbox']:focus {
@@ -449,7 +546,6 @@ async function handleSubmit() {
   box-shadow: 0 0 0 2px #bfdbfe;
 }
 
-/* Checkmark */
 .checkbox-label input[type='checkbox']:checked::after {
   content: '';
   position: absolute;

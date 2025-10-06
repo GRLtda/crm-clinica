@@ -10,13 +10,11 @@ defineProps({
 
 <template>
   <div class="stepper">
-    <div
-      v-for="(step, index) in steps"
-      :key="index"
-      class="step-item"
-      :class="{ active: index + 1 === currentStep, completed: index + 1 < currentStep }"
-    >
-      <div class="step-content">
+    <template v-for="(step, index) in steps" :key="index">
+      <div
+        class="step-item"
+        :class="{ active: index + 1 === currentStep, completed: index + 1 < currentStep }"
+      >
         <div class="step-circle">
           <Check v-if="index + 1 < currentStep" :size="16" stroke-width="3" />
           <component v-else :is="step.icon" :size="16" />
@@ -26,46 +24,33 @@ defineProps({
           <div v-if="step.subtitle" class="step-subtitle">{{ step.subtitle }}</div>
         </div>
       </div>
-      <div v-if="index < steps.length - 1" class="step-line"></div>
-    </div>
+      <div
+        v-if="index < steps.length - 1"
+        class="step-line"
+        :class="{ completed: index + 1 < currentStep }"
+      ></div>
+    </template>
   </div>
 </template>
 <style scoped>
 .stepper {
   display: flex;
-  /* 1. Altera a justificação para agrupar os itens no centro */
-  justify-content: center;
   align-items: center;
   width: 100%;
-  margin: 0 auto;
-  gap: 0.5rem; /* Adiciona um pequeno espaço entre o conteúdo e a linha */
+  padding: 0 1rem; /* Adiciona um respiro nas laterais */
 }
 
 .step-item {
   display: flex;
   align-items: center;
-  /* 2. Removemos o flex: 1 para que o item não se estique mais */
-}
-
-.step-item:last-child {
-  flex-grow: 0;
-  flex-shrink: 0;
-}
-
-.step-item:last-child .step-line {
-  display: none;
-}
-
-.step-content {
-  display: flex;
-  align-items: center;
   gap: 0.75rem;
+  flex-shrink: 0; /* Impede que o item seja esmagado */
 }
 
 .step-circle {
   width: 32px;
   height: 32px;
-  flex-shrink: 0; /* Impede que o círculo seja esmagado */
+  flex-shrink: 0;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -83,10 +68,10 @@ defineProps({
 }
 
 .step-name {
-  font-size: 1rem;
+  font-size: 0.875rem; /* Levemente menor para caber melhor */
   font-weight: 600;
   color: var(--cinza-texto);
-  white-space: nowrap; /* Impede que o texto quebre a linha */
+  white-space: nowrap;
 }
 
 .step-subtitle {
@@ -96,17 +81,15 @@ defineProps({
 }
 
 .step-line {
-  /* 3. Define um tamanho fixo para a linha */
-  width: 4rem; /* 64px */
+  flex-grow: 1; /* Faz a linha ocupar todo o espaço disponível */
   height: 2px;
   background-color: #e5e7eb;
-  margin: 0 1rem;
+  margin: 0 1rem; /* Mantém o espaçamento */
   transition: background-color 0.3s ease;
 }
 
 /* Estilos de Ativo e Concluído */
-.step-item.active .step-circle,
-.step-item.completed .step-circle {
+.step-item.active .step-circle {
   background-color: var(--azul-principal);
   border-color: var(--azul-principal);
   color: var(--branco);
@@ -116,7 +99,17 @@ defineProps({
   color: var(--preto);
 }
 
-.step-item.completed .step-line {
+.step-item.completed .step-circle {
+  background-color: var(--azul-principal);
+  border-color: var(--azul-principal);
+  color: var(--branco);
+}
+
+.step-item.completed .step-name {
+  color: var(--preto);
+}
+
+.step-line.completed {
   background-color: var(--azul-principal);
 }
 </style>

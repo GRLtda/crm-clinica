@@ -11,12 +11,16 @@ const props = defineProps({
   },
   patientId: {
     type: String,
-    required: true
+    required: true,
   },
   appointmentId: {
     type: String,
-    required: true
-  }
+    required: true,
+  },
+  disabled: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const recordsStore = useRecordsStore()
@@ -39,9 +43,11 @@ function formatDate(dateString) {
   })
 }
 function triggerFileUpload() {
+  if (props.disabled) return
   fileInput.value.click()
 }
 async function handleFileUpload(event) {
+  if (props.disabled) return
   const file = event.target.files[0]
   if (!file) return
 
@@ -50,8 +56,8 @@ async function handleFileUpload(event) {
   const { success, error } = await recordsStore.uploadAttachmentImage(
     props.record?._id,
     file,
-    { patientId: props.patientId, appointmentId: props.appointmentId }
-  );
+    { patientId: props.patientId, appointmentId: props.appointmentId },
+  )
 
   if (success) {
     toast.success('Imagem anexada com sucesso!')
@@ -64,6 +70,7 @@ async function handleFileUpload(event) {
 }
 
 async function handleDeleteAttachment(uploadId) {
+  if (props.disabled) return
   if (!window.confirm('Tem certeza que deseja excluir esta imagem?')) {
     return
   }
@@ -81,7 +88,12 @@ async function handleDeleteAttachment(uploadId) {
 <template>
   <div class="attachments-container">
     <div class="attachments-grid">
-      <div class="upload-card" @click="triggerFileUpload">
+      <div
+        v-if="!disabled"
+        class="upload-card"
+        :class="{ disabled: disabled }"
+        @click="triggerFileUpload"
+      >
         <div v-if="isUploading" class="upload-loading">
           <UploadCloud :size="40" class="icon-loading" />
           <span>Enviando...</span>
@@ -109,6 +121,7 @@ async function handleDeleteAttachment(uploadId) {
             <span>{{ formatDate(attachment.createdAt) }}</span>
           </div>
           <button
+            v-if="!disabled"
             class="delete-button"
             @click.stop="handleDeleteAttachment(attachment._id)"
             title="Excluir imagem"
@@ -119,13 +132,23 @@ async function handleDeleteAttachment(uploadId) {
       </div>
     </div>
 
-    <div v-if="!record?.attachments?.length && !isUploading" class="empty-attachments">
-        <ImageIcon :size="48" />
-        <h3 class="empty-title">Nenhum anexo ainda</h3>
-        <p class="empty-text">Clique em "Adicionar Imagem" para começar.</p>
+    <div
+      v-if="(!record?.attachments?.length || record?.attachments?.length === 0) && !isUploading"
+      class="empty-attachments"
+    >
+      <ImageIcon :size="48" />
+      <h3 class="empty-title">Nenhum anexo ainda</h3>
+      <p v-if="!disabled" class="empty-text">Clique em "Adicionar Imagem" para começar.</p>
     </div>
 
-    <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/png, image/jpeg, image/webp" hidden />
+    <input
+      type="file"
+      ref="fileInput"
+      @change="handleFileUpload"
+      accept="image/png, image/jpeg, image/webp"
+      hidden
+      :disabled="disabled"
+    />
 
     <Transition name="fade">
       <div v-if="selectedImage" class="image-viewer-overlay" @click.self="closeImageViewer">
@@ -145,7 +168,8 @@ async function handleDeleteAttachment(uploadId) {
   gap: 1rem;
 }
 
-.upload-card, .image-card {
+.upload-card,
+.image-card {
   position: relative;
   aspect-ratio: 1 / 1;
   border-radius: 0.75rem;
@@ -165,7 +189,18 @@ async function handleDeleteAttachment(uploadId) {
   transform: translateY(-4px);
 }
 
-.upload-prompt, .upload-loading {
+.upload-card.disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.upload-card.disabled:hover {
+  border-color: #d1d5db;
+  background-color: #f3f4f6;
+  transform: none;
+}
+
+.upload-prompt,
+.upload-loading {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -176,12 +211,20 @@ async function handleDeleteAttachment(uploadId) {
 .upload-card:hover .upload-prompt {
   color: var(--azul-principal);
 }
+.upload-card.disabled:hover .upload-prompt {
+  color: #6b7280;
+}
 .upload-loading .icon-loading {
   animation: pulse 1.5s infinite;
 }
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .image-card {
@@ -190,7 +233,9 @@ async function handleDeleteAttachment(uploadId) {
 }
 .image-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
 .attachment-image {
@@ -239,7 +284,8 @@ async function handleDeleteAttachment(uploadId) {
   cursor: pointer;
   padding: 0;
   opacity: 0;
-  transition: all 0.2s ease-in-out;
+  transition:
+    all 0.2s ease-in-out;
   transform: translateY(10px);
 }
 .image-card:hover .delete-button {
@@ -251,18 +297,18 @@ async function handleDeleteAttachment(uploadId) {
 }
 
 .empty-attachments {
-    text-align: center;
-    padding: 3rem;
-    color: #9ca3af;
+  text-align: center;
+  padding: 3rem;
+  color: #9ca3af;
 }
 .empty-title {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin: 1rem 0 0.5rem;
-    color: #4b5563;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+  color: #4b5563;
 }
 .empty-text {
-    font-size: 0.9rem;
+  font-size: 0.9rem;
 }
 
 .image-viewer-overlay {
@@ -285,7 +331,9 @@ async function handleDeleteAttachment(uploadId) {
   max-height: 90vh;
   object-fit: contain;
   border-radius: 0.5rem;
-  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.4), 0 8px 10px -6px rgb(0 0 0 / 0.4);
+  box-shadow:
+    0 20px 25px -5px rgb(0 0 0 / 0.4),
+    0 8px 10px -6px rgb(0 0 0 / 0.4);
 }
 
 .close-button {
