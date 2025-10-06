@@ -12,6 +12,8 @@ import EditorToolbar from '@/components/shared/EditorToolbar.vue'
 import StyledSelect from '@/components/global/StyledSelect.vue'
 import RecordAttachments from '@/components/pages/appointments/RecordAttachments.vue'
 import SaveStatusIndicator from '@/components/shared/SaveStatusIndicator.vue'
+// A importação do EmptyState foi removida daqui
+
 import {
   User,
   Calendar,
@@ -22,6 +24,9 @@ import {
   ChevronRight,
   Clock,
   ArrowLeft,
+  FlaskConical, // Ícone para Exames
+  FilePlus2, // Ícone para Documentos
+  Pill, // Ícone para Prescrições
 } from 'lucide-vue-next'
 import { useToast } from 'vue-toastification'
 
@@ -342,16 +347,53 @@ const menuItems = [
           </div>
         </div>
 
-        <div v-else-if="activeTab === 'exams'" class="tab-content">
-          <h2 class="tab-title">Exames</h2>
+        <div v-else-if="activeTab === 'exams'" class="tab-content tab-content-padded">
+          <div class="empty-state-container">
+            <div class="empty-state">
+              <div class="icon-wrapper">
+                <FlaskConical :size="48" stroke-width="1.5" />
+              </div>
+              <h3 class="empty-title">Nenhum exame solicitado</h3>
+              <p class="empty-description">
+                Você pode adicionar solicitações de exames para este paciente. Eles ficarão
+                registrados aqui.
+              </p>
+              <button class="create-button is-disabled">Solicitar Exame</button>
+            </div>
+          </div>
         </div>
-        <div v-else-if="activeTab === 'prescriptions'" class="tab-content">
-          <h2 class="tab-title">Prescrições</h2>
+
+        <div v-else-if="activeTab === 'prescriptions'" class="tab-content tab-content-padded">
+          <div class="empty-state-container">
+            <div class="empty-state">
+              <div class="icon-wrapper">
+                <Pill :size="48" stroke-width="1.5" />
+              </div>
+              <h3 class="empty-title">Nenhuma prescrição criada</h3>
+              <p class="empty-description">
+                Crie e gerencie as prescrições de medicamentos e tratamentos para o paciente.
+              </p>
+              <button class="create-button is-disabled">Criar Prescrição</button>
+            </div>
+          </div>
         </div>
-        <div v-else-if="activeTab === 'documents'" class="tab-content">
-          <h2 class="tab-title">Documentos</h2>
+
+        <div v-else-if="activeTab === 'documents'" class="tab-content tab-content-padded">
+          <div class="empty-state-container">
+            <div class="empty-state">
+              <div class="icon-wrapper">
+                <FilePlus2 :size="48" stroke-width="1.5" />
+              </div>
+              <h3 class="empty-title">Nenhum documento gerado</h3>
+              <p class="empty-description">
+                Gere atestados, laudos ou outros documentos personalizados para este atendimento.
+              </p>
+              <button class="create-button is-disabled">Gerar Documento</button>
+            </div>
+          </div>
         </div>
-        <div v-else-if="activeTab === 'images'" class="tab-content">
+
+        <div v-else-if="activeTab === 'images'" class="tab-content tab-content-padded">
           <RecordAttachments
             :record="currentRecord"
             :patient-id="patientId"
@@ -537,7 +579,6 @@ const menuItems = [
 }
 .editor-main-content {
   flex-grow: 1;
-  padding: 1.5rem 2rem;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -549,8 +590,6 @@ const menuItems = [
 }
 .editor-wrapper {
   background-color: var(--branco);
-  border: 1px solid #e5e7eb;
-  border-radius: 0.75rem;
   display: flex;
   flex-direction: column;
   flex-grow: 1;
@@ -641,5 +680,71 @@ const menuItems = [
   font-weight: 600;
   margin-bottom: 1.5rem;
   color: #333;
+}
+
+.tab-content-padded {
+  padding: 1.5rem 2rem;
+}
+
+/* 👇 ESTILOS DO EMPTY STATE ADICIONADOS AQUI 👇 */
+.empty-state-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background-color: var(--branco);
+  border-radius: 0.75rem;
+}
+
+.is-disabled {
+  cursor: not-allowed !important;
+  opacity: 0.6;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem;
+  border: 2px dashed #d1d5db;
+  border-radius: 1rem;
+  background-color: rgba(239, 246, 255, 0.5);
+  text-align: center;
+  margin: 2rem;
+  width: 100%;
+  max-width: 600px;
+}
+.icon-wrapper {
+  color: var(--azul-principal);
+  margin-bottom: 1.5rem;
+}
+.empty-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+.empty-description {
+  max-width: 400px;
+  color: var(--cinza-texto);
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+.create-button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  border: none;
+  background-color: var(--azul-principal);
+  color: var(--branco);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+.create-button:hover {
+  background-color: #3b82f6;
 }
 </style>

@@ -77,10 +77,10 @@ function openCreateModal() {
         </div>
         <div class="appointment-actions">
           <template v-if="appt.status === 'Agendado'">
-            <button class="btn-secondary">
+            <!-- <button class="btn-secondary">
               <Check :size="16" />
               Cliente Chegou
-            </button>
+            </button> -->
             <router-link
               :to="`/app/atendimentos/${appt._id}/patient/${appt.patient._id}`"
               class="btn-primary"

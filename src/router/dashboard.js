@@ -22,28 +22,39 @@ const dashboardRoutes = [
         path: '',
         name: 'inicio',
         component: Inicio,
+        meta: { title: 'Resumo' },
       },
       {
         path: 'configuracoes',
         name: 'configuracoes',
         component: SettingsView,
+        meta: { title: 'Configurações' },
       },
-      { path: 'pacientes', name: 'pacientes', component: PatientsListView },
-      { path: 'pacientes/novo', name: 'novo-paciente', component: CreatePatientView },
-      { path: 'pacientes/:id', name: 'detalhes-paciente', component: PatientDetailView },
-      { path: 'atendimentos', name: 'atendimentos', component: AppointmentsView },
+      { path: 'pacientes', name: 'pacientes', component: PatientsListView, meta: { title: 'Pacientes' } },
+      {
+        path: 'pacientes/novo',
+        name: 'novo-paciente',
+        component: CreatePatientView,
+        meta: { title: 'Novo Paciente' },
+      },
+      {
+        path: 'pacientes/:id',
+        name: 'detalhes-paciente',
+        component: PatientDetailView,
+        meta: { title: 'Detalhes do Paciente' },
+      },
+      {
+        path: 'atendimentos',
+        name: 'atendimentos',
+        component: AppointmentsView,
+        meta: { title: 'Atendimentos' },
+      },
       {
         path: 'atendimentos/:appointmentId/patient/:patientId',
         name: 'atendimento-em-andamento',
-        component: InProgressAppointmentView
+        component: InProgressAppointmentView,
+        meta: { title: 'Em Atendimento', layout: { noPadding: true } },
       },
-
-      // Futuramente, a rota /app/pacientes entrará aqui
-      // {
-      //   path: 'pacientes',
-      //   name: 'pacientes',
-      //   component: () => import('@/views/pages/pacientes/PacientesListView.vue')
-      // },
     ],
   },
 ]

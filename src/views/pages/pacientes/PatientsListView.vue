@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePatientsStore } from '@/stores/patients'
 import { useToast } from 'vue-toastification'
@@ -14,25 +14,47 @@ import {
   SlidersHorizontal,
 } from 'lucide-vue-next'
 import AppPagination from '@/components/global/AppPagination.vue'
+import SearchableSelect from '@/components/global/SearchableSelect.vue'
 
 const patientsStore = usePatientsStore()
 const router = useRouter()
 const toast = useToast()
 
-// ✨ CORRIGIDO: para usar 'allPatients' da store
 const patients = computed(() => patientsStore.allPatients)
 const pagination = computed(() => patientsStore.pagination)
 const actionsMenuOpenFor = ref(null)
 const isInitialLoad = ref(true)
 
+const selectedPatientId = ref(null)
+let debounceTimeout = null
+
+const patientSearchOptions = computed(() => {
+  return (patientsStore.searchResults || []).map((p) => ({ value: p._id, label: p.name }))
+})
+
+function handlePatientSearch(query) {
+  clearTimeout(debounceTimeout)
+  if (query) {
+    debounceTimeout = setTimeout(() => {
+      patientsStore.searchPatients(query)
+    }, 300)
+  } else {
+    patientsStore.searchResults = []
+  }
+}
+
+watch(selectedPatientId, (newId) => {
+  if (newId) {
+    router.push(`/app/pacientes/${newId}`)
+  }
+})
+
 onMounted(async () => {
-  // ✨ CORRIGIDO: para usar 'fetchAllPatients' da store
   await patientsStore.fetchAllPatients(1)
   isInitialLoad.value = false
 })
 
 function handlePageChange(newPage) {
-  // ✨ CORRIGIDO: para usar 'fetchAllPatients' da store
   patientsStore.fetchAllPatients(newPage)
 }
 
@@ -76,10 +98,20 @@ const formatCPF = (cpf) => {
         <h1 class="title">Pacientes</h1>
         <p class="subtitle">Gerencie todos os pacientes da sua clínica.</p>
       </div>
-      <router-link to="/app/pacientes/novo" class="btn-primary">
-        <UserPlus :size="16" />
-        Adicionar Paciente
-      </router-link>
+      <div class="header-actions">
+        <SearchableSelect
+          v-model="selectedPatientId"
+          :options="patientSearchOptions"
+          :loading="patientsStore.isLoading"
+          @search="handlePatientSearch"
+          placeholder="Buscar paciente por nome..."
+          class="patient-search"
+        />
+        <router-link to="/app/pacientes/novo" class="btn-primary">
+          <UserPlus :size="16" />
+          Adicionar Paciente
+        </router-link>
+      </div>
     </header>
 
     <div class="table-wrapper" :class="{ 'is-loading': patientsStore.isLoading && !isInitialLoad }">
@@ -173,8 +205,16 @@ const formatCPF = (cpf) => {
 .page-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center; /* MODIFICADO: Garante alinhamento vertical */
   margin-bottom: 2rem;
+}
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem; /* Reduzido para um espaçamento mais agradável */
+}
+.patient-search {
+  width: 280px;
 }
 .title {
   font-size: 2.25rem;
@@ -188,7 +228,7 @@ const formatCPF = (cpf) => {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
+  padding: 0 1.5rem; /* AJUSTADO: Padding horizontal para centralizar texto */
   border-radius: 0.75rem;
   border: none;
   background-color: var(--azul-principal);
@@ -198,10 +238,25 @@ const formatCPF = (cpf) => {
   cursor: pointer;
   transition: background-color 0.3s ease;
   text-decoration: none;
+  height: 44px; /* ADICIONADO: Altura fixa */
 }
 .btn-primary:hover {
   background-color: var(--azul-escuro);
 }
+
+/* ADICIONADO: Bloco de estilos para o input de busca */
+.patient-search :deep(.input-wrapper) {
+  height: 44px; /* Mesma altura do botão */
+  border-radius: 0.75rem; /* Mesmo arredondamento do botão */
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* ADICIONADO: Efeito de foco para o input de busca */
+.patient-search :deep(.input-wrapper:has(.select-input:focus)) {
+  border-color: var(--azul-principal);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
 .table-wrapper {
   background-color: var(--branco);
   border: 1px solid #e5e7eb;

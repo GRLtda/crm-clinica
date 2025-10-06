@@ -50,7 +50,7 @@ function handleSearch() {
 <template>
   <div class="searchable-select" :class="{ 'has-error': error }">
     <label v-if="label" class="form-label">
-      {{ label }} <span v-if="required">*</span>
+      {{ label }} <span v-if="required" class="required-asterisk">*</span>
     </label>
     <div class="select-container" v-click-outside="() => isOpen = false">
       <div class="input-wrapper" @click="toggleDropdown">
@@ -84,6 +84,9 @@ function handleSearch() {
 
 <style scoped>
 /* Estilos para o novo componente de busca */
+.required-asterisk {
+  color: #ef4444;
+}
 .searchable-select { width: 100%; }
 .form-label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.875rem; color: #374151; }
 .select-container { position: relative; }

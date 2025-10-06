@@ -1,36 +1,42 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import dashboardRoutes from './dashboard'
+import { nextTick } from 'vue'
 
 // Views Públicas e de Autenticação
 import LandingView from '../views/LandingView.vue'
 import LoginView from '../views/pages/autenticacao/LoginView.vue'
 import RegisterView from '../views/pages/autenticacao/RegisterView.vue'
 import ClinicWizardView from '../views/pages/onboarding/ClinicWizardView.vue'
-import AnswerAnamnesisView from '../views/public/AnswerAnamnesisView.vue'; // Nova página
-import NotFoundView from '../views/NotFoundView.vue';
-
+import AnswerAnamnesisView from '../views/public/AnswerAnamnesisView.vue'
+import NotFoundView from '../views/NotFoundView.vue'
 
 const routes = [
-  { path: '/', name: 'landing', component: LandingView, meta: { public: true } },
-  { path: '/login', name: 'login', component: LoginView, meta: { public: true } },
-  { path: '/register', name: 'register', component: RegisterView, meta: { public: true } },
+  { path: '/', name: 'landing', component: LandingView, meta: { public: true, title: 'Bem-vindo' } },
+  { path: '/login', name: 'login', component: LoginView, meta: { public: true, title: 'Login' } },
+  {
+    path: '/register',
+    name: 'register',
+    component: RegisterView,
+    meta: { public: true, title: 'Cadastro' },
+  },
   {
     path: '/onboarding/clinic',
     name: 'clinic-wizard',
     component: ClinicWizardView,
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, title: 'Configuração da Clínica' },
   },
   {
     path: '/responder-anamnese/:token',
     name: 'answer-anamnesis',
     component: AnswerAnamnesisView,
-    meta: { public: true }
+    meta: { public: true, title: 'Responder Anamnese' },
   },
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
-    component: NotFoundView
+    component: NotFoundView,
+    meta: { title: 'Página não encontrada' },
   },
   ...dashboardRoutes,
 ]
@@ -42,25 +48,46 @@ const router = createRouter({
 
 // --- GUARDA DE NAVEGAÇÃO GLOBAL ATUALIZADO ---
 router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore();
-  const isAuthenticated = authStore.isAuthenticated;
-  const hasClinic = authStore.hasClinic;
+  const authStore = useAuthStore()
+  const isAuthenticated = authStore.isAuthenticated
+  const hasClinic = authStore.hasClinic
 
-  const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
-  const isAuthPage = to.name === 'login' || to.name === 'register';
+  const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
+  const isAuthPage = to.name === 'login' || to.name === 'register'
 
   if (requiresAuth && !isAuthenticated) {
-    next({ name: 'login' });
+    next({ name: 'login' })
   } else if (isAuthenticated && isAuthPage) {
-    next({ name: 'inicio' });
+    next({ name: 'inicio' })
   } else if (isAuthenticated && !hasClinic && to.name !== 'clinic-wizard') {
-    next({ name: 'clinic-wizard' });
+    next({ name: 'clinic-wizard' })
   } else if (isAuthenticated && hasClinic && to.name === 'clinic-wizard') {
     // Esta é a linha que agora vai funcionar e te protegerá
-    next({ name: 'inicio' });
+    next({ name: 'inicio' })
   } else {
-    next();
+    next()
   }
-});
+})
+
+// --- SEO TÍTULO DA PÁGINA ---
+router.afterEach((to) => {
+  nextTick(() => {
+    const authStore = useAuthStore()
+    const clinicName = authStore.user?.clinic?.name
+    const pageTitle = to.meta.title
+    const defaultAppName = 'Clínica CRM'
+
+    // Se é uma rota autenticada e temos o nome da clínica
+    if (pageTitle && clinicName && to.meta.requiresAuth) {
+      document.title = `${clinicName} - ${pageTitle}`
+    }
+    else if (pageTitle) {
+      document.title = `${pageTitle} | ${defaultAppName}`
+    }
+    else {
+      document.title = clinicName || defaultAppName
+    }
+  })
+})
 
 export default router
