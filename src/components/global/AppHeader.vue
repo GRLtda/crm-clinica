@@ -42,7 +42,9 @@ function toggleMobileMenu() {
         <nav class="mobile-nav-links">
           <router-link to="/" @click="toggleMobileMenu" style="--delay: 0.1s">Soluções</router-link>
           <router-link to="/" @click="toggleMobileMenu" style="--delay: 0.2s">Planos</router-link>
-          <router-link to="/" @click="toggleMobileMenu" style="--delay: 0.3s">Conteúdos</router-link>
+          <router-link to="/" @click="toggleMobileMenu" style="--delay: 0.3s"
+            >Conteúdos</router-link
+          >
           <router-link to="/" @click="toggleMobileMenu" style="--delay: 0.4s">Sobre</router-link>
         </nav>
         <div class="mobile-actions">

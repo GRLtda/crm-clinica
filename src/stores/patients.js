@@ -1,159 +1,140 @@
-import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { defineStore } from 'pinia'
+import { ref } from 'vue'
 import {
-  getPatients as apiGetPatients,
   createPatient as apiCreatePatient,
+  searchPatients as apiSearchPatients,
   getPatientById as apiGetPatientById,
   updatePatient as apiUpdatePatient,
-  deletePatient as apiDeletePatient
-} from '@/api/patients';
+  getAllPatients as apiGetAllPatients, // ✨ 1. Importar a nova função
+} from '@/api/patients'
 
 export const usePatientsStore = defineStore('patients', () => {
-  // --- STATE ---
-  const patients = ref([]);
-  const allPatients = ref([]); // Para preencher seletores em formulários
-  const selectedPatient = ref(null);
+  // STATE
+  const allPatients = ref([]) // ✨ INICIALIZADO COMO ARRAY VAZIO (CRUCIAL)
+  const searchResults = ref([])
+  const selectedPatient = ref(null)
+  const isLoading = ref(false)
+  const error = ref(null)
   const pagination = ref({
     total: 0,
     page: 1,
     pages: 1,
     limit: 10,
-  });
-  const isLoading = ref(false);
+  })
 
-  // --- ACTIONS ---
+  // ACTIONS
 
   /**
-   * Busca uma lista paginada de pacientes.
-   * @param {object} params - Parâmetros de paginação, como { page: 1, limit: 10 }.
+   * ✨ 3. NOVA ACTION: Busca a lista paginada de pacientes.
    */
-  async function fetchPatients(page = 1) {
-    isLoading.value = true;
+  async function fetchAllPatients(page = 1, limit = 10) {
+    isLoading.value = true
+    error.value = null
     try {
-      const response = await apiGetPatients({
-        page: page,
-        limit: pagination.value.limit,
-      });
-      if (response.data && Array.isArray(response.data.data)) {
-        patients.value = response.data.data;
-        const { total, pages, limit } = response.data;
-        pagination.value = { total, page: response.data.page, pages, limit };
-      } else {
-        console.warn('A resposta da API de pacientes não tem o formato esperado.', response.data);
-        patients.value = [];
+      const response = await apiGetAllPatients({ page, limit })
+
+      // ✨ AQUI ESTÁ A CORREÇÃO PRINCIPAL ✨
+      // Atribuímos o array de pacientes (response.data.data) ao nosso estado.
+      allPatients.value = response.data.data
+
+      // E guardamos as informações de paginação.
+      pagination.value = {
+        total: response.data.total,
+        page: response.data.page,
+        pages: response.data.pages,
+        limit: response.data.limit,
       }
-    } catch (error) {
-      console.error("Erro ao buscar pacientes:", error);
-      patients.value = [];
+      return { success: true }
+    } catch (err) {
+      error.value = 'Erro ao carregar pacientes.'
+      allPatients.value = [] // Em caso de erro, garante que seja um array vazio
+      console.error('Falha em fetchAllPatients:', err)
+      return { success: false, error: error.value }
     } finally {
-      isLoading.value = false;
+      isLoading.value = false
     }
   }
 
-
-  /**
-   * Busca todos os pacientes sem paginação para uso em seletores.
-   */
-  async function fetchAllPatients() {
+  async function searchPatients(query) {
+    if (!query) {
+      searchResults.value = []
+      return
+    }
+    isLoading.value = true
+    error.value = null
     try {
-      // Usa um limite alto para garantir que todos os pacientes sejam retornados.
-      const response = await apiGetPatients({ limit: 1000 });
-      if (response.data && Array.isArray(response.data.data)) {
-        allPatients.value = response.data.data;
-      }
-    } catch (error) {
-      console.error("Erro ao buscar todos os pacientes:", error);
+      const response = await apiSearchPatients(query)
+      searchResults.value = response.data.data
+    } catch (err) {
+      error.value = 'Erro ao buscar pacientes.'
+      searchResults.value = []
+      console.error('Falha em searchPatients:', err)
+    } finally {
+      isLoading.value = false
     }
   }
 
-  /**
-   * Cria um novo paciente.
-   * @param {object} patientData - Os dados do novo paciente.
-   * @returns {Promise<{success: boolean, error?: any}>}
-   */
   async function createPatient(patientData) {
-    isLoading.value = true;
+    isLoading.value = true
+    this.error = null
     try {
-      await apiCreatePatient(patientData);
-      await fetchPatients(); // Atualiza a lista da primeira página
-      return { success: true };
-    } catch (error) {
-      console.error("Erro ao criar paciente:", error);
-      return { success: false, error };
+      const response = await apiCreatePatient(patientData)
+      // Recarrega a lista para refletir a adição
+      await fetchAllPatients(1, pagination.value.limit)
+      return { success: true, data: response.data }
+    } catch (err) {
+      this.error = err.response?.data?.message || 'Erro ao criar o paciente.'
+      console.error('Falha em createPatient:', err)
+      return { success: false, error: this.error }
     } finally {
-      isLoading.value = false;
+      this.isLoading = false
     }
   }
 
-  /**
-   * Busca um único paciente pelo seu ID.
-   * @param {string} patientId - O ID do paciente.
-   */
   async function fetchPatientById(patientId) {
-    isLoading.value = true;
-    selectedPatient.value = null;
+    isLoading.value = true
+    error.value = null
     try {
-      const response = await apiGetPatientById(patientId);
-      selectedPatient.value = response.data;
-    } catch (error) {
-      console.error(`Erro ao buscar paciente ${patientId}:`, error);
+      const response = await apiGetPatientById(patientId)
+      selectedPatient.value = response.data
+      return { success: true, data: response.data }
+    } catch (err) {
+      error.value = 'Paciente não encontrado.'
+      console.error('Falha em fetchPatientById:', err)
+      return { success: false, error: error.value }
     } finally {
-      isLoading.value = false;
+      isLoading.value = false
     }
   }
 
-  /**
-   * Atualiza os dados de um paciente.
-   * @param {string} patientId - O ID do paciente a ser atualizado.
-   * @param {object} patientData - Os novos dados do paciente.
-   * @returns {Promise<{success: boolean, data?: any, error?: any}>}
-   */
   async function updatePatient(patientId, patientData) {
-    isLoading.value = true;
+    isLoading.value = true
+    error.value = null
     try {
-      const response = await apiUpdatePatient(patientId, patientData);
-      if (selectedPatient.value && selectedPatient.value._id === patientId) {
-        selectedPatient.value = response.data;
-      }
-      return { success: true, data: response.data };
-    } catch (error) {
-      console.error("Erro ao atualizar paciente:", error);
-      return { success: false, error };
+      const response = await apiUpdatePatient(patientId, patientData)
+      selectedPatient.value = response.data
+      return { success: true, data: response.data }
+    } catch (err) {
+      error.value = err.response?.data?.message || 'Erro ao atualizar o paciente.'
+      console.error('Falha em updatePatient:', err)
+      return { success: false, error: error.value }
     } finally {
-      isLoading.value = false;
+      isLoading.value = false
     }
   }
 
-  /**
-   * Deleta um paciente.
-   * @param {string} patientId - O ID do paciente a ser deletado.
-   * @returns {Promise<{success: boolean, error?: any}>}
-   */
-  async function deletePatient(patientId) {
-    try {
-      await apiDeletePatient(patientId);
-      // Recarrega a página atual para refletir a remoção.
-      await fetchPatients({ page: pagination.value.page });
-      return { success: true };
-    } catch (error) {
-      console.error("Erro ao deletar paciente:", error);
-      return { success: false, error };
-    }
-  }
-
+  // RETURN
   return {
-    // State
-    patients,
     allPatients,
+    searchResults,
     selectedPatient,
-    pagination,
+    pagination, // ✨ 4. Expor o estado da paginação
     isLoading,
-    // Actions
-    fetchPatients,
-    fetchAllPatients,
+    error,
     createPatient,
+    searchPatients,
     fetchPatientById,
     updatePatient,
-    deletePatient
-  };
-});
+    fetchAllPatients, // ✨ 5. Expor a nova action
+  }
+})

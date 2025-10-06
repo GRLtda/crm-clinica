@@ -3,8 +3,9 @@ import { ref, onMounted, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { usePatientsStore } from '@/stores/patients';
 import { useAnamnesisStore } from '@/stores/anamnesis';
+import { useAppointmentsStore } from '@/stores/appointments';
 import { useToast } from 'vue-toastification';
-import { ArrowLeft, Edit, Clipboard, FileText, CheckSquare, Copy } from 'lucide-vue-next';
+import { ArrowLeft, Edit, Clipboard, FileText, CheckSquare, Copy, History, Eye } from 'lucide-vue-next';
 import StepPersonalData from '@/components/pages/pacientes/steps/StepPersonalData.vue';
 import StepAddressData from '@/components/pages/pacientes/steps/StepAddressData.vue';
 import AssignAnamnesisModal from '@/components/pages/pacientes/modals/AssignAnamnesisModal.vue';
@@ -14,6 +15,7 @@ const route = useRoute();
 const router = useRouter();
 const patientsStore = usePatientsStore();
 const anamnesisStore = useAnamnesisStore();
+const appointmentsStore = useAppointmentsStore();
 const toast = useToast();
 
 const isEditing = ref(false);
@@ -25,11 +27,13 @@ const viewingAnamnesis = ref(null);
 const patient = computed(() => patientsStore.selectedPatient);
 const answeredAnamneses = computed(() => anamnesisStore.answeredAnamneses);
 const pendingAnamneses = computed(() => anamnesisStore.pendingAnamneses);
+const patientHistory = computed(() => appointmentsStore.patientAppointments);
 
 onMounted(() => {
   const patientId = route.params.id;
   patientsStore.fetchPatientById(patientId);
   anamnesisStore.fetchAnamnesisForPatient(patientId);
+  appointmentsStore.fetchAppointmentsByPatient(patientId);
   if (route.query.edit === 'true') {
     isEditing.value = true;
   }
@@ -114,6 +118,7 @@ function handleCopyLink(token) {
       <nav class="tabs-nav">
         <button @click="activeTab = 'details'" :class="{ active: activeTab === 'details' }">Detalhes</button>
         <button @click="activeTab = 'anamneses'" :class="{ active: activeTab === 'anamneses' }">Anamneses</button>
+        <button @click="activeTab = 'history'" :class="{ active: activeTab === 'history' }">Histórico</button>
       </nav>
 
       <div class="tab-content">
@@ -175,6 +180,31 @@ function handleCopyLink(token) {
             <p v-else class="empty-list-message">Nenhuma anamnese pendente.</p>
           </div>
         </div>
+
+        <div v-if="activeTab === 'history'">
+            <div class="history-section">
+                <h3><History :size="20"/> Histórico de Atendimentos</h3>
+                <div v-if="appointmentsStore.isLoading" class="loading-state">Carregando histórico...</div>
+                <ul v-else-if="patientHistory.length > 0" class="history-list">
+                    <li v-for="item in patientHistory" :key="item._id">
+                        <div class="history-info">
+                            <span class="history-date">{{ formatSimpleDate(item.startTime) }}</span>
+                            <span class="status-badge" :class="item.status.toLowerCase().replace(' ', '-')">{{ item.status }}</span>
+                        </div>
+                        <router-link
+                            v-if="item.status === 'Realizado'"
+                            :to="`/app/atendimentos/${item._id}/patient/${patient._id}`"
+                            class="btn-secondary"
+                        >
+                            <Eye :size="16" />
+                            Ver Relatório
+                        </router-link>
+                    </li>
+                </ul>
+                <p v-else class="empty-list-message">Nenhum atendimento registrado para este paciente.</p>
+            </div>
+        </div>
+
       </div>
     </div>
     <div v-else class="loading-state">
@@ -211,6 +241,16 @@ function handleCopyLink(token) {
 .separator { height: 1px; background-color: #e5e7eb; margin: 2rem 0; }
 .form-actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem; }
 .btn-primary { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; border-radius: 0.75rem; border: none; background-color: var(--azul-principal); color: var(--branco); font-size: 1rem; font-weight: 600; cursor: pointer; }
-.btn-secondary { display: inline-flex; align-items: center; gap: 0.5rem; background-color: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-size: 1rem; font-weight: 600; cursor: pointer; }
+.btn-secondary { display: inline-flex; align-items: center; gap: 0.5rem; background-color: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-size: 1rem; font-weight: 600; cursor: pointer; text-decoration: none; }
 .loading-state { padding: 2rem; text-align: center; color: var(--cinza-texto); }
+.history-section h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
+.history-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 1rem; }
+.history-list li { display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem; background-color: var(--branco); border: 1px solid #e5e7eb; border-radius: 1rem; }
+.history-info { display: flex; align-items: center; gap: 1.5rem; }
+.history-date { font-weight: 500; font-size: 1rem; color: #374151; }
+.status-badge { font-weight: 600; padding: 0.25rem 0.75rem; border-radius: 99px; font-size: 0.875rem; text-transform: capitalize; }
+.status-badge.realizado { background-color: #f0fdf4; color: #16a34a; }
+.status-badge.cancelado { background-color: #fef2f2; color: #dc2626; }
+.status-badge.agendado { background-color: #eff6ff; color: #2563eb; }
+.status-badge.não-compareceu { background-color: #f1f5f9; color: #64748b; }
 </style>

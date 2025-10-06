@@ -19,6 +19,15 @@ export const getPatients = (params = {}) => {
   })
 }
 
+/**
+ * Busca todos os pacientes com paginação.
+ * Rota: GET /api/patients
+ * @param {object} params - Parâmetros de paginação (ex: { page: 1, limit: 10 }).
+ */
+export const getAllPatients = (params) => {
+  return apiClient.get('/patients', { params });
+}
+
 export const createPatient = (patientData) => {
   return apiClient.post('/patients', patientData)
 }
@@ -34,3 +43,12 @@ export const updatePatient = (patientId, patientData) => {
 export const deletePatient = (patientId) => {
   return apiClient.delete(`/patients/${patientId}`);
 };
+
+export const searchPatients = (query) => {
+  // Esta função chama a rota GET /patients, mas adiciona o parâmetro 'search'
+  return apiClient.get('/patients', {
+    params: {
+      search: query,
+    },
+  })
+}

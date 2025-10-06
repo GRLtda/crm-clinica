@@ -16,7 +16,7 @@ const dashboardRoutes = [
   {
     path: '/app',
     component: DefaultLayout,
-    meta: { requiresAuth: true }, // A rota pai continua protegida
+    meta: { requiresAuth: true },
     children: [
       {
         path: '',

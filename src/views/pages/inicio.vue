@@ -2,29 +2,31 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { useDashboardStore } from '@/stores/dashboard';
-import { Calendar, Users, CircleDollarSign, Clock, User as UserIcon } from 'lucide-vue-next';
+import { Calendar, Users, CircleDollarSign, Clock, User as UserIcon, CalendarCheck, Check, Play } from 'lucide-vue-next';
 import CreateAppointmentModal from '@/components/pages/dashboard/CreateAppointmentModal.vue';
 import VueCal from 'vue-cal';
 import 'vue-cal/dist/vuecal.css';
-import EventActionPopover from '@/components/shared/EventActionPopover.vue';
 import { useAppointmentsStore } from '@/stores/appointments';
 import { useToast } from 'vue-toastification';
+import { useRouter } from 'vue-router';
 
 const authStore = useAuthStore();
 const dashboardStore = useDashboardStore();
 const appointmentsStore = useAppointmentsStore();
 const toast = useToast();
+const router = useRouter();
 const isModalOpen = ref(false);
 const currentTime = ref(new Date());
 let timer = null;
 
-const popover = ref({
-  visible: false,
-  event: null,
-  position: { top: '0px', left: '0px' },
-});
-
 const stats = computed(() => dashboardStore.stats);
+
+const todayFormatted = computed(() => {
+    return new Date().toLocaleDateString('pt-br', {
+        day: 'numeric',
+        month: 'long'
+    })
+});
 
 onMounted(() => {
   dashboardStore.fetchDashboardStats();
@@ -48,20 +50,21 @@ const formattedEvents = computed(() => {
     start: new Date(appt.startTime),
     end: new Date(appt.endTime),
     title: appt.patient.name,
-    class: isEventCurrent({ start: appt.startTime, end: appt.endTime })
-      ? 'clinic-event current'
-      : 'clinic-event',
+    class: 'clinic-event',
     originalEvent: appt,
   }));
 });
 
 function formatTime(dateString) {
   if (!dateString) return '';
-  return new Date(dateString).toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'UTC'
-  });
+  const date = new Date(dateString);
+  const options = { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' };
+  try {
+    return date.toLocaleTimeString('pt-BR', options);
+  } catch (e) {
+    console.error("Data inválida para formatação:", dateString);
+    return 'Inválido';
+  }
 }
 
 const statCardsData = computed(() => [
@@ -92,37 +95,26 @@ const statCardsData = computed(() => [
   }
 ]);
 
-function handleEventClick(event, domEvent) {
-  domEvent.stopPropagation();
-  popover.value.event = event;
-  popover.value.position = {
-    top: `${domEvent.clientY + 10}px`,
-    left: `${domEvent.clientX}px`,
-  };
-  popover.value.visible = true;
+async function handleConfirmArrival(event) {
+    const { _id: appointmentId } = event.originalEvent;
+    const { success } = await appointmentsStore.updateAppointmentStatus(appointmentId, 'Confirmado');
+    if (success) {
+        toast.success(`Chegada do paciente confirmada!`);
+        dashboardStore.fetchDashboardStats();
+    } else {
+        toast.error("Não foi possível confirmar a chegada.");
+    }
 }
 
-async function handleStatusChange({ appointmentId, newStatus }) {
-  popover.value.visible = false;
-  const { success } = await appointmentsStore.updateAppointmentStatus(appointmentId, newStatus);
-  if (success) {
-    toast.success(`Status do agendamento alterado para "${newStatus}"!`);
-  } else {
-    toast.error("Não foi possível alterar o status.");
-  }
+function handleStartAppointment(event) {
+    const { _id: appointmentId, patient } = event.originalEvent;
+    router.push(`/app/atendimentos/${appointmentId}/patient/${patient._id}`);
 }
 </script>
 
 <template>
   <div class="dashboard-overview">
     <CreateAppointmentModal v-if="isModalOpen" @close="isModalOpen = false" />
-    <EventActionPopover
-      v-if="popover.visible"
-      :event="popover.event"
-      :position="popover.position"
-      @close="popover.visible = false"
-      @status-change="handleStatusChange"
-    />
 
     <header class="dashboard-header">
       <div>
@@ -166,38 +158,61 @@ async function handleStatusChange({ appointmentId, newStatus }) {
       </div>
 
       <div class="calendar-section">
-        <h2 class="section-title">Agenda de Hoje</h2>
-        <div class="calendar-scroll-container">
-          <vue-cal
-            class="vuecal--full-height-delete"
-            :events="formattedEvents"
-            :show-current-time-indicator="true"
-            @event-click="handleEventClick"
-            active-view="day"
-            :disable-views="['years', 'year', 'month', 'week']"
-            hide-view-selector
-            hide-title-bar
-            :time-from="7 * 60"
-            :time-to="22 * 60"
-            :time-step="30"
-            locale="pt-br"
-          >
-            <template #event="{ event }">
-              <div class="custom-event-content" :class="{ current: isEventCurrent(event) }">
-                <div class="event-line">
-                  <UserIcon :size="14" />
-                  <span class="event-title">{{ event.title }}</span>
-                </div>
-                <div class="event-line">
-                  <Clock :size="14" />
-                  <span class="event-time">{{ formatTime(event.start) }}</span>
-                </div>
-                <div v-if="isEventCurrent(event)" class="event-actions">
-                  <button class="action-button">Cliente chegou</button>
-                </div>
-              </div>
-            </template>
-          </vue-cal>
+        <div class="section-header">
+            <h2 class="section-title">Agenda de Hoje</h2>
+            <span class="section-subtitle">{{ todayFormatted }}</span>
+        </div>
+
+        <div class="calendar-container">
+            <div v-if="formattedEvents.length === 0" class="empty-agenda">
+                <CalendarCheck :size="48" />
+                <h3 class="empty-title">Agenda Limpa!</h3>
+                <p class="empty-text">Você não tem atendimentos agendados para hoje.</p>
+            </div>
+            <div v-else class="calendar-scroll-container">
+                <vue-cal
+                    class="vuecal--full-height-delete"
+                    :events="formattedEvents"
+                    :show-current-time-indicator="true"
+                    active-view="day"
+                    :disable-views="['years', 'year', 'month', 'week']"
+                    hide-view-selector
+                    hide-title-bar
+                    :time-from="7 * 60"
+                    :time-to="22 * 60"
+                    :time-step="30"
+                    locale="pt-br"
+                >
+                    <template #event="{ event }">
+                      <div class="custom-event-content" :class="{ current: isEventCurrent(event) }">
+                          <div class="event-details-wrapper">
+                              <div class="patient-avatar-placeholder">
+                                  {{ event.title.charAt(0) }}
+                              </div>
+                              <div class="event-info">
+                                  <div class="event-line">
+                                      <UserIcon :size="16" />
+                                      <span class="event-title">{{ event.title }}</span>
+                                  </div>
+                                  <div class="event-line">
+                                      <Clock :size="16" />
+                                      <span class="event-time">{{ formatTime(event.start) }} - {{ formatTime(event.end) }}</span>
+                                  </div>
+                              </div>
+                          </div>
+
+                          <div class="event-actions">
+                              <button class="action-btn confirm" @click.stop="handleConfirmArrival(event)" title="Confirmar chegada">
+                                  <Check :size="16" />
+                              </button>
+                              <button class="action-btn start" @click.stop="handleStartAppointment(event)" title="Iniciar atendimento">
+                                  <Play :size="16" />
+                              </button>
+                          </div>
+                      </div>
+                    </template>
+                </vue-cal>
+            </div>
         </div>
       </div>
     </div>
@@ -205,23 +220,189 @@ async function handleStatusChange({ appointmentId, newStatus }) {
 </template>
 
 <style>
-.calendar-section { margin-top: 2.5rem; }
-.section-title { font-family: var(--fonte-titulo); font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; }
-.vuecal__event { cursor: pointer; }
-.vuecal__event.clinic-event { background-color: #eef2ff; border: 1px solid #c7d2fe; color: #312e81; border-radius: 0.5rem; padding: 0.5rem; box-sizing: border-box; }
-.vuecal__event-title { font-family: 'Poppins', sans-serif; font-weight: 600; }
-.vuecal__time-cell-label { font-family: 'Poppins', sans-serif; font-size: 0.8rem; color: var(--cinza-texto); }
-.vuecal__no-event { display: none; }
+.calendar-section { margin-top: 1.5rem; }
+.section-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+.section-title { font-family: var(--fonte-titulo); font-size: 1.5rem; font-weight: 600; margin: 0; }
+.section-subtitle { font-size: 1rem; color: var(--cinza-texto); font-weight: 500; }
+.calendar-container {
+    border: 1px solid #e5e7eb;
+    border-radius: 1rem;
+    background-color: var(--branco);
+    height: 550px;
+    display: flex;
+}
+
+.vuecal__event {
+    cursor: default;
+    border: none;
+}
+.vuecal__event.clinic-event {
+    background-color: #eef2ff;
+    border-left: 5px solid #818cf8;
+    color: #4338ca;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    box-sizing: border-box;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease-out;
+    display: flex;
+}
+.vuecal__event.clinic-event:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+.vuecal__event.clinic-event .custom-event-content.current {
+    border-left-color: var(--azul-principal);
+    box-shadow: 0 0 0 2px var(--branco), 0 0 0 4px var(--azul-principal);
+    animation: pulse-shadow 2s infinite;
+}
+
+@keyframes pulse-shadow {
+  0% { box-shadow: 0 0 0 2px var(--branco), 0 0 0 4px rgba(59, 130, 246, 0.4); }
+  50% { box-shadow: 0 0 0 2px var(--branco), 0 0 0 7px rgba(59, 130, 246, 0.2); }
+  100% { box-shadow: 0 0 0 2px var(--branco), 0 0 0 4px rgba(59, 130, 246, 0.4); }
+}
+
+.vuecal__time-cell-label {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.75rem;
+    color: #9ca3af;
+    font-weight: 500;
+}
 .vuecal--day-view .vuecal__bg { height: auto; }
-.vuecal__current-time-indicator { border-top: 2px solid #ef4444; z-index: 1; }
-.custom-event-content.current { background-color: rgba(59, 130, 246, 0.25); }
-.event-actions { margin-top: 0.5rem; }
-.action-button { width: 100%; padding: 0.25rem; background-color: var(--branco); border: 1px solid #c7d2fe; color: var(--azul-principal); font-weight: 600; font-size: 0.75rem; border-radius: 0.375rem; cursor: pointer; }
-.custom-event-content { display: flex; flex-direction: column; gap: 0.25rem; height: 100%; justify-content: center; }
-.event-line { display: flex; align-items: center; gap: 0.5rem; }
-.event-title, .event-time { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.event-title { font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 0.875rem; }
-.event-time { font-family: 'Poppins', sans-serif; font-size: 0.75rem; }
+.vuecal__no-event { display: none; }
+
+.vuecal__time-cell::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 3.5rem;
+    right: 0;
+    height: 1px;
+    background-color: #f3f4f6;
+}
+.vuecal__time-cell:nth-of-type(2n+1)::after {
+    background-color: #e5e7eb;
+}
+
+.vuecal__current-time-indicator {
+    border-top: 2px solid #ef4444;
+    z-index: 1;
+}
+.vuecal__current-time-indicator::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: 3rem;
+    width: 10px;
+    height: 10px;
+    background-color: #ef4444;
+    border-radius: 50%;
+}
+
+.custom-event-content {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+.event-details-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.patient-avatar-placeholder {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: #c7d2fe;
+    color: var(--azul-principal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.event-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    overflow: hidden;
+}
+
+.event-line {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #374151;
+}
+.event-line svg {
+    flex-shrink: 0;
+    color: #6b7280;
+}
+.event-title {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #312e81;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.event-time {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.85rem;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.event-actions {
+    display: flex;
+    gap: 0.5rem;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+    flex-shrink: 0;
+}
+.vuecal__event:hover .event-actions,
+.custom-event-content.current .event-actions {
+    opacity: 1;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    width: 36px;
+    height: 36px;
+}
+.action-btn.confirm {
+    background-color: #dcfce7;
+    color: #16a34a;
+}
+.action-btn.confirm:hover {
+    background-color: #bbf7d0;
+}
+.action-btn.start {
+    background-color: var(--azul-principal);
+    color: var(--branco);
+}
+.action-btn.start:hover {
+    background-color: var(--azul-escuro);
+}
 </style>
 
 <style scoped>
@@ -246,9 +427,32 @@ async function handleStatusChange({ appointmentId, newStatus }) {
 .appointment-line { display: flex; align-items: center; gap: 0.5rem; font-size: 1rem; font-weight: 600; }
 .appointment-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
 .loading-state { color: var(--cinza-texto); padding: 2rem 0; }
-.calendar-scroll-container { max-height: 600px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 1rem; background-color: var(--branco); }
+
+.calendar-scroll-container { flex-grow: 1; max-height: 600px; overflow-y: auto; }
 .calendar-scroll-container::-webkit-scrollbar { width: 8px; }
-.calendar-scroll-container::-webkit-scrollbar-track { background: #f9fafb; border-radius: 1rem; }
+.calendar-scroll-container::-webkit-scrollbar-track { background: #f9fafb; }
 .calendar-scroll-container::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 8px; }
 .calendar-scroll-container::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
+
+.empty-agenda {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #9ca3af;
+}
+.empty-agenda svg {
+    margin-bottom: 1.5rem;
+}
+.empty-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #4b5563;
+}
+.empty-text {
+    color: var(--cinza-texto);
+}
 </style>

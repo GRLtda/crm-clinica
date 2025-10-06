@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { register as apiRegister, login as apiLogin, getMe } from '@/api/auth'
 import apiClient from '@/api/index'
+import { useClinicStore } from './clinic'
 
 export const useAuthStore = defineStore('auth', () => {
   const storedUser = localStorage.getItem('user')
@@ -20,6 +21,10 @@ export const useAuthStore = defineStore('auth', () => {
   function setUser(newUser) {
     user.value = newUser
     localStorage.setItem('user', JSON.stringify(newUser))
+    if (newUser?.clinic) {
+      const clinicStore = useClinicStore()
+      clinicStore.setClinic(newUser.clinic)
+    }
   }
 
   async function fetchUser() {
@@ -82,6 +87,8 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('user')
     localStorage.removeItem('token')
     delete apiClient.defaults.headers.common['Authorization']
+    const clinicStore = useClinicStore()
+    clinicStore.setClinic(null)
   }
 
   function checkAuth() {

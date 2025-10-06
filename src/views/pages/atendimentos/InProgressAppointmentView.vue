@@ -6,10 +6,12 @@ import { useRecordsStore } from '@/stores/records'
 import { usePatientsStore } from '@/stores/patients'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
-import Underline from '@tiptap/extension-underline' // Para manter a funcionalidade de sublinhado
+import Underline from '@tiptap/extension-underline'
 
 import EditorToolbar from '@/components/shared/EditorToolbar.vue'
 import StyledSelect from '@/components/global/StyledSelect.vue'
+import RecordAttachments from '@/components/pages/appointments/RecordAttachments.vue'
+import SaveStatusIndicator from '@/components/shared/SaveStatusIndicator.vue'
 import {
   User,
   Calendar,
@@ -30,6 +32,8 @@ const recordsStore = useRecordsStore()
 const patientsStore = usePatientsStore()
 const toast = useToast()
 
+let debounceTimeout = null
+
 const appointmentId = route.params.appointmentId
 const patientId = route.params.patientId
 
@@ -37,7 +41,10 @@ const appointment = ref(null)
 const patient = ref(null)
 const activeTab = ref('record')
 const selectedModel = ref(null)
-const isViewMode = ref(false) // Controla o modo de visualização
+const isViewMode = ref(false)
+const currentRecord = computed(() => recordsStore.currentRecord)
+const saveStatus = ref('idle')
+const lastSaved = ref(null)
 
 // Cronômetro
 const elapsedTimeInSeconds = ref(0)
@@ -46,7 +53,6 @@ const formattedElapsedTime = computed(() => {
   const hours = Math.floor(elapsedTimeInSeconds.value / 3600)
   const minutes = Math.floor((elapsedTimeInSeconds.value % 3600) / 60)
   const seconds = elapsedTimeInSeconds.value % 60
-
   if (hours > 0) {
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(
       seconds,
@@ -61,18 +67,52 @@ const recordModels = ref([
   { label: 'Avaliação Inicial', value: 'avaliacao-inicial' },
 ])
 
+async function autoSave() {
+  let recordId = recordsStore.currentRecord?._id
+  const content = editor.value.getHTML()
+
+  if (recordsStore.currentRecord && recordsStore.currentRecord.content === content) {
+    saveStatus.value = 'saved'
+    return
+  }
+
+  const recordData = {
+    patientId: patientId,
+    appointmentId: appointmentId,
+    content: content,
+  }
+
+  let result
+  if (recordId) {
+    result = await recordsStore.updateRecord(recordId, recordData)
+  } else {
+    result = await recordsStore.createRecord(recordData)
+  }
+
+  if (result.success) {
+    saveStatus.value = 'saved'
+    lastSaved.value = new Date()
+  } else {
+    saveStatus.value = 'error'
+  }
+}
+
 const editor = useEditor({
-  content: '', // Inicia vazio para carregar o conteúdo depois
-  extensions: [
-    // Configuração simplificada para garantir que o HTML seja renderizado
-    StarterKit,
-    // Adicionamos extensões que não fazem parte do StarterKit, como o Underline
-    Underline,
-  ],
+  content: '',
+  extensions: [StarterKit, Underline],
   editorProps: {
     attributes: {
       class: 'prose focus:outline-none max-w-none',
     },
+  },
+  onUpdate() {
+    if (isViewMode.value) return
+
+    saveStatus.value = 'saving'
+    clearTimeout(debounceTimeout)
+    debounceTimeout = setTimeout(() => {
+      autoSave()
+    }, 1500)
   },
 })
 
@@ -91,25 +131,28 @@ const patientAge = computed(() => {
 })
 
 onMounted(async () => {
-  // ATENÇÃO: Esta linha pode precisar de ajuste se o agendamento não for de hoje.
-  // O ideal seria ter uma store.fetchAppointmentById(appointmentId)
-  await appointmentsStore.fetchAppointmentsByDate(new Date().toISOString().split('T')[0])
-  appointment.value = appointmentsStore.appointments.find((appt) => appt._id === appointmentId)
   await patientsStore.fetchPatientById(patientId)
   patient.value = patientsStore.selectedPatient
+  await appointmentsStore.fetchAppointmentsByDate()
+  appointment.value = appointmentsStore.appointments.find((appt) => appt._id === appointmentId)
 
-  // Lógica de Visualização vs. Criação
-  if (appointment.value && appointment.value.status === 'Realizado') {
+  if (!appointment.value) {
+    toast.error('Agendamento não encontrado.')
+    router.push('/app/atendimentos')
+    return
+  }
+
+  await recordsStore.fetchRecordByAppointmentId(appointmentId)
+
+  if (appointment.value.status === 'Realizado') {
     isViewMode.value = true
     editor.value.setEditable(false)
+  }
 
-    const { success, data: record } = await recordsStore.fetchRecordByAppointmentId(appointmentId)
-    if (success && record) {
-      editor.value.commands.setContent(record.content)
-    } else {
-      editor.value.commands.setContent('<h2>Registro não encontrado.</h2>')
-      toast.error('Não foi possível carregar as anotações deste atendimento.')
-    }
+  if (currentRecord.value) {
+    editor.value.commands.setContent(currentRecord.value.content)
+    saveStatus.value = 'saved'
+    lastSaved.value = new Date(currentRecord.value.updatedAt)
   } else {
     const defaultRecordContent = `
       <h2>Queixa Principal:</h2><p></p>
@@ -119,6 +162,11 @@ onMounted(async () => {
       <h2>Condutas/Plano Terapêutico:</h2><p></p>
     `
     editor.value.commands.setContent(defaultRecordContent)
+    saveStatus.value = 'idle'
+  }
+
+  if (!isViewMode.value) {
+    elapsedTimeInSeconds.value = currentRecord.value?.durationInSeconds || 0
     timerInterval.value = setInterval(() => {
       elapsedTimeInSeconds.value++
     }, 1000)
@@ -156,37 +204,43 @@ function loadModel(modelValue) {
     `
   }
   editor.value.commands.setContent(content)
+  saveStatus.value = 'saving';
+  clearTimeout(debounceTimeout);
+  debounceTimeout = setTimeout(autoSave, 500);
 }
 
+// ✨ LÓGICA DE FINALIZAR CORRIGIDA ✨
 async function saveAndFinish() {
   if (!appointment.value) {
     toast.error('Erro ao finalizar: Dados do agendamento não encontrados.')
-    console.error("Falha ao salvar: a referência ao 'appointment' está indefinida.")
     return
   }
 
-  const recordData = {
-    patientId: patientId,
-    appointmentId: appointment.value._id,
-    content: editor.value.getHTML(),
-    durationInSeconds: elapsedTimeInSeconds.value,
+  // 1. Garante que o último estado do editor seja salvo no prontuário
+  clearTimeout(debounceTimeout)
+  await autoSave() // Salva o conteúdo final
+
+  if (saveStatus.value === 'error') {
+    toast.error('Não foi possível salvar as últimas alterações. Tente novamente.')
+    return
   }
 
-  const { success: recordSuccess } = await recordsStore.createRecord(recordData)
 
-  if (recordSuccess) {
-    const { success: appointmentStatusSuccess } = await appointmentsStore.updateAppointmentStatus(
-      appointment.value._id,
-      'Realizado',
-    )
-    if (appointmentStatusSuccess) {
-      toast.success('Atendimento finalizado e prontuário salvo!')
-      router.push('/app/atendimentos')
-    } else {
-      toast.error('Prontuário salvo, mas houve um erro ao atualizar o status do agendamento.')
-    }
+
+  // 3. SEPARADAMENTE, atualiza o status do AGENDAMENTO
+  const { success: appointmentStatusSuccess } = await appointmentsStore.updateAppointmentStatus(
+    appointment.value._id,
+    'Realizado',
+  )
+
+  if (appointmentStatusSuccess) {
+    toast.success('Atendimento finalizado e prontuário salvo!')
+    router.push('/app/atendimentos')
+  } else {
+    toast.error('Prontuário salvo, mas houve um erro ao atualizar o status do agendamento.')
   }
 }
+
 const menuItems = [
   { id: 'record', label: 'Registro do Atendimento', icon: FileText },
   { id: 'exams', label: 'Exames', icon: Stethoscope },
@@ -204,15 +258,15 @@ const menuItems = [
           {{ isViewMode ? 'Visualizando Atendimento' : 'Novo Atendimento' }}
         </div>
       </div>
-
       <div class="header-center">
         <div v-if="!isViewMode" class="appointment-timer">
           <Clock :size="18" />
           <span>{{ formattedElapsedTime }}</span>
         </div>
       </div>
-
       <div class="header-right">
+        <SaveStatusIndicator v-if="!isViewMode" :status="saveStatus" :last-saved="lastSaved" />
+
         <button v-if="isViewMode" @click="router.back()" class="btn-secondary-solid">
           <ArrowLeft :size="16" />
           Voltar
@@ -241,7 +295,7 @@ const menuItems = [
             </div>
             <div class="detail-row">
               <span>Convênio</span>
-              <span class="value">{{ patient.healthInsurance || 'Particular' }}</span>
+              <span class="value">{{ patient.healthInsurance || '----' }}</span>
             </div>
             <div class="detail-row">
               <span>Primeiro Atend.</span>
@@ -253,7 +307,6 @@ const menuItems = [
             </div>
           </div>
         </div>
-
         <nav class="side-menu">
           <button
             v-for="item in menuItems"
@@ -268,43 +321,42 @@ const menuItems = [
       </aside>
 
       <main class="editor-main-content">
-        <div v-if="activeTab === 'record'">
-          <div class="editor-header">
-            <div class="editor-section-title">
-              <FileText :size="22" stroke-width="2.5" class="title-icon" />
-              <h3>{{ isViewMode ? 'Anotações do Atendimento' : 'Novo registro' }}</h3>
-            </div>
-            <div v-if="!isViewMode" class="modelos-dropdown">
-              <StyledSelect
-                :options="recordModels"
-                v-model="selectedModel"
-                label="Modelos"
-                @update:modelValue="loadModel"
-                placeholder="Selecionar modelo"
-              />
-            </div>
-          </div>
+        <div v-if="activeTab === 'record'" class="tab-content">
           <div class="editor-wrapper">
-            <EditorToolbar v-if="editor && !isViewMode" :editor="editor" />
+            <div v-if="editor && !isViewMode" class="combined-toolbar">
+              <EditorToolbar :editor="editor" />
+              <div class="modelos-dropdown">
+                <StyledSelect
+                  :options="recordModels"
+                  v-model="selectedModel"
+                  @update:modelValue="loadModel"
+                  placeholder="Usar modelo"
+                />
+              </div>
+            </div>
+            <div v-if="isViewMode" class="view-mode-header">
+              <FileText :size="22" stroke-width="2.5" />
+              <h3>Anotações do Atendimento</h3>
+            </div>
             <EditorContent v-if="editor" :editor="editor" class="editor-content" />
           </div>
         </div>
 
-        <div v-else-if="activeTab === 'exams'">
+        <div v-else-if="activeTab === 'exams'" class="tab-content">
           <h2 class="tab-title">Exames</h2>
-          <p>Conteúdo para Exames</p>
         </div>
-        <div v-else-if="activeTab === 'prescriptions'">
+        <div v-else-if="activeTab === 'prescriptions'" class="tab-content">
           <h2 class="tab-title">Prescrições</h2>
-          <p>Conteúdo para Prescrições</p>
         </div>
-        <div v-else-if="activeTab === 'documents'">
+        <div v-else-if="activeTab === 'documents'" class="tab-content">
           <h2 class="tab-title">Documentos</h2>
-          <p>Conteúdo para Documentos</p>
         </div>
-        <div v-else-if="activeTab === 'images'">
-          <h2 class="tab-title">Imagens e Anexos</h2>
-          <p>Conteúdo para Imagens e Anexos</p>
+        <div v-else-if="activeTab === 'images'" class="tab-content">
+          <RecordAttachments
+            :record="currentRecord"
+            :patient-id="patientId"
+            :appointment-id="appointmentId"
+          />
         </div>
       </main>
     </div>
@@ -312,15 +364,15 @@ const menuItems = [
 </template>
 
 <style scoped>
-/* Layout geral */
+/* Estilos permanecem os mesmos */
 .in-progress-appointment-layout {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 93vh;
   background-color: #f8f9fa;
+  border-radius: 1vh;
   overflow: hidden;
 }
-
 .top-bar {
   display: flex;
   justify-content: space-between;
@@ -339,19 +391,19 @@ const menuItems = [
 .header-right {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 1rem;
 }
 .header-center {
   flex: 1;
   display: flex;
   justify-content: center;
 }
-
 .header-title {
   font-size: 1.25rem;
   font-weight: 600;
   color: #333;
 }
-
 .appointment-timer {
   display: flex;
   align-items: center;
@@ -363,7 +415,6 @@ const menuItems = [
   padding: 0.5rem 1rem;
   border-radius: 9999px;
 }
-
 .btn-finish-appointment {
   display: inline-flex;
   align-items: center;
@@ -380,16 +431,13 @@ const menuItems = [
     background-color 0.3s ease,
     color 0.3s ease;
 }
-
 .btn-finish-appointment:hover:not(:disabled) {
   background-color: #bbf7d0;
 }
-
 .btn-finish-appointment:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
-
 .btn-secondary-solid {
   display: inline-flex;
   align-items: center;
@@ -407,14 +455,11 @@ const menuItems = [
 .btn-secondary-solid:hover {
   background-color: #e2e8f0;
 }
-
 .content-area {
   flex-grow: 1;
   display: flex;
   overflow: hidden;
 }
-
-/* Coluna Esquerda */
 .left-sidebar {
   width: 320px;
   background-color: var(--branco);
@@ -423,7 +468,6 @@ const menuItems = [
   flex-shrink: 0;
   overflow-y: auto;
 }
-
 .patient-card {
   display: flex;
   align-items: center;
@@ -432,7 +476,6 @@ const menuItems = [
   margin-bottom: 1.5rem;
   border-bottom: 1px solid #e5e7eb;
 }
-
 .patient-card .avatar {
   width: 56px;
   height: 56px;
@@ -445,13 +488,11 @@ const menuItems = [
   font-size: 1.75rem;
   font-weight: 600;
 }
-
 .patient-card .patient-details .name {
   font-size: 1.25rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
 }
-
 .patient-card .detail-row {
   display: flex;
   justify-content: space-between;
@@ -459,18 +500,15 @@ const menuItems = [
   color: var(--cinza-texto);
   margin-bottom: 0.25rem;
 }
-
 .patient-card .detail-row .value {
   font-weight: 500;
   color: #333;
 }
-
 .side-menu {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
-
 .side-menu button {
   display: flex;
   align-items: center;
@@ -488,81 +526,72 @@ const menuItems = [
     color 0.2s ease;
   white-space: nowrap;
 }
-
 .side-menu button:hover {
   background-color: #f3f4f6;
   color: #333;
 }
-
 .side-menu button.is-active {
   background-color: #eef2ff;
   color: var(--azul-principal);
   font-weight: 600;
 }
-
-/* Coluna Central - Editor */
 .editor-main-content {
   flex-grow: 1;
   padding: 1.5rem 2rem;
   overflow-y: auto;
-}
-
-.editor-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
+  flex-direction: column;
 }
-
-.editor-section-title {
+.tab-content {
+  height: 100%;
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: #333;
+  flex-direction: column;
 }
-
-.editor-section-title .title-icon {
-  flex-shrink: 0;
-}
-
-.editor-section-title h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.modelos-dropdown {
-  width: 200px;
-}
-
 .editor-wrapper {
   background-color: var(--branco);
   border: 1px solid #e5e7eb;
   border-radius: 0.75rem;
   display: flex;
   flex-direction: column;
-  min-height: 60vh;
+  flex-grow: 1;
+  overflow: hidden;
 }
-
+.combined-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+.modelos-dropdown {
+  width: 200px;
+}
+.view-mode-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #333;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+}
+.view-mode-header h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
 .editor-content {
   flex-grow: 1;
   padding: 1.5rem;
   outline: none;
   font-size: 1rem;
   line-height: 1.6;
+  overflow-y: auto;
 }
-
-/* Estilos para o conteúdo do Tiptap (prose mirror) */
-.editor-content :deep(.ProseMirror) {
-  min-height: 100%;
-}
-.editor-content :deep(.ProseMirror strong) {
-  font-weight: bold;
-}
-.editor-content :deep(.ProseMirror em) {
-  font-style: italic;
-}
-
+.editor-content :deep(.ProseMirror) { min-height: 100%; }
+.editor-content :deep(.ProseMirror strong) { font-weight: bold; }
+.editor-content :deep(.ProseMirror em) { font-style: italic; }
 .editor-content :deep(.ProseMirror h1),
 .editor-content :deep(.ProseMirror h2),
 .editor-content :deep(.ProseMirror h3) {
@@ -571,30 +600,17 @@ const menuItems = [
   margin-bottom: 0.75rem;
   line-height: 1.2;
 }
-.editor-content :deep(.ProseMirror h1) {
-  font-size: 1.875rem;
-  font-weight: 700;
-}
-.editor-content :deep(.ProseMirror h2) {
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-.editor-content :deep(.ProseMirror h3) {
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-.editor-content :deep(.ProseMirror p) {
-  margin-bottom: 1rem;
-}
+.editor-content :deep(.ProseMirror h1) { font-size: 1.875rem; font-weight: 700; }
+.editor-content :deep(.ProseMirror h2) { font-size: 1.5rem; font-weight: 600; }
+.editor-content :deep(.ProseMirror h3) { font-size: 1.25rem; font-weight: 600; }
+.editor-content :deep(.ProseMirror p) { margin-bottom: 1rem; }
 .editor-content :deep(.ProseMirror ul),
 .editor-content :deep(.ProseMirror ol) {
   margin-left: 1.5rem;
   margin-bottom: 1rem;
   padding: 0;
 }
-.editor-content :deep(.ProseMirror li) {
-  margin-bottom: 0.5rem;
-}
+.editor-content :deep(.ProseMirror li) { margin-bottom: 0.5rem; }
 .editor-content :deep(.ProseMirror blockquote) {
   border-left: 4px solid #d1d5db;
   padding-left: 1rem;
@@ -620,7 +636,6 @@ const menuItems = [
   color: var(--azul-principal);
   text-decoration: underline;
 }
-
 .tab-title {
   font-size: 1.5rem;
   font-weight: 600;

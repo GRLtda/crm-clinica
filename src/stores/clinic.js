@@ -1,3 +1,5 @@
+// src/stores/clinic.js
+
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { createClinic as apiCreateClinic, updateClinic as apiUpdateClinic } from '@/api/clinics'
@@ -6,10 +8,15 @@ import { useAuthStore } from './auth'
 export const useClinicStore = defineStore('clinic', () => {
   const currentClinic = ref(null)
 
+  // ✨ NOVA FUNÇÃO: Permite que outras stores (como a de auth) setem a clínica
+  function setClinic(clinicData) {
+    currentClinic.value = clinicData
+  }
+
   async function createClinic(clinicData) {
     try {
       const response = await apiCreateClinic(clinicData)
-      currentClinic.value = response.data
+      setClinic(response.data) // Usando a nova função
 
       const authStore = useAuthStore()
       await authStore.fetchUser()
@@ -24,7 +31,7 @@ export const useClinicStore = defineStore('clinic', () => {
   async function updateClinicDetails(clinicData) {
     try {
       const response = await apiUpdateClinic(clinicData)
-      currentClinic.value = response.data
+      setClinic(response.data) // Usando a nova função
 
       const authStore = useAuthStore()
       if (authStore.user) {
@@ -38,5 +45,5 @@ export const useClinicStore = defineStore('clinic', () => {
     }
   }
 
-  return { currentClinic, createClinic, updateClinicDetails }
+  return { currentClinic, createClinic, updateClinicDetails, setClinic }
 })

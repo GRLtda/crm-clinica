@@ -19,18 +19,21 @@ const patientsStore = usePatientsStore()
 const router = useRouter()
 const toast = useToast()
 
-const patients = computed(() => patientsStore.patients)
+// ✨ CORRIGIDO: para usar 'allPatients' da store
+const patients = computed(() => patientsStore.allPatients)
 const pagination = computed(() => patientsStore.pagination)
 const actionsMenuOpenFor = ref(null)
 const isInitialLoad = ref(true)
 
 onMounted(async () => {
-  await patientsStore.fetchPatients(1)
+  // ✨ CORRIGIDO: para usar 'fetchAllPatients' da store
+  await patientsStore.fetchAllPatients(1)
   isInitialLoad.value = false
 })
 
 function handlePageChange(newPage) {
-  patientsStore.fetchPatients(newPage)
+  // ✨ CORRIGIDO: para usar 'fetchAllPatients' da store
+  patientsStore.fetchAllPatients(newPage)
 }
 
 function goToPatient(patientId) {
@@ -44,13 +47,15 @@ function toggleActionsMenu(patientId) {
   actionsMenuOpenFor.value = actionsMenuOpenFor.value === patientId ? null : patientId
 }
 
+// Para esta função funcionar, sua store precisa da action 'deletePatient'
 async function handleDelete(patientId) {
   if (confirm('Tem certeza que deseja excluir este paciente? Esta ação não pode ser desfeita.')) {
     const { success } = await patientsStore.deletePatient(patientId)
     if (success) {
       toast.success('Paciente excluído com sucesso!')
+      // A store já deve remover o paciente da lista, então a UI atualiza
     } else {
-      toast.error('Não foi possível excluir o paciente.')
+      toast.error(patientsStore.error || 'Não foi possível excluir o paciente.')
     }
   }
   actionsMenuOpenFor.value = null
@@ -197,7 +202,6 @@ const formatCPF = (cpf) => {
 .btn-primary:hover {
   background-color: var(--azul-escuro);
 }
-
 .table-wrapper {
   background-color: var(--branco);
   border: 1px solid #e5e7eb;
@@ -205,15 +209,13 @@ const formatCPF = (cpf) => {
   overflow: hidden;
   position: relative;
 }
-
 .table-wrapper.is-loading .table-container {
   opacity: 0.5;
   pointer-events: none;
 }
-
 .table-container {
   overflow-x: auto;
-  height: 70vh;
+  min-height: 60vh; /* Garante uma altura mínima para a tabela */
   transition: opacity 0.3s ease;
 }
 table {
@@ -222,7 +224,7 @@ table {
 }
 th,
 td {
-  padding: 0.75rem 1rem;
+  padding: 1rem 1.5rem; /* Aumenta o padding para mais respiro */
   text-align: left;
   border-bottom: 1px solid #e5e7eb;
   vertical-align: middle;
@@ -238,15 +240,13 @@ th {
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
-
 .th-content {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
-
 .avatar-header {
-  width: 60px;
+  width: 72px; /* Aumenta o espaço do avatar */
 }
 th.actions-header {
   width: 100px;
@@ -254,16 +254,16 @@ th.actions-header {
 th.actions-header .th-content {
   justify-content: flex-end;
 }
-
 .patient-row {
   cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 .patient-row:hover td {
   background-color: #f9fafb;
 }
 .patient-avatar {
-  width: 36px;
-  height: 36px;
+  width: 40px; /* Aumenta o avatar */
+  height: 40px;
   border-radius: 50%;
   background-color: #eef2ff;
   color: var(--azul-principal);
@@ -271,15 +271,17 @@ th.actions-header .th-content {
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 1.1rem;
 }
 .patient-name {
-  font-weight: 500;
+  font-weight: 600; /* Deixa o nome mais forte */
+  color: #111827;
 }
 .state-cell {
-  padding: 2rem;
+  padding: 4rem; /* Aumenta o padding do estado vazio/carregando */
   text-align: center;
   color: var(--cinza-texto);
+  font-size: 1rem;
 }
 .actions-cell {
   text-align: right;
@@ -311,14 +313,14 @@ th.actions-header .th-content {
   border-radius: 0.75rem;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   z-index: 10;
-  width: 120px;
+  width: 140px; /* Aumenta a largura do dropdown */
   padding: 0.5rem;
 }
 .dropdown-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem;
+  gap: 0.75rem; /* Aumenta o espaçamento interno */
+  padding: 0.6rem;
   border-radius: 0.5rem;
   width: 100%;
   background: none;
@@ -327,6 +329,7 @@ th.actions-header .th-content {
   text-decoration: none;
   color: #374151;
   font-size: 0.875rem;
+  font-weight: 500; /* Deixa o texto do item mais forte */
 }
 .dropdown-item:hover {
   background-color: #f3f4f6;
@@ -337,7 +340,6 @@ th.actions-header .th-content {
 .dropdown-item.delete:hover {
   background-color: #fee2e2;
 }
-
 .fade-enter-active,
 .fade-leave-active {
   transition:
