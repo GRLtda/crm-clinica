@@ -17,6 +17,7 @@ export default defineConfig({
         getHash: (content) => createHash('sha256').update(content).digest('hex'),
       },
     }),
+    vueDevTools(),
   ],
   resolve: {
     alias: {
