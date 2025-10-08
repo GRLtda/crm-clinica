@@ -12,7 +12,6 @@ import EditorToolbar from '@/components/shared/EditorToolbar.vue'
 import StyledSelect from '@/components/global/StyledSelect.vue'
 import RecordAttachments from '@/components/pages/appointments/RecordAttachments.vue'
 import SaveStatusIndicator from '@/components/shared/SaveStatusIndicator.vue'
-// A importação do EmptyState foi removida daqui
 
 import {
   User,
@@ -24,9 +23,10 @@ import {
   ChevronRight,
   Clock,
   ArrowLeft,
-  FlaskConical, // Ícone para Exames
-  FilePlus2, // Ícone para Documentos
-  Pill, // Ícone para Prescrições
+  FlaskConical,
+  FilePlus2,
+  Pill,
+  LoaderCircle, // 👈 1. Importar o ícone de loading
 } from 'lucide-vue-next'
 import { useToast } from 'vue-toastification'
 
@@ -46,7 +46,11 @@ const appointment = ref(null)
 const patient = ref(null)
 const activeTab = ref('record')
 const selectedModel = ref(null)
-const isViewMode = ref(false)
+
+// 👇 2. Iniciar o modo de visualização como indefinido e adicionar um estado de loading
+const isViewMode = ref()
+const isLoadingData = ref(true)
+
 const currentRecord = computed(() => recordsStore.currentRecord)
 const saveStatus = ref('idle')
 const lastSaved = ref(null)
@@ -136,6 +140,8 @@ const patientAge = computed(() => {
 })
 
 onMounted(async () => {
+  isLoadingData.value = true // Manter o loading ativo
+
   await patientsStore.fetchPatientById(patientId)
   patient.value = patientsStore.selectedPatient
   await appointmentsStore.fetchAppointmentsByDate()
@@ -147,10 +153,12 @@ onMounted(async () => {
     return
   }
 
+  // 👇 3. Determina o modo correto ANTES de carregar o conteúdo do editor
+  isViewMode.value = appointment.value.status === 'Realizado'
+
   await recordsStore.fetchRecordByAppointmentId(appointmentId)
 
-  if (appointment.value.status === 'Realizado') {
-    isViewMode.value = true
+  if (isViewMode.value) {
     editor.value.setEditable(false)
   }
 
@@ -176,7 +184,11 @@ onMounted(async () => {
       elapsedTimeInSeconds.value++
     }, 1000)
   }
+
+  // 👇 4. Apenas no final, desativa o loading para exibir a tela já no modo correto
+  isLoadingData.value = false
 })
+
 
 onBeforeUnmount(() => {
   editor.value?.destroy()
@@ -214,25 +226,20 @@ function loadModel(modelValue) {
   debounceTimeout = setTimeout(autoSave, 500);
 }
 
-// ✨ LÓGICA DE FINALIZAR CORRIGIDA ✨
 async function saveAndFinish() {
   if (!appointment.value) {
     toast.error('Erro ao finalizar: Dados do agendamento não encontrados.')
     return
   }
 
-  // 1. Garante que o último estado do editor seja salvo no prontuário
   clearTimeout(debounceTimeout)
-  await autoSave() // Salva o conteúdo final
+  await autoSave()
 
   if (saveStatus.value === 'error') {
     toast.error('Não foi possível salvar as últimas alterações. Tente novamente.')
     return
   }
 
-
-
-  // 3. SEPARADAMENTE, atualiza o status do AGENDAMENTO
   const { success: appointmentStatusSuccess } = await appointmentsStore.updateAppointmentStatus(
     appointment.value._id,
     'Realizado',
@@ -256,7 +263,12 @@ const menuItems = [
 </script>
 
 <template>
-  <div class="in-progress-appointment-layout">
+  <div v-if="isLoadingData" class="loading-container">
+    <LoaderCircle :size="48" class="animate-spin" />
+    <p>Carregando atendimento...</p>
+  </div>
+
+  <div v-else class="in-progress-appointment-layout">
     <header class="top-bar">
       <div class="header-left">
         <div class="header-title">
@@ -407,7 +419,30 @@ const menuItems = [
 </template>
 
 <style scoped>
-/* Estilos permanecem os mesmos */
+/* 👇 6. Adicionar estilos para o container de loading */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 93vh;
+  gap: 1rem;
+  color: var(--cinza-texto);
+  background-color: #f8f9fa;
+}
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* O resto dos estilos permanece igual */
 .in-progress-appointment-layout {
   display: flex;
   flex-direction: column;

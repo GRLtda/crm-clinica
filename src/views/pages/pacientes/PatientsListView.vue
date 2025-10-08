@@ -270,7 +270,7 @@ const formatCPF = (cpf) => {
 }
 .table-container {
   overflow-x: auto;
-  min-height: 60vh; /* Garante uma altura mínima para a tabela */
+  height: 75vh;
   transition: opacity 0.3s ease;
 }
 table {

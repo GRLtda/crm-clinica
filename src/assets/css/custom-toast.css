@@ -1,0 +1,67 @@
+/* Sobrescreve o container principal do toast */
+.Vue-Toastification__container {
+  right: 1.5rem !important;
+  bottom: 1.5rem !important;
+}
+
+/* Estilo base para cada toast individual */
+.Vue-Toastification__toast {
+  min-height: 60px;
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem; /* Bordas mais arredondadas */
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08); /* Sombra sutil */
+  border: 1px solid #e5e7eb;
+  background-color: var(--branco);
+  color: #374151; /* Cor de texto mais suave */
+  font-family: var(--fonte-principal);
+  font-weight: 500;
+}
+
+/* Remove a barra colorida padrão */
+.Vue-Toastification__toast::before {
+  display: none;
+}
+
+/* Estiliza o ícone que vem por padrão */
+.Vue-Toastification__toast-icon {
+  width: 20px !important;
+  height: 20px !important;
+  margin-right: 12px !important;
+}
+
+/* Cores específicas para cada tipo de toast */
+.Vue-Toastification__toast--success {
+  background-color: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #15803d;
+}
+.Vue-Toastification__toast--success .Vue-Toastification__toast-icon {
+  color: #22c55e;
+}
+
+.Vue-Toastification__toast--error {
+  background-color: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+.Vue-Toastification__toast--error .Vue-Toastification__toast-icon {
+  color: #ef4444;
+}
+
+.Vue-Toastification__toast--info {
+  background-color: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+.Vue-Toastification__toast--info .Vue-Toastification__toast-icon {
+  color: var(--azul-principal);
+}
+
+/* Estilo do botão de fechar */
+.Vue-Toastification__close-button {
+  color: #9ca3af;
+  opacity: 1;
+}
+.Vue-Toastification__close-button:hover {
+  color: var(--preto);
+} 

@@ -2,18 +2,48 @@
 import { onMounted, computed, ref } from 'vue'
 import { useAppointmentsStore } from '@/stores/appointments'
 import { useRouter } from 'vue-router'
-import { Play, FileText, CalendarDays, Plus } from 'lucide-vue-next'
+// ✨ 1. ÍCONE DE BUSCA IMPORTADO ✨
+import { CalendarDays, Plus, User, CheckCircle, Clock, Search } from 'lucide-vue-next'
 import CreateAppointmentModal from '@/components/pages/dashboard/CreateAppointmentModal.vue'
 import AppointmentInfoPopover from '@/components/pages/atendimentos/AppointmentInfoPopover.vue'
 
 const appointmentsStore = useAppointmentsStore()
 const router = useRouter()
-const appointments = computed(() => appointmentsStore.appointments)
 
 const isModalOpen = ref(false)
-
-// 💡 CORREÇÃO AQUI: Mudamos 'position' para 'event' para ficar mais claro
 const activePopover = ref({ appointment: null, event: null })
+
+// ✨ 2. LÓGICA DE BUSCA E FILTRAGEM ✨
+const searchQuery = ref('')
+
+const filteredAndSortedAppointments = computed(() => {
+  if (!appointmentsStore.appointments || appointmentsStore.appointments.length === 0) return []
+
+  // 1. Filtra primeiro
+  const filtered = appointmentsStore.appointments.filter((appt) =>
+    appt.patient.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+  )
+
+  // 2. Depois ordena
+  const statusOrder = {
+    Confirmado: 1,
+    Agendado: 2,
+    Realizado: 3,
+    Cancelado: 4,
+    'Nao Compareceu': 5,
+  }
+
+  return filtered.sort((a, b) => {
+    const orderA = statusOrder[a.status] || 99
+    const orderB = statusOrder[b.status] || 99
+
+    if (orderA !== orderB) {
+      return orderA - orderB
+    }
+
+    return new Date(a.startTime) - new Date(b.startTime)
+  })
+})
 
 onMounted(() => {
   appointmentsStore.fetchAppointmentsByDate()
@@ -38,7 +68,6 @@ function goToAppointmentPage(appt) {
   }
 }
 
-// 💡 CORREÇÃO AQUI: Salvamos o objeto 'event' inteiro
 function openPopover(appointment, event) {
   activePopover.value = {
     appointment: appointment,
@@ -58,16 +87,27 @@ function closePopover() {
         <h1 class="title">Atendimentos de Hoje</h1>
         <p class="subtitle">Confirme a chegada e inicie os atendimentos dos seus pacientes.</p>
       </div>
-      <button class="btn-primary" @click="openCreateModal">
-        <Plus :size="16" />
-        Marcar Atendimento
-      </button>
+      <div class="header-actions">
+        <div class="search-wrapper">
+          <Search :size="18" class="search-icon" />
+          <input
+            type="text"
+            v-model="searchQuery"
+            placeholder="Buscar por paciente..."
+            class="search-input"
+          />
+        </div>
+        <button class="btn-primary" @click="openCreateModal">
+          <Plus :size="16" />
+          Marcar Atendimento
+        </button>
+      </div>
     </header>
 
     <div class="content-wrapper">
       <div v-if="appointmentsStore.isLoading" class="state-cell">Carregando agendamentos...</div>
 
-      <div v-else-if="appointments.length === 0" class="empty-state">
+      <div v-else-if="filteredAndSortedAppointments.length === 0" class="empty-state">
         <div class="empty-state-icon">
           <CalendarDays :size="48" />
         </div>
@@ -81,29 +121,53 @@ function closePopover() {
         </button>
       </div>
 
-      <div v-else class="appointments-list">
-        <div
-          v-for="appt in appointments"
-          :key="appt._id"
-          class="appointment-card"
-          @click="openPopover(appt, $event)"
-        >
-          <div class="patient-info">
-            <div class="patient-avatar">{{ appt.patient.name.charAt(0) }}</div>
-            <div>
-              <div class="patient-name">{{ appt.patient.name }}</div>
-              <div class="appointment-time">
+      <div v-else class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th class="patient-header">
+                <User :size="14" />
+                <span>Paciente</span>
+              </th>
+              <th class="status-header">
+                <CheckCircle :size="14" />
+                <span>Status</span>
+              </th>
+              <th class="time-header">
+                <Clock :size="14" />
+                <span>Horário</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody v-auto-animate>
+            <tr
+              v-for="appt in filteredAndSortedAppointments"
+              :key="appt._id"
+              class="appointment-row"
+              @click="openPopover(appt, $event)"
+            >
+              <td>
+                <div class="patient-info">
+                  <div class="patient-avatar">{{ appt.patient.name.charAt(0) }}</div>
+                  <span class="patient-name">{{ appt.patient.name }}</span>
+                </div>
+              </td>
+              <td>
+                <div class="status-wrapper">
+                  <span
+                    class="appointment-status"
+                    :class="appt.status.toLowerCase().replace(' ', '-')"
+                  >
+                    {{ appt.status }}
+                  </span>
+                </div>
+              </td>
+              <td class="time-cell">
                 {{ formatTime(appt.startTime) }} - {{ formatTime(appt.endTime) }}
-              </div>
-            </div>
-          </div>
-          <div class="status-wrapper">
-            <div class="appointment-status" :class="appt.status.toLowerCase().replace(' ', '-')">
-              {{ appt.status }}
-            </div>
-          </div>
-          <div class="appointment-actions"></div>
-        </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -121,7 +185,6 @@ function closePopover() {
 </template>
 
 <style scoped>
-/* Estilos permanecem os mesmos */
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -136,6 +199,46 @@ function closePopover() {
 .subtitle {
   color: var(--cinza-texto);
 }
+
+/* ✨ 4. ESTILOS PARA O CABEÇALHO PADRONIZADO ✨ */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.search-wrapper {
+  position: relative;
+}
+
+.search-icon {
+  position: absolute;
+  top: 50%;
+  left: 1rem;
+  transform: translateY(-50%);
+  color: var(--cinza-texto);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 280px;
+  height: 44px;
+  padding: 0.75rem 1rem 0.75rem 2.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid #d1d5db;
+  background-color: var(--branco);
+  font-size: 1rem;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--azul-principal);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+/* Fim dos estilos do cabeçalho */
 
 .content-wrapper {
   background-color: var(--branco);
@@ -152,25 +255,59 @@ function closePopover() {
   font-size: 1rem;
 }
 
-.appointments-list {
-  display: flex;
-  flex-direction: column;
+.table-container {
+  overflow-x: auto;
 }
 
-.appointment-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr);
-  align-items: center;
-  gap: 1rem;
-  padding: 1.25rem 1.5rem;
+table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+th,
+td {
+  padding: 1rem 1.5rem;
+  text-align: left;
   border-bottom: 1px solid #e5e7eb;
+  vertical-align: middle;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+th {
+  background-color: #f9fafb;
+  color: var(--cinza-texto);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  display: table-cell;
+  vertical-align: middle;
+}
+
+th > * {
+  vertical-align: middle;
+  margin-right: 0.5rem;
+}
+
+.patient-header {
+  width: 50%;
+}
+.status-header,
+.time-header {
+  width: 25%;
+  text-align: center;
+}
+
+.appointment-row {
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
-.appointment-card:last-child {
-  border-bottom: none;
-}
-.appointment-card:hover {
+.appointment-row:hover {
   background-color: #f9fafb;
 }
 
@@ -200,9 +337,12 @@ function closePopover() {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.appointment-time {
+.time-cell {
   font-size: 0.875rem;
   color: var(--cinza-texto);
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .status-wrapper {
@@ -213,12 +353,17 @@ function closePopover() {
   font-weight: 600;
   padding: 0.25rem 0.75rem;
   border-radius: 99px;
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   width: fit-content;
+  text-transform: capitalize;
 }
 .appointment-status.agendado {
   background-color: #eff6ff;
   color: #2563eb;
+}
+.appointment-status.confirmado {
+  background-color: #fefce8;
+  color: #a16207;
 }
 .appointment-status.realizado {
   background-color: #f0fdf4;
@@ -228,13 +373,12 @@ function closePopover() {
   background-color: #fef2f2;
   color: #dc2626;
 }
-.appointment-status.nao-compareceu {
+.appointment-status.não-compareceu {
   background-color: #f1f5f9;
   color: #64748b;
 }
 
-.btn-primary,
-.btn-secondary {
+.btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -248,23 +392,12 @@ function closePopover() {
   text-decoration: none;
   transition: all 0.2s ease;
   white-space: nowrap;
-}
-
-.btn-primary {
   background-color: var(--azul-principal);
   color: var(--branco);
+  height: 44px; /* Garante a mesma altura da busca */
 }
 .btn-primary:hover {
   background-color: var(--azul-escuro);
-}
-
-.btn-secondary {
-  background-color: var(--branco);
-  color: #374151;
-  border: 1px solid #d1d5db;
-}
-.btn-secondary.btn-icon:hover {
-  background-color: #f3f4f6;
 }
 
 .empty-state {
@@ -274,7 +407,6 @@ function closePopover() {
   justify-content: center;
   text-align: center;
   padding: 4rem 2rem;
-  margin-top: 1rem;
   min-height: 60vh;
 }
 .empty-state-icon {

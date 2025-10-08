@@ -14,6 +14,7 @@ import router from './router'
 // Estilos
 import './assets/css/normalize.css'
 import './assets/css/global.css'
+import './assets/css/custom-toast.css' // 👈 1. Importe o novo arquivo de estilo
 
 const app = createApp(App)
 
@@ -21,19 +22,24 @@ const app = createApp(App)
 app.directive('click-outside', clickOutside)
 app.directive('phone-mask', phoneMask)
 app.directive('cpf-mask', cpfMask)
+
+// 👇 2. Atualize as opções do Toast
 const toastOptions = {
-  position: 'top-right',
-  timeout: 5000,
+  position: 'bottom-right', // Posição alterada
+  timeout: 4000,
   closeOnClick: true,
   pauseOnFocusLoss: true,
   pauseOnHover: true,
   draggable: true,
   draggablePercent: 0.6,
   showCloseButtonOnHover: false,
-  hideProgressBar: false,
+  hideProgressBar: true, // Esconde a barra de progresso padrão
   closeButton: 'button',
   icon: true,
   rtl: false,
+  transition: 'Vue-Toastification__fade', // Transição mais sutil
+  maxToasts: 4,
+  newestOnTop: true,
 }
 
 app.use(Toast, toastOptions)

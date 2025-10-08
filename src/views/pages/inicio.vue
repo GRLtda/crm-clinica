@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useAppointmentsStore } from '@/stores/appointments'
@@ -15,6 +15,10 @@ import {
   Play,
   FileText,
   Bell,
+  Plus,
+  Search,
+  SlidersHorizontal,
+  ChevronDown,
 } from 'lucide-vue-next'
 import CreateAppointmentModal from '@/components/pages/dashboard/CreateAppointmentModal.vue'
 import VueCal from 'vue-cal'
@@ -32,6 +36,22 @@ const toast = useToast()
 const isModalOpen = ref(false)
 const initialAppointmentData = ref(null)
 const selectedDate = ref(new Date())
+const currentTime = ref(new Date())
+let timer = null
+
+const formattedDateTime = computed(() => {
+  const options = {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }
+  const rawDate = currentTime.value
+  const formatted = new Intl.DateTimeFormat('pt-BR', options).format(rawDate)
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1)
+})
 
 function handleModalClose() {
   isModalOpen.value = false
@@ -85,13 +105,18 @@ async function fetchWeekData() {
 onMounted(() => {
   dashboardStore.fetchDashboardStats()
   fetchWeekData()
+  timer = setInterval(() => {
+    currentTime.value = new Date()
+  }, 1000)
 })
 
-// ✨ NOVA FUNÇÃO AUXILIAR ✨
-// Converte a data ISO (UTC) para uma string de data/hora local no formato que o vue-cal entende
+onUnmounted(() => {
+  clearInterval(timer)
+})
+
 function formatToVueCalString(dateString) {
   if (!dateString) return ''
-  const d = new Date(dateString) // Cria a data local a partir da string UTC
+  const d = new Date(dateString)
   const year = d.getFullYear()
   const month = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
@@ -100,18 +125,16 @@ function formatToVueCalString(dateString) {
   return `${year}-${month}-${day} ${hours}:${minutes}`
 }
 
-// ✨ CORREÇÃO AQUI ✨
 const formattedEvents = computed(() => {
   if (!Array.isArray(weekAppointments.value)) return []
   return weekAppointments.value.map((appt) => ({
-    start: formatToVueCalString(appt.startTime), // Usa a nova função
-    end: formatToVueCalString(appt.endTime),     // Usa a nova função
+    start: formatToVueCalString(appt.startTime),
+    end: formatToVueCalString(appt.endTime),
     title: appt.patient.name,
     class: `clinic-event status--${appt.status.toLowerCase().replace(' ', '-')}`,
     originalEvent: appt,
   }))
 })
-
 
 function formatTime(dateString) {
   if (!dateString) return ''
@@ -173,26 +196,25 @@ async function handleConfirmArrival(appointment) {
   <div class="dashboard-overview">
     <CreateAppointmentModal
       v-if="isModalOpen"
-      @close="isModalOpen = false"
+      @close="handleModalClose"
       :initial-data="initialAppointmentData"
     />
 
     <header class="dashboard-header">
-      <div>
-        <h1 class="title">Visão Geral</h1>
-        <p class="subtitle">Bem-vindo(a) de volta, {{ authStore.user?.name.split(' ')[0] }}!</p>
+      <div class="header-main">
+        <div>
+          <h1 class="title">Visão Geral</h1>
+          <p class="subtitle">Bem-vindo(a) de volta, {{ authStore.user?.name.split(' ')[0] }}!</p>
+        </div>
+        <button @click="isModalOpen = true" class="btn-primary">
+          <Plus :size="16" />
+          Agendar Atendimento
+        </button>
       </div>
-      <button @click="isModalOpen = true" class="btn-primary">
-        <Calendar :size="16" />
-        Agendar Atendimento
-      </button>
-    </header>
 
-    <div class="dashboard-content">
-      <div class="agenda-column">
-        <div class="section-header">
-          <h2 class="section-title">Agenda da Semana</h2>
-          <div class="calendar-nav">
+      <div class="header-toolbar">
+        <div class="calendar-nav">
+          <div class="nav-buttons">
             <button @click="goToPreviousWeek" class="nav-btn" title="Semana anterior">
               <ChevronLeft :size="20" />
             </button>
@@ -201,9 +223,24 @@ async function handleConfirmArrival(appointment) {
               <ChevronRight :size="20" />
             </button>
           </div>
-          <span class="section-subtitle">{{ calendarHeader }}</span>
+          <span class="calendar-header-display">{{ calendarHeader }}</span>
         </div>
 
+        <div class="toolbar-filters">
+          <div class="search-wrapper">
+            <Search :size="18" class="search-icon" />
+            <input type="text" placeholder="Buscar na agenda..." />
+          </div>
+          <button class="btn-filter">
+            <SlidersHorizontal :size="16" />
+            <span>Filtros</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="dashboard-content">
+      <div class="agenda-column">
         <div class="calendar-container" :class="{ 'is-loading': appointmentsStore.isLoading }">
           <div class="loading-overlay" v-if="appointmentsStore.isLoading">
             <span>Carregando...</span>
@@ -258,9 +295,7 @@ async function handleConfirmArrival(appointment) {
                 <div class="item-avatar">{{ appt.patient.name.charAt(0) }}</div>
                 <div class="item-details">
                   <div class="item-patient-name">{{ appt.patient.name }}</div>
-                  <div class="item-time">
-                    <Clock :size="14" /> {{ formatTime(appt.startTime) }}
-                  </div>
+                  <div class="item-time"><Clock :size="14" /> {{ formatTime(appt.startTime) }}</div>
                 </div>
               </div>
               <div class="item-status-actions">
@@ -341,11 +376,16 @@ async function handleConfirmArrival(appointment) {
   font-family: var(--fonte-principal);
   transition: all 0.2s ease-in-out;
   border: none;
+  position: relative; /* Essencial para o efeito de flutuar */
 }
+
+/* Efeito de hover que faz o evento saltar para frente */
 .vuecal__event:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  transform: scale(1.05);
+  z-index: 10; /* Garante que ele fique na frente dos outros */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
+
 .vuecal__event.clinic-event {
   background-color: var(--azul-principal);
   color: var(--branco);
@@ -364,11 +404,9 @@ async function handleConfirmArrival(appointment) {
 .vuecal__cell-events-count {
   display: none;
 }
-
 .vuecal--overflow-x.vuecal--week-view .vuecal__time-column {
   margin-top: 4.2em;
 }
-
 .vuecal__event-time {
   display: none;
 }
@@ -377,19 +415,14 @@ async function handleConfirmArrival(appointment) {
   padding: 0;
   border-bottom: 1px solid #e5e7eb;
 }
-
-/* ✨ ✨ ✨ ESTILOS ATUALIZADOS PARA O NOVO VISUAL ✨ ✨ ✨ */
 .vuecal__time-cell-label {
   font-size: 0.75rem;
   color: var(--cinza-texto);
   transform: translateY(-8px);
 }
-/* ✨ AJUSTE SIMPLIFICADO: Agora apenas uma linha sólida para cada hora */
 .vuecal__bg .vuecal__time-cell {
   border-bottom: 1px solid #e5e7eb;
 }
-
-/* Cabeçalho customizado */
 .custom-weekday-heading {
   height: auto;
   display: flex;
@@ -419,32 +452,38 @@ async function handleConfirmArrival(appointment) {
 </style>
 
 <style scoped>
-/* O CSS ESCOPAVEL NÃO FOI ALTERADO */
+/* --- Novo Header --- */
 .dashboard-header {
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 1.5rem;
+}
+.header-main {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 2rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
 }
 .title {
   font-size: 2.25rem;
   font-weight: 700;
-  margin-bottom: 0.5rem;
+  margin: 0 0 0.25rem 0;
 }
 .subtitle {
   font-size: 1.125rem;
   color: var(--cinza-texto);
+  margin: 0;
 }
 .btn-primary {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
+  padding: 0.75rem 1.25rem;
   border-radius: 0.75rem;
   border: none;
   background-color: var(--azul-principal);
   color: var(--branco);
-  font-size: 1rem;
+  font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.3s ease;
@@ -452,39 +491,73 @@ async function handleConfirmArrival(appointment) {
 .btn-primary:hover {
   background-color: var(--azul-escuro);
 }
-.loading-state {
-  color: var(--cinza-texto);
-  padding: 2rem 0;
-}
-.dashboard-content {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 2rem;
-  align-items: flex-start;
-}
-.agenda-column {
-  grid-column: 1 / 2;
-}
-.action-column {
-  grid-column: 2 / 3;
-  position: sticky;
-  top: 2rem;
+.header-toolbar {
   display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+  justify-content: space-between;
+  align-items: center;
 }
-.section-header {
+.toolbar-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.search-wrapper {
+  position: relative;
+}
+.search-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--cinza-texto);
+}
+.search-wrapper input {
+  width: 250px;
+  padding: 0.65rem 0.75rem 0.65rem 2.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  background-color: var(--branco);
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+.search-wrapper input:focus {
+  outline: none;
+  background-color: var(--branco);
+  border-color: var(--azul-principal);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+.btn-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  background-color: var(--branco);
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-filter:hover {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+}
+.btn-filter svg {
+  color: var(--cinza-texto);
+}
+.calendar-nav {
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-bottom: 1.5rem;
 }
-.section-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0;
+.calendar-header-display {
+  font-size: 0.875rem;
+  color: var(--cinza-texto);
+  font-weight: 500;
 }
-.calendar-nav {
+.nav-buttons {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -514,11 +587,33 @@ async function handleConfirmArrival(appointment) {
   font-weight: 500;
   font-size: 0.875rem;
 }
-.section-subtitle {
-  font-size: 0.875rem;
+/* --- Fim do Novo Header --- */
+
+.loading-state {
   color: var(--cinza-texto);
-  font-weight: 500;
-  margin-left: auto;
+  padding: 2rem 0;
+}
+.dashboard-content {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 2rem;
+  align-items: flex-start;
+}
+.agenda-column {
+  grid-column: 1 / 2;
+}
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 1.5rem 0;
+}
+.action-column {
+  grid-column: 2 / 3;
+  position: sticky;
+  top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 .calendar-container {
   border: 1px solid #e5e7eb;

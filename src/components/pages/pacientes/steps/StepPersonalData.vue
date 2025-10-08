@@ -1,13 +1,16 @@
 <script setup>
 import FormInput from '@/components/global/FormInput.vue'
 import StyledSelect from '@/components/global/StyledSelect.vue'
+import Datepicker from '@vuepic/vue-datepicker'
+import '@vuepic/vue-datepicker/dist/main.css'
+import { ref } from 'vue'
 
 const props = defineProps({
   modelValue: { type: Object, required: true },
+  errors: { type: Object, default: () => ({}) },
 })
 const emit = defineEmits(['update:modelValue'])
 
-// Função genérica para atualizar o objeto pai
 function updateField(field, value) {
   emit('update:modelValue', { ...props.modelValue, [field]: value })
 }
@@ -17,6 +20,8 @@ const genderOptions = [
   { value: 'Feminino', label: 'Feminino' },
   { value: 'Outro', label: 'Outro' },
 ]
+
+const maxBirthDate = ref(new Date())
 </script>
 
 <template>
@@ -29,20 +34,30 @@ const genderOptions = [
         label="Nome Completo"
         placeholder="Nome do paciente"
         required
+        :error="errors.name"
       />
-      <FormInput
-        :modelValue="modelValue.birthDate"
-        @update:modelValue="updateField('birthDate', $event)"
-        label="Data de Nascimento"
-        type="date"
-        required
-      />
+      <div class="form-group">
+        <label class="form-label"> Data de Nascimento <span class="required-asterisk">*</span> </label>
+        <Datepicker
+          :modelValue="modelValue.birthDate"
+          @update:modelValue="updateField('birthDate', $event)"
+          locale="pt-BR"
+          format="dd/MM/yyyy"
+          :enable-time-picker="false"
+          :max-date="maxBirthDate"
+          placeholder="Selecione ou digite a data"
+          :enable-text-input="true"
+          :input-class-name="errors.birthDate ? 'dp-custom-input has-error' : 'dp-custom-input'"
+        />
+        <p v-if="errors.birthDate" class="error-message">{{ errors.birthDate }}</p>
+      </div>
       <FormInput
         :modelValue="modelValue.cpf"
         @update:modelValue="updateField('cpf', $event)"
         label="CPF"
         placeholder="000.000.000-00"
         cpf-mask
+        :error="errors.cpf"
       />
       <FormInput
         :modelValue="modelValue.phone"
@@ -51,12 +66,14 @@ const genderOptions = [
         placeholder="(00) 00000-0000"
         required
         phone-mask
+        :error="errors.phone"
       />
       <StyledSelect
         :modelValue="modelValue.gender"
         @update:modelValue="updateField('gender', $event)"
         label="Gênero"
         :options="genderOptions"
+        :error="!!errors.gender"
       />
     </div>
   </div>
@@ -72,5 +89,27 @@ const genderOptions = [
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1rem 1.5rem;
+}
+.form-group {
+  text-align: left;
+  padding-bottom: 1.25rem;
+}
+.form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+.required-asterisk {
+  color: #ef4444;
+  margin-left: 0.25rem;
+}
+.error-message {
+  color: #ef4444;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+:deep(.dp-custom-input.has-error) {
+  border-color: #ef4444;
 }
 </style>

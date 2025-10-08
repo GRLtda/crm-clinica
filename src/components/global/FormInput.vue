@@ -9,6 +9,7 @@ defineProps({
   phoneMask: { type: Boolean, default: false },
   cpfMask: { type: Boolean, default: false },
   required: { type: Boolean, default: false },
+  error: { type: [Boolean, String], default: false },
 })
 const emit = defineEmits(['update:modelValue'])
 
@@ -33,15 +34,17 @@ function handleInput(event) {
       v-phone-mask="phoneMask"
       v-cpf-mask="cpfMask"
       class="form-input"
+      :class="{ 'has-error': !!error }"
     />
+    <p v-if="typeof error === 'string' && error" class="error-message">{{ error }}</p>
   </div>
 </template>
 
 <style scoped>
-/* Estilos permanecem os mesmos */
 .form-group {
   text-align: left;
-  margin-bottom: 1.25rem;
+  margin-bottom: 0;
+  padding-bottom: 1.25rem;
 }
 .form-label {
   display: block;
@@ -68,5 +71,18 @@ function handleInput(event) {
 .required-asterisk {
   color: #ef4444;
   margin-left: 0.25rem;
+}
+
+.form-input.has-error {
+  border-color: #ef4444;
+}
+.form-input.has-error:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3);
+}
+.error-message {
+  color: #ef4444;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
 }
 </style>

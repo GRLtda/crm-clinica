@@ -1,58 +1,77 @@
 <script setup>
-import { computed, ref, onMounted } from 'vue'
-import { Play, X, History, FileText } from 'lucide-vue-next'
+import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
+import { useAppointmentsStore } from '@/stores/appointments'
+// ✨ 1. ÍCONE NOVO IMPORTADO ✨
+import { Play, FileText, Check, X, History, CalendarPlus } from 'lucide-vue-next'
+import { useToast } from 'vue-toastification'
 
 const props = defineProps({
   appointment: { type: Object, required: true },
-  // Recebe o evento de clique para saber a posição do mouse
   clickEvent: { type: Object, required: true },
 })
-
 const emit = defineEmits(['close', 'start', 'view'])
+
 const popoverRef = ref(null)
-// O pop-up começa invisível e fora da tela para evitar "piscadas"
-const finalPosition = ref({ top: '-9999px', left: '-9999px', opacity: 0 })
+const popoverStyle = ref({})
+const appointmentsStore = useAppointmentsStore()
+const toast = useToast()
 
-// 💡 A nova lógica de posicionamento inteligente
-onMounted(() => {
-  const popoverEl = popoverRef.value
-  if (!popoverEl || !props.clickEvent) return
+const canConfirm = computed(() => props.appointment.status === 'Agendado')
+const canStart = computed(() => props.appointment.status === 'Confirmado')
+const canView = computed(() => props.appointment.status === 'Realizado')
+// ✨ 2. LÓGICA PARA O NOVO BOTÃO ✨
+const canReschedule = computed(() => props.appointment.status === 'Não Compareceu')
 
-  const popoverRect = popoverEl.getBoundingClientRect()
-  const margin = 15 // Uma margem de segurança das bordas e do cursor
+function positionPopover() {
+  if (!props.clickEvent || !popoverRef.value) return
 
-  // Posição inicial (ao lado do cursor)
-  let top = props.clickEvent.clientY + margin
+  const popoverRect = popoverRef.value.getBoundingClientRect()
+  const margin = 20
+
+  let top = props.clickEvent.clientY - popoverRect.height / 2
   let left = props.clickEvent.clientX + margin
 
-  // --- Verificação de Bordas da Tela ---
-
-  // Se passar da borda DIREITA, joga ele para a esquerda do cursor
-  if (left + popoverRect.width > window.innerWidth - margin) {
+  if (left + popoverRect.width > window.innerWidth) {
     left = props.clickEvent.clientX - popoverRect.width - margin
   }
-
-  // Se passar da borda INFERIOR, sobe ele para se alinhar com a parte de baixo da tela
-  if (top + popoverRect.height > window.innerHeight - margin) {
-    top = window.innerHeight - popoverRect.height - margin
-  }
-
-  // Garante que não saia pela ESQUERDA
-  if (left < margin) {
-    left = margin
-  }
-
-  // Garante que não saia por CIMA
   if (top < margin) {
     top = margin
   }
+  if (top + popoverRect.height > window.innerHeight) {
+    top = window.innerHeight - popoverRect.height - margin
+  }
 
-  // Aplica a posição final calculada e torna o pop-up visível
-  finalPosition.value = {
+  popoverStyle.value = {
     top: `${top}px`,
     left: `${left}px`,
-    opacity: 1,
   }
+}
+
+async function updateStatus(newStatus) {
+  const { success } = await appointmentsStore.updateAppointmentStatus(
+    props.appointment._id,
+    newStatus
+  )
+  if (success) {
+    toast.success(`Status alterado para "${newStatus}"!`)
+    await appointmentsStore.fetchAppointmentsByDate()
+    emit('close')
+  } else {
+    toast.error('Não foi possível alterar o status.')
+  }
+}
+
+onMounted(() => {
+  nextTick(() => {
+    positionPopover()
+  })
+  window.addEventListener('resize', positionPopover)
+  window.addEventListener('scroll', positionPopover, true)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', positionPopover)
+  window.removeEventListener('scroll', positionPopover, true)
 })
 
 function formatTime(dateString) {
@@ -63,84 +82,90 @@ function formatTime(dateString) {
     timeZone: 'UTC',
   })
 }
-
-const consultationNumber = computed(() => {
-  return props.appointment.patient?.consultationCount || 1
-})
-
-const consultationText = computed(() => {
-  if (consultationNumber.value === 1) {
-    return '1ª consulta'
-  }
-  return `${consultationNumber.value}ª consulta`
-})
 </script>
 
 <template>
-  <div
-    ref="popoverRef"
-    class="popover-content"
-    :style="finalPosition"
-    v-click-outside="() => emit('close')"
-  >
-    <header class="popover-header">
-      <div class="patient-info">
-        <div class="patient-avatar">{{ appointment.patient.name.charAt(0) }}</div>
-        <div>
-          <div class="patient-name">{{ appointment.patient.name }}</div>
-          <div class="appointment-time">
-            {{ formatTime(appointment.startTime) }} - {{ formatTime(appointment.endTime) }}
+  <div class="popover-wrapper" @click.self="$emit('close')">
+    <div
+      ref="popoverRef"
+      class="popover-content"
+      :style="popoverStyle"
+      v-click-outside="() => $emit('close')"
+    >
+      <div class="popover-header">
+        <div class="patient-info">
+          <div class="patient-avatar">{{ appointment.patient.name.charAt(0) }}</div>
+          <div>
+            <div class="patient-name">{{ appointment.patient.name }}</div>
+            <div class="appointment-time">
+              {{ formatTime(appointment.startTime) }} - {{ formatTime(appointment.endTime) }}
+            </div>
           </div>
         </div>
+        <button @click="$emit('close')" class="close-btn"><X :size="18" /></button>
       </div>
-      <button @click="emit('close')" class="close-btn"><X :size="20" /></button>
-    </header>
-
-    <div class="popover-body">
-      <div class="info-item">
-        <History :size="16" />
-        <span>{{ consultationText }}</span>
-      </div>
-      <div class="info-item">
-        <div class="appointment-status" :class="appointment.status.toLowerCase().replace(' ', '-')">
-          {{ appointment.status }}
+      <div class="popover-body">
+        <div class="popover-info">
+          <div class="info-line">
+            <History :size="16" />
+            <span>1ª consulta</span>
+          </div>
+          <div class="info-line">
+            <div class="appointment-status" :class="appointment.status.toLowerCase().replace(' ', '-')">
+              {{ appointment.status }}
+            </div>
+          </div>
+        </div>
+        <div class="popover-actions">
+          <button v-if="canConfirm" @click="updateStatus('Confirmado')" class="action-button success">
+            <Check :size="16" />
+            <span>Confirmar Chegada</span>
+          </button>
+          <button v-if="canStart" @click="$emit('start')" class="action-button primary">
+            <Play :size="16" />
+            <span>Iniciar Atendimento</span>
+          </button>
+          <button v-if="canView" @click="$emit('view')" class="action-button secondary">
+            <FileText :size="16" />
+            <span>Ver Anotações</span>
+          </button>
+          <button v-if="canReschedule" class="action-button warning" disabled>
+            <CalendarPlus :size="16" />
+            <span>Reagendar</span>
+          </button>
         </div>
       </div>
     </div>
-
-    <footer class="popover-footer">
-      <button v-if="appointment.status === 'Agendado'" @click="emit('start')" class="btn-primary">
-        <Play :size="16" />
-        Iniciar Atendimento
-      </button>
-      <button v-if="appointment.status === 'Realizado'" @click="emit('view')" class="btn-secondary">
-        <FileText :size="16" />
-        Ver Anotações
-      </button>
-    </footer>
   </div>
 </template>
 
 <style scoped>
-.popover-content {
+.popover-wrapper {
   position: fixed;
-  width: 320px;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 100;
+}
+.popover-content {
+  position: absolute;
+  width: 280px;
   background-color: var(--branco);
-  border: 1px solid #e5e7eb;
   border-radius: 0.75rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  transition: opacity 0.2s ease-out;
-  animation: pop-in 0.2s ease-out;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  z-index: 101;
+  animation: fade-in 0.2s ease-out;
 }
 
-@keyframes pop-in {
+@keyframes fade-in {
   from {
+    opacity: 0;
     transform: scale(0.95);
   }
   to {
+    opacity: 1;
     transform: scale(1);
   }
 }
@@ -150,7 +175,6 @@ const consultationText = computed(() => {
   justify-content: space-between;
   align-items: flex-start;
   padding: 1rem;
-  border-bottom: 1px solid #e5e7eb;
 }
 
 .patient-info {
@@ -158,9 +182,10 @@ const consultationText = computed(() => {
   align-items: center;
   gap: 0.75rem;
 }
+
 .patient-avatar {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: #eef2ff;
   color: var(--azul-principal);
@@ -168,92 +193,150 @@ const consultationText = computed(() => {
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 1.1rem;
+  font-size: 1rem;
   flex-shrink: 0;
 }
+
 .patient-name {
   font-weight: 600;
+  color: #111827;
 }
+
 .appointment-time {
   font-size: 0.875rem;
   color: var(--cinza-texto);
 }
+
 .close-btn {
   background: none;
   border: none;
   cursor: pointer;
   color: var(--cinza-texto);
-  padding: 4px;
-  margin: -4px;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.close-btn:hover {
+  background-color: #f3f4f6;
 }
 
 .popover-body {
-  padding: 1rem;
+  padding: 0 1rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.popover-info {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
 }
 
-.info-item {
+.info-line {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
-  color: var(--cinza-texto);
+  color: #374151;
   font-weight: 500;
+}
+.info-line svg {
+  color: var(--cinza-texto);
 }
 
 .appointment-status {
   font-weight: 600;
   padding: 0.25rem 0.75rem;
   border-radius: 99px;
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   width: fit-content;
+  text-transform: capitalize;
 }
+
 .appointment-status.agendado {
   background-color: #eff6ff;
   color: #2563eb;
+}
+.appointment-status.confirmado {
+  background-color: #fefce8;
+  color: #a16207;
 }
 .appointment-status.realizado {
   background-color: #f0fdf4;
   color: #16a34a;
 }
-
-.popover-footer {
-  padding: 1rem;
-  border-top: 1px solid #e5e7eb;
-  background-color: #f9fafb;
+.appointment-status.cancelado {
+  background-color: #fef2f2;
+  color: #dc2626;
+}
+.appointment-status.não-compareceu {
+  background-color: #f1f5f9;
+  color: #64748b;
 }
 
-.btn-primary,
-.btn-secondary {
-  display: inline-flex;
-  width: 100%;
+.popover-actions {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ✨ 4. ESTILOS DE BOTÕES ATUALIZADOS ✨ */
+.action-button {
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.75rem;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: none;
   cursor: pointer;
+  font-size: 0.875rem;
   font-weight: 600;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease;
 }
 
-.btn-primary {
-  background: var(--azul-principal);
+.action-button.primary {
+  background-color: var(--azul-principal);
   color: var(--branco);
-  border: none;
 }
-.btn-primary:hover {
+.action-button.primary:hover {
   background-color: var(--azul-escuro);
 }
 
-.btn-secondary {
-  background: var(--branco);
-  border: 1px solid #d1d5db;
-  color: #374151;
+.action-button.success {
+  background-color: #dcfce7;
+  color: #166534;
 }
-.btn-secondary:hover {
-  background-color: #f3f4f6;
+.action-button.success:hover {
+  background-color: #bbf7d0;
+}
+
+.action-button.secondary {
+  background-color: #f1f5f9;
+  color: #334155;
+}
+.action-button.secondary:hover {
+  background-color: #e2e8f0;
+}
+
+.action-button.warning {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+.action-button.warning:hover:not(:disabled) {
+  background-color: #fde68a;
+}
+
+.action-button:disabled {
+  background-color: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 </style>
