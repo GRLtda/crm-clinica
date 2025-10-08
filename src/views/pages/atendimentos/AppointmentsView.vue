@@ -12,8 +12,8 @@ const appointments = computed(() => appointmentsStore.appointments)
 
 const isModalOpen = ref(false)
 
-// O estado agora guarda o objeto do atendimento e o retângulo de posição
-const activePopover = ref({ appointment: null, rect: null })
+// 💡 CORREÇÃO AQUI: Mudamos 'position' para 'event' para ficar mais claro
+const activePopover = ref({ appointment: null, event: null })
 
 onMounted(() => {
   appointmentsStore.fetchAppointmentsByDate()
@@ -38,16 +38,16 @@ function goToAppointmentPage(appt) {
   }
 }
 
-// A função de clique agora captura o retângulo de posição do card
+// 💡 CORREÇÃO AQUI: Salvamos o objeto 'event' inteiro
 function openPopover(appointment, event) {
   activePopover.value = {
     appointment: appointment,
-    rect: event.currentTarget.getBoundingClientRect(),
+    event: event,
   }
 }
 
 function closePopover() {
-  activePopover.value = { appointment: null, rect: null }
+  activePopover.value = { appointment: null, event: null }
 }
 </script>
 
@@ -111,7 +111,7 @@ function closePopover() {
   <AppointmentInfoPopover
     v-if="activePopover.appointment"
     :appointment="activePopover.appointment"
-    :targetRect="activePopover.rect"
+    :click-event="activePopover.event"
     @close="closePopover"
     @start="goToAppointmentPage(activePopover.appointment)"
     @view="goToAppointmentPage(activePopover.appointment)"
@@ -121,7 +121,7 @@ function closePopover() {
 </template>
 
 <style scoped>
-/* Nenhum estilo precisa ser alterado aqui, pois a lógica de posição foi movida para o popover */
+/* Estilos permanecem os mesmos */
 .page-header {
   display: flex;
   justify-content: space-between;

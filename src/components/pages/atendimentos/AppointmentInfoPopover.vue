@@ -4,48 +4,51 @@ import { Play, X, History, FileText } from 'lucide-vue-next'
 
 const props = defineProps({
   appointment: { type: Object, required: true },
-  targetRect: { type: Object, required: true }, // Recebe o DOMRect do alvo
+  // Recebe o evento de clique para saber a posição do mouse
+  clickEvent: { type: Object, required: true },
 })
 
 const emit = defineEmits(['close', 'start', 'view'])
 const popoverRef = ref(null)
-const position = ref({ top: '-9999px', left: '-9999px', opacity: 0 }) // Começa fora da tela
+// O pop-up começa invisível e fora da tela para evitar "piscadas"
+const finalPosition = ref({ top: '-9999px', left: '-9999px', opacity: 0 })
 
-// 💡 LÓGICA DE POSICIONAMENTO INTELIGENTE E DEFINITIVA
+// 💡 A nova lógica de posicionamento inteligente
 onMounted(() => {
   const popoverEl = popoverRef.value
-  if (!popoverEl) return
+  if (!popoverEl || !props.clickEvent) return
 
   const popoverRect = popoverEl.getBoundingClientRect()
-  const margin = 10 // Espaço entre o card e o pop-up
+  const margin = 15 // Uma margem de segurança das bordas e do cursor
 
-  let top = props.targetRect.top
-  let left = props.targetRect.right + margin
+  // Posição inicial (ao lado do cursor)
+  let top = props.clickEvent.clientY + margin
+  let left = props.clickEvent.clientX + margin
 
-  // --- Verificação de Bordas ---
+  // --- Verificação de Bordas da Tela ---
 
-  // 1. Verifica se vai passar da borda DIREITA da tela
+  // Se passar da borda DIREITA, joga ele para a esquerda do cursor
   if (left + popoverRect.width > window.innerWidth - margin) {
-    left = props.targetRect.left - popoverRect.width - margin
+    left = props.clickEvent.clientX - popoverRect.width - margin
   }
 
-  // 2. Verifica se vai passar da borda INFERIOR da tela
+  // Se passar da borda INFERIOR, sobe ele para se alinhar com a parte de baixo da tela
   if (top + popoverRect.height > window.innerHeight - margin) {
-    top = props.targetRect.bottom - popoverRect.height
+    top = window.innerHeight - popoverRect.height - margin
   }
 
-  // 3. Garante que não fique acima do topo da tela
-  if (top < margin) {
-    top = margin
-  }
-
-  // 4. Garante que não fique à esquerda do início da tela
+  // Garante que não saia pela ESQUERDA
   if (left < margin) {
     left = margin
   }
 
-  // Aplica a posição calculada e torna o pop-up visível
-  position.value = {
+  // Garante que não saia por CIMA
+  if (top < margin) {
+    top = margin
+  }
+
+  // Aplica a posição final calculada e torna o pop-up visível
+  finalPosition.value = {
     top: `${top}px`,
     left: `${left}px`,
     opacity: 1,
@@ -77,7 +80,7 @@ const consultationText = computed(() => {
   <div
     ref="popoverRef"
     class="popover-content"
-    :style="position"
+    :style="finalPosition"
     v-click-outside="() => emit('close')"
   >
     <header class="popover-header">
@@ -129,7 +132,7 @@ const consultationText = computed(() => {
   z-index: 1000;
   display: flex;
   flex-direction: column;
-  transition: opacity 0.2s ease-out; /* Transição suave de opacidade */
+  transition: opacity 0.2s ease-out;
   animation: pop-in 0.2s ease-out;
 }
 

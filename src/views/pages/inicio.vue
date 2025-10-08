@@ -364,6 +364,11 @@ async function handleConfirmArrival(appointment) {
 .vuecal__cell-events-count {
   display: none;
 }
+
+.vuecal--overflow-x.vuecal--week-view .vuecal__time-column {
+  margin-top: 4.2em;
+}
+
 .vuecal__event-time {
   display: none;
 }
