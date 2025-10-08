@@ -12,8 +12,8 @@ const appointments = computed(() => appointmentsStore.appointments)
 const isModalOpen = ref(false)
 
 onMounted(() => {
-  // A função fetchAppointmentsByDate já deve buscar pela data de hoje por padrão
-  appointmentsStore.fetchAppointmentsByDate()
+  const today = new Date().toISOString().split('T')[0] // Formato 'YYYY-MM-DD'
+  appointmentsStore.fetchAppointmentsByDate(today)
 })
 
 function formatTime(dateString) {

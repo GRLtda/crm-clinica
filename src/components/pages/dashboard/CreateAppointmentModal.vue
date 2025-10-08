@@ -1,11 +1,11 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePatientsStore } from '@/stores/patients'
 import { useAppointmentsStore } from '@/stores/appointments'
 import { useClinicStore } from '@/stores/clinic'
 import { useToast } from 'vue-toastification'
-import { User, Calendar, Bell, DoorClosedLocked, Plus } from 'lucide-vue-next'
+import { User, Calendar, Bell, Plus } from 'lucide-vue-next'
 
 import Stepper from '@/components/pages/onboarding/Stepper.vue'
 import SearchableSelect from '@/components/global/SearchableSelect.vue'
@@ -13,6 +13,13 @@ import StyledSelect from '@/components/global/StyledSelect.vue'
 import Switch from '@/components/global/Switch.vue'
 import Datepicker from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
+
+const props = defineProps({
+  initialData: {
+    type: Object,
+    default: null,
+  },
+})
 
 const emit = defineEmits(['close'])
 const patientsStore = usePatientsStore()
@@ -23,7 +30,7 @@ const router = useRouter()
 
 let debounceTimeout = null
 const currentStep = ref(1)
-const errors = ref({}) // Objeto para armazenar erros de validação
+const errors = ref({})
 
 const clinicWorkingHours = computed(() => {
   if (!clinicStore.currentClinic?.workingHours) {
@@ -65,6 +72,16 @@ const appointmentData = ref({
   },
 })
 
+onMounted(() => {
+  if (props.initialData) {
+    appointmentData.value.date = props.initialData.date
+    appointmentData.value.startTime = props.initialData.startTime
+    if (appointmentData.value.patient) {
+      currentStep.value = 2
+    }
+  }
+})
+
 const patientOptions = computed(() => {
   return (patientsStore.searchResults || []).map((p) => ({ value: p._id, label: p.name }))
 })
@@ -78,10 +95,10 @@ const timeOptions = computed(() => {
   let currentTime = new Date(`1970-01-01T${workingHours.open}:00`)
   const closingTime = new Date(`1970-01-01T${workingHours.close}:00`)
 
-  while (currentTime <= closingTime) {
+  while (currentTime < closingTime) {
     const timeStr = currentTime.toTimeString().substring(0, 5)
     options.push({ value: timeStr, label: timeStr })
-    currentTime.setMinutes(currentTime.getMinutes() + 30)
+    currentTime.setMinutes(currentTime.getMinutes() + 15)
   }
   return options
 })
@@ -92,6 +109,7 @@ const endTimeOptions = computed(() => {
 })
 
 function getDayOfWeek(date) {
+  // ✨ CORREÇÃO AQUI: de getUTCDay para getDay (mais seguro para hora local)
   const dayIndex = new Date(date).getDay()
   const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
   return days[dayIndex]
@@ -121,9 +139,16 @@ watch(
   () => appointmentData.value.startTime,
   (newStartTime) => {
     if (newStartTime) {
-      const startIndex = timeOptions.value.findIndex((opt) => opt.value === newStartTime)
-      if (startIndex !== -1 && startIndex + 1 < timeOptions.value.length) {
-        appointmentData.value.endTime = timeOptions.value[startIndex + 1].value
+      const [hour, minute] = newStartTime.split(':').map(Number)
+      const startDate = new Date()
+      startDate.setHours(hour, minute)
+      startDate.setMinutes(startDate.getMinutes() + 30)
+      const endHour = String(startDate.getHours()).padStart(2, '0')
+      const endMinute = String(startDate.getMinutes()).padStart(2, '0')
+      const endTime = `${endHour}:${endMinute}`
+
+      if (endTimeOptions.value.some((opt) => opt.value === endTime)) {
+        appointmentData.value.endTime = endTime
       } else {
         appointmentData.value.endTime = null
       }
@@ -158,13 +183,17 @@ function nextStep() {
 async function handleSubmit() {
   if (!validateStep()) return
 
-  const [startHour, startMinute] = appointmentData.value.startTime.split(':')
-  const startTime = new Date(appointmentData.value.date)
-  startTime.setHours(startHour, startMinute, 0, 0)
+  // ✨ CORREÇÃO PRINCIPAL: Construção explícita da data para evitar erros de fuso horário
+  const [startHour, startMinute] = appointmentData.value.startTime.split(':').map(Number)
+  const [endHour, endMinute] = appointmentData.value.endTime.split(':').map(Number)
 
-  const [endHour, endMinute] = appointmentData.value.endTime.split(':')
-  const endTime = new Date(appointmentData.value.date)
-  endTime.setHours(endHour, endMinute, 0, 0)
+  const baseDate = new Date(appointmentData.value.date)
+  const year = baseDate.getFullYear()
+  const month = baseDate.getMonth()
+  const day = baseDate.getDate()
+
+  const startTime = new Date(year, month, day, startHour, startMinute)
+  const endTime = new Date(year, month, day, endHour, endMinute)
 
   const payload = {
     patient: appointmentData.value.patient,

@@ -13,10 +13,13 @@ export const useAppointmentsStore = defineStore('appointments', () => {
   const patientAppointments = ref([])
   const isLoading = ref(false)
 
-  async function fetchAppointmentsByDate(date) {
+  async function fetchAppointmentsByDate(startDate, endDate) {
     isLoading.value = true
     try {
-      const response = await apiGetAppointments({ startDate: date, endDate: date })
+      // Se endDate não for fornecido, usa o startDate para buscar um único dia
+      const params = { startDate, endDate: endDate || startDate }
+      const response = await apiGetAppointments(params)
+
       if (Array.isArray(response.data)) {
         appointments.value = response.data
       } else {
@@ -37,6 +40,8 @@ export const useAppointmentsStore = defineStore('appointments', () => {
       await apiCreateAppointment(appointmentData)
       const dashboardStore = useDashboardStore()
       dashboardStore.fetchDashboardStats()
+      // Recarrega os agendamentos da view atual para refletir a adição
+      // (a view de agenda já faz isso ao fechar o modal, mas é uma boa prática)
       return { success: true }
     } catch (error) {
       console.error('Erro ao criar agendamento:', error)

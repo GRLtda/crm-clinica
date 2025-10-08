@@ -110,9 +110,7 @@ async function handleUpdateHours() {
 </template>
 
 <style scoped>
-form {
-  padding: 0rem 2rem;
-}
+
 .days-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));

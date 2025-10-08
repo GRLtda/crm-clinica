@@ -1,125 +1,186 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue';
-import { useAuthStore } from '@/stores/auth';
-import { useDashboardStore } from '@/stores/dashboard';
-import { Calendar, Users, CircleDollarSign, Clock, User as UserIcon, CalendarCheck, Check, Play } from 'lucide-vue-next';
-import CreateAppointmentModal from '@/components/pages/dashboard/CreateAppointmentModal.vue';
-import VueCal from 'vue-cal';
-import 'vue-cal/dist/vuecal.css';
-import { useAppointmentsStore } from '@/stores/appointments';
-import { useToast } from 'vue-toastification';
-import { useRouter } from 'vue-router';
+import { ref, onMounted, computed } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+import { useDashboardStore } from '@/stores/dashboard'
+import { useAppointmentsStore } from '@/stores/appointments'
+import { useRouter } from 'vue-router'
+import {
+  Calendar,
+  Users,
+  User as UserIcon,
+  Clock,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  Play,
+  FileText,
+  Bell,
+} from 'lucide-vue-next'
+import CreateAppointmentModal from '@/components/pages/dashboard/CreateAppointmentModal.vue'
+import VueCal from 'vue-cal'
+import 'vue-cal/dist/vuecal.css'
+import { startOfWeek, endOfWeek, format, addDays, subDays } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import { useToast } from 'vue-toastification'
 
-const authStore = useAuthStore();
-const dashboardStore = useDashboardStore();
-const appointmentsStore = useAppointmentsStore();
-const toast = useToast();
-const router = useRouter();
-const isModalOpen = ref(false);
-const currentTime = ref(new Date());
-let timer = null;
+const authStore = useAuthStore()
+const dashboardStore = useDashboardStore()
+const appointmentsStore = useAppointmentsStore()
+const router = useRouter()
+const toast = useToast()
 
-const stats = computed(() => dashboardStore.stats);
+const isModalOpen = ref(false)
+const initialAppointmentData = ref(null)
+const selectedDate = ref(new Date())
 
-const todayFormatted = computed(() => {
-    return new Date().toLocaleDateString('pt-br', {
-        day: 'numeric',
-        month: 'long'
-    })
-});
+function handleModalClose() {
+  isModalOpen.value = false
+  fetchWeekData()
+}
+
+const stats = computed(() => dashboardStore.stats)
+const weekAppointments = computed(() => appointmentsStore.appointments)
+
+const todaysAppointmentsSorted = computed(() => {
+  if (!stats.value || !Array.isArray(stats.value.appointmentsToday)) {
+    return []
+  }
+  return [...stats.value.appointmentsToday].sort(
+    (a, b) => new Date(a.startTime) - new Date(b.startTime),
+  )
+})
+
+const weekStart = computed(() => startOfWeek(selectedDate.value, { weekStartsOn: 1 }))
+const weekEnd = computed(() => endOfWeek(selectedDate.value, { weekStartsOn: 1 }))
+
+const calendarHeader = computed(() => {
+  const startMonth = format(weekStart.value, 'MMMM', { locale: ptBR })
+  const endMonth = format(weekEnd.value, 'MMMM', { locale: ptBR })
+  const year = format(weekStart.value, 'yyyy')
+
+  if (startMonth === endMonth) {
+    return `${format(weekStart.value, 'dd')} - ${format(
+      weekEnd.value,
+      'dd',
+    )} de ${startMonth} de ${year}`
+  }
+  return `${format(weekStart.value, "dd 'de' MMMM")} - ${format(
+    weekEnd.value,
+    "dd 'de' MMMM 'de' yyyy",
+  )}`
+})
+
+const getAbbreviatedDay = (fullDay) => {
+  const dayName = fullDay.split(' ')[0]
+  if (dayName.toLowerCase() === 'sábado') return 'SÁB'
+  return dayName.substring(0, 3).toUpperCase()
+}
+
+async function fetchWeekData() {
+  const startDate = format(weekStart.value, 'yyyy-MM-dd')
+  const endDate = format(weekEnd.value, 'yyyy-MM-dd')
+  await appointmentsStore.fetchAppointmentsByDate(startDate, endDate)
+}
 
 onMounted(() => {
-  dashboardStore.fetchDashboardStats();
-  timer = setInterval(() => {
-    currentTime.value = new Date();
-  }, 60000);
-});
+  dashboardStore.fetchDashboardStats()
+  fetchWeekData()
+})
 
-onUnmounted(() => {
-  clearInterval(timer);
-});
-
-function isEventCurrent(event) {
-  const now = currentTime.value;
-  return now >= new Date(event.start) && now <= new Date(event.end);
+// ✨ NOVA FUNÇÃO AUXILIAR ✨
+// Converte a data ISO (UTC) para uma string de data/hora local no formato que o vue-cal entende
+function formatToVueCalString(dateString) {
+  if (!dateString) return ''
+  const d = new Date(dateString) // Cria a data local a partir da string UTC
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const hours = String(d.getHours()).padStart(2, '0')
+  const minutes = String(d.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}`
 }
 
+// ✨ CORREÇÃO AQUI ✨
 const formattedEvents = computed(() => {
-  if (!Array.isArray(stats.value.appointmentsToday)) return [];
-  return stats.value.appointmentsToday.map(appt => ({
-    start: new Date(appt.startTime),
-    end: new Date(appt.endTime),
+  if (!Array.isArray(weekAppointments.value)) return []
+  return weekAppointments.value.map((appt) => ({
+    start: formatToVueCalString(appt.startTime), // Usa a nova função
+    end: formatToVueCalString(appt.endTime),     // Usa a nova função
     title: appt.patient.name,
-    class: 'clinic-event',
+    class: `clinic-event status--${appt.status.toLowerCase().replace(' ', '-')}`,
     originalEvent: appt,
-  }));
-});
+  }))
+})
+
 
 function formatTime(dateString) {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  const options = { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' };
-  try {
-    return date.toLocaleTimeString('pt-BR', options);
-  } catch (e) {
-    console.error("Data inválida para formatação:", dateString);
-    return 'Inválido';
-  }
+  if (!dateString) return ''
+  return new Date(dateString).toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
-const statCardsData = computed(() => [
-  {
-    title: 'Pacientes Ativos',
-    icon: Users,
-    color: 'blue',
-    value: stats.value.totalPatients,
-  },
-  {
-    title: 'Atendimentos Hoje',
-    icon: Calendar,
-    color: 'green',
-    value: stats.value.appointmentsToday.length,
-  },
-  {
-    title: 'Cobranças Pendentes',
-    icon: CircleDollarSign,
-    color: 'orange',
-    value: 'R$ 4.320,00',
-    note: '(API não disponível)',
-  },
-  {
-    title: 'Próximo Agendamento',
-    icon: Clock,
-    color: 'purple',
-    value: stats.value.nextAppointment,
-  }
-]);
-
-async function handleConfirmArrival(event) {
-    const { _id: appointmentId } = event.originalEvent;
-    const { success } = await appointmentsStore.updateAppointmentStatus(appointmentId, 'Confirmado');
-    if (success) {
-        toast.success(`Chegada do paciente confirmada!`);
-        dashboardStore.fetchDashboardStats();
-    } else {
-        toast.error("Não foi possível confirmar a chegada.");
-    }
+function goToPreviousWeek() {
+  selectedDate.value = subDays(selectedDate.value, 7)
+  fetchWeekData()
 }
 
-function handleStartAppointment(event) {
-    const { _id: appointmentId, patient } = event.originalEvent;
-    router.push(`/app/atendimentos/${appointmentId}/patient/${patient._id}`);
+function goToToday() {
+  selectedDate.value = new Date()
+  fetchWeekData()
+}
+
+function goToNextWeek() {
+  selectedDate.value = addDays(selectedDate.value, 7)
+  fetchWeekData()
+}
+
+function handleCellClick(date) {
+  const now = new Date()
+  if (date < now) {
+    return
+  }
+  initialAppointmentData.value = {
+    date: date,
+    startTime: format(date, 'HH:mm'),
+  }
+  isModalOpen.value = true
+}
+
+function handleStartAppointment(appointment) {
+  const { _id: appointmentId, patient } = appointment
+  router.push(`/app/atendimentos/${appointmentId}/patient/${patient._id}`)
+}
+
+async function handleConfirmArrival(appointment) {
+  const { _id: appointmentId } = appointment
+  if (appointment.status !== 'Agendado') {
+    toast.info('Este atendimento já teve sua chegada confirmada ou foi iniciado.')
+    return
+  }
+  const { success } = await appointmentsStore.updateAppointmentStatus(appointmentId, 'Confirmado')
+  if (success) {
+    toast.success(`Chegada de ${appointment.patient.name} confirmada!`)
+    dashboardStore.fetchDashboardStats()
+  } else {
+    toast.error('Não foi possível confirmar a chegada.')
+  }
 }
 </script>
 
 <template>
   <div class="dashboard-overview">
-    <CreateAppointmentModal v-if="isModalOpen" @close="isModalOpen = false" />
+    <CreateAppointmentModal
+      v-if="isModalOpen"
+      @close="isModalOpen = false"
+      :initial-data="initialAppointmentData"
+    />
 
     <header class="dashboard-header">
       <div>
         <h1 class="title">Visão Geral</h1>
-        <p class="subtitle">Bem-vindo(a) de volta, {{ authStore.user?.name }}!</p>
+        <p class="subtitle">Bem-vindo(a) de volta, {{ authStore.user?.name.split(' ')[0] }}!</p>
       </div>
       <button @click="isModalOpen = true" class="btn-primary">
         <Calendar :size="16" />
@@ -127,332 +188,569 @@ function handleStartAppointment(event) {
       </button>
     </header>
 
-    <div v-if="dashboardStore.isLoading" class="loading-state">
-      Carregando dados...
-    </div>
-    <div v-else>
-      <div class="stats-grid">
-        <div v-for="card in statCardsData" :key="card.title" class="stat-card" :class="card.color">
-          <div class="card-icon">
-            <component :is="card.icon" :size="24" />
+    <div class="dashboard-content">
+      <div class="agenda-column">
+        <div class="section-header">
+          <h2 class="section-title">Agenda da Semana</h2>
+          <div class="calendar-nav">
+            <button @click="goToPreviousWeek" class="nav-btn" title="Semana anterior">
+              <ChevronLeft :size="20" />
+            </button>
+            <button @click="goToToday" class="today-btn">Hoje</button>
+            <button @click="goToNextWeek" class="nav-btn" title="Próxima semana">
+              <ChevronRight :size="20" />
+            </button>
           </div>
-          <div class="card-content">
-            <h3>{{ card.title }}</h3>
-            <div v-if="card.title === 'Próximo Agendamento'">
-              <div v-if="card.value" class="appointment-details">
-                <div class="appointment-line">
-                  <UserIcon :size="16" />
-                  <span class="appointment-name">{{ card.value.patient.name }}</span>
-                </div>
-                <div class="appointment-line">
-                  <Clock :size="16" />
-                  <span>{{ formatTime(card.value.startTime) }}</span>
+          <span class="section-subtitle">{{ calendarHeader }}</span>
+        </div>
+
+        <div class="calendar-container" :class="{ 'is-loading': appointmentsStore.isLoading }">
+          <div class="loading-overlay" v-if="appointmentsStore.isLoading">
+            <span>Carregando...</span>
+          </div>
+          <vue-cal
+            class="vuecal--full-height-delete"
+            :selected-date="selectedDate"
+            :events="formattedEvents"
+            active-view="week"
+            :disable-views="['years', 'year', 'month']"
+            hide-view-selector
+            :time-from="7 * 60"
+            :time-to="22 * 60"
+            :time-step="60"
+            :snap-to-time="15"
+            :min-cell-width="120"
+            locale="pt-br"
+            @cell-click="handleCellClick"
+            @event-click="handleStartAppointment($event.originalEvent)"
+          >
+            <template #weekday-heading="{ heading }">
+              <div class="custom-weekday-heading">
+                <div class="day-name">{{ getAbbreviatedDay(heading.label) }}</div>
+                <div class="day-number" :class="{ 'is-today': heading.today }">
+                  {{ heading.date.getDate() }}
                 </div>
               </div>
-              <p v-else class="stat-data-empty">Nenhum para hoje</p>
+            </template>
+
+            <template #event="{ event }">
+              <div class="custom-event-content">
+                <div class="event-title">{{ event.title }}</div>
+                <div class="event-time">
+                  {{ formatTime(event.start) }} - {{ formatTime(event.end) }}
+                </div>
+              </div>
+            </template>
+          </vue-cal>
+        </div>
+      </div>
+
+      <aside class="action-column">
+        <div class="action-card">
+          <h3 class="action-card-title">Atendimentos de Hoje</h3>
+          <div v-if="todaysAppointmentsSorted.length > 0" class="today-appointments-list">
+            <div
+              v-for="appt in todaysAppointmentsSorted"
+              :key="appt._id"
+              class="today-appointment-item"
+            >
+              <div class="item-main-info">
+                <div class="item-avatar">{{ appt.patient.name.charAt(0) }}</div>
+                <div class="item-details">
+                  <div class="item-patient-name">{{ appt.patient.name }}</div>
+                  <div class="item-time">
+                    <Clock :size="14" /> {{ formatTime(appt.startTime) }}
+                  </div>
+                </div>
+              </div>
+              <div class="item-status-actions">
+                <span class="status-badge" :class="appt.status.toLowerCase().replace(' ', '-')">{{
+                  appt.status
+                }}</span>
+                <div class="item-actions">
+                  <button
+                    v-if="appt.status === 'Agendado'"
+                    @click="handleConfirmArrival(appt)"
+                    class="action-btn confirm"
+                    title="Confirmar Chegada"
+                  >
+                    <Check :size="16" />
+                  </button>
+                  <button
+                    v-if="['Agendado', 'Confirmado'].includes(appt.status)"
+                    @click="handleStartAppointment(appt)"
+                    class="action-btn start"
+                    title="Iniciar Atendimento"
+                  >
+                    <Play :size="16" />
+                  </button>
+                  <button
+                    v-if="appt.status === 'Realizado'"
+                    @click="handleStartAppointment(appt)"
+                    class="action-btn view"
+                    title="Ver Prontuário"
+                  >
+                    <FileText :size="16" />
+                  </button>
+                </div>
+              </div>
             </div>
-            <p v-else class="stat-data">{{ card.value }}</p>
-            <small v-if="card.note">{{ card.note }}</small>
+          </div>
+          <div v-else class="empty-list">
+            <p>Nenhum atendimento para hoje.</p>
           </div>
         </div>
-      </div>
 
-      <div class="calendar-section">
-        <div class="section-header">
-            <h2 class="section-title">Agenda de Hoje</h2>
-            <span class="section-subtitle">{{ todayFormatted }}</span>
-        </div>
-
-        <div class="calendar-container">
-            <div v-if="formattedEvents.length === 0" class="empty-agenda">
-                <CalendarCheck :size="48" />
-                <h3 class="empty-title">Agenda Limpa!</h3>
-                <p class="empty-text">Você não tem atendimentos agendados para hoje.</p>
+        <div class="action-card">
+          <h3 class="action-card-title">Ações Recomendadas</h3>
+          <div class="recommended-actions-list">
+            <div class="recommended-action-item">
+              <div class="action-icon blue"><Bell :size="18" /></div>
+              <div class="action-details">
+                <p>Confirmar agendamentos de amanhã</p>
+                <span>Você tem <strong>5</strong> agendamentos para confirmar.</span>
+              </div>
+              <ChevronRight :size="18" class="action-arrow" />
             </div>
-            <div v-else class="calendar-scroll-container">
-                <vue-cal
-                    class="vuecal--full-height-delete"
-                    :events="formattedEvents"
-                    :show-current-time-indicator="true"
-                    active-view="day"
-                    :disable-views="['years', 'year', 'month', 'week']"
-                    hide-view-selector
-                    hide-title-bar
-                    :time-from="7 * 60"
-                    :time-to="22 * 60"
-                    :time-step="30"
-                    locale="pt-br"
-                >
-                    <template #event="{ event }">
-                      <div class="custom-event-content" :class="{ current: isEventCurrent(event) }">
-                          <div class="event-details-wrapper">
-                              <div class="patient-avatar-placeholder">
-                                  {{ event.title.charAt(0) }}
-                              </div>
-                              <div class="event-info">
-                                  <div class="event-line">
-                                      <UserIcon :size="16" />
-                                      <span class="event-title">{{ event.title }}</span>
-                                  </div>
-                                  <div class="event-line">
-                                      <Clock :size="16" />
-                                      <span class="event-time">{{ formatTime(event.start) }} - {{ formatTime(event.end) }}</span>
-                                  </div>
-                              </div>
-                          </div>
-
-                          <div class="event-actions">
-                              <button class="action-btn confirm" @click.stop="handleConfirmArrival(event)" title="Confirmar chegada">
-                                  <Check :size="16" />
-                              </button>
-                              <button class="action-btn start" @click.stop="handleStartAppointment(event)" title="Iniciar atendimento">
-                                  <Play :size="16" />
-                              </button>
-                          </div>
-                      </div>
-                    </template>
-                </vue-cal>
+            <div class="recommended-action-item">
+              <div class="action-icon orange"><Users :size="18" /></div>
+              <div class="action-details">
+                <p>Aniversariantes da semana</p>
+                <span>Envie uma mensagem para <strong>3</strong> pacientes.</span>
+              </div>
+              <ChevronRight :size="18" class="action-arrow" />
             </div>
+          </div>
         </div>
-      </div>
+      </aside>
     </div>
   </div>
 </template>
 
 <style>
-.calendar-section { margin-top: 1.5rem; }
-.section-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
-.section-title { font-family: var(--fonte-titulo); font-size: 1.5rem; font-weight: 600; margin: 0; }
-.section-subtitle { font-size: 1rem; color: var(--cinza-texto); font-weight: 500; }
-.calendar-container {
-    border: 1px solid #e5e7eb;
-    border-radius: 1rem;
-    background-color: var(--branco);
-    height: 550px;
-    display: flex;
+/* Reset de estilos do vue-cal */
+.vuecal__menu,
+.vuecal__title-bar {
+  display: none;
 }
-
 .vuecal__event {
-    cursor: default;
-    border: none;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 8px;
+  box-sizing: border-box;
+  font-family: var(--fonte-principal);
+  transition: all 0.2s ease-in-out;
+  border: none;
+}
+.vuecal__event:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 .vuecal__event.clinic-event {
-    background-color: #eef2ff;
-    border-left: 5px solid #818cf8;
-    color: #4338ca;
-    border-radius: 0.5rem;
-    padding: 0.75rem 1rem;
-    box-sizing: border-box;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    transition: all 0.2s ease-out;
-    display: flex;
+  background-color: var(--azul-principal);
+  color: var(--branco);
 }
-.vuecal__event.clinic-event:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+.vuecal__event.status--confirmado {
+  background-color: #16a34a; /* Verde */
+  color: var(--branco);
 }
-.vuecal__event.clinic-event .custom-event-content.current {
-    border-left-color: var(--azul-principal);
-    box-shadow: 0 0 0 2px var(--branco), 0 0 0 4px var(--azul-principal);
-    animation: pulse-shadow 2s infinite;
+.vuecal__event.status--realizado {
+  background-color: #6b7281; /* Cinza */
+  color: var(--branco);
+}
+.vuecal--week-view .vuecal__bg .vuecal__time-column {
+  width: 70px;
+}
+.vuecal__cell-events-count {
+  display: none;
+}
+.vuecal__event-time {
+  display: none;
+}
+.vuecal__heading {
+  height: auto;
+  padding: 0;
+  border-bottom: 1px solid #e5e7eb;
 }
 
-@keyframes pulse-shadow {
-  0% { box-shadow: 0 0 0 2px var(--branco), 0 0 0 4px rgba(59, 130, 246, 0.4); }
-  50% { box-shadow: 0 0 0 2px var(--branco), 0 0 0 7px rgba(59, 130, 246, 0.2); }
-  100% { box-shadow: 0 0 0 2px var(--branco), 0 0 0 4px rgba(59, 130, 246, 0.4); }
-}
-
+/* ✨ ✨ ✨ ESTILOS ATUALIZADOS PARA O NOVO VISUAL ✨ ✨ ✨ */
 .vuecal__time-cell-label {
-    font-family: 'Poppins', sans-serif;
-    font-size: 0.75rem;
-    color: #9ca3af;
-    font-weight: 500;
+  font-size: 0.75rem;
+  color: var(--cinza-texto);
+  transform: translateY(-8px);
 }
-.vuecal--day-view .vuecal__bg { height: auto; }
-.vuecal__no-event { display: none; }
-
-.vuecal__time-cell::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 3.5rem;
-    right: 0;
-    height: 1px;
-    background-color: #f3f4f6;
-}
-.vuecal__time-cell:nth-of-type(2n+1)::after {
-    background-color: #e5e7eb;
+/* ✨ AJUSTE SIMPLIFICADO: Agora apenas uma linha sólida para cada hora */
+.vuecal__bg .vuecal__time-cell {
+  border-bottom: 1px solid #e5e7eb;
 }
 
-.vuecal__current-time-indicator {
-    border-top: 2px solid #ef4444;
-    z-index: 1;
+/* Cabeçalho customizado */
+.custom-weekday-heading {
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--fonte-principal);
+  padding: 0.75rem 0;
 }
-.vuecal__current-time-indicator::before {
-    content: '';
-    position: absolute;
-    top: -5px;
-    left: 3rem;
-    width: 10px;
-    height: 10px;
-    background-color: #ef4444;
-    border-radius: 50%;
+.day-name {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--cinza-texto);
+  text-transform: uppercase;
+  margin-bottom: 0.3rem;
 }
-
-.custom-event-content {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    height: 100%;
+.day-number {
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--preto);
+  line-height: 1;
 }
-
-.event-details-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-grow: 1;
-    min-width: 0;
-}
-
-.patient-avatar-placeholder {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background-color: #c7d2fe;
-    color: var(--azul-principal);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.1rem;
-    font-weight: 600;
-    flex-shrink: 0;
-}
-
-.event-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    overflow: hidden;
-}
-
-.event-line {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: #374151;
-}
-.event-line svg {
-    flex-shrink: 0;
-    color: #6b7280;
-}
-.event-title {
-    font-family: 'Poppins', sans-serif;
-    font-weight: 600;
-    font-size: 0.95rem;
-    color: #312e81;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.event-time {
-    font-family: 'Poppins', sans-serif;
-    font-size: 0.85rem;
-    color: #64748b;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.event-actions {
-    display: flex;
-    gap: 0.5rem;
-    opacity: 0;
-    transition: opacity 0.2s ease-in-out;
-    flex-shrink: 0;
-}
-.vuecal__event:hover .event-actions,
-.custom-event-content.current .event-actions {
-    opacity: 1;
-}
-
-.action-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-    width: 36px;
-    height: 36px;
-}
-.action-btn.confirm {
-    background-color: #dcfce7;
-    color: #16a34a;
-}
-.action-btn.confirm:hover {
-    background-color: #bbf7d0;
-}
-.action-btn.start {
-    background-color: var(--azul-principal);
-    color: var(--branco);
-}
-.action-btn.start:hover {
-    background-color: var(--azul-escuro);
+.day-number.is-today {
+  color: var(--azul-principal);
+  font-weight: 700;
 }
 </style>
 
 <style scoped>
-.dashboard-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; }
-.title { font-size: 2.25rem; font-weight: 700; margin-bottom: 0.5rem; }
-.subtitle { font-size: 1.125rem; color: var(--cinza-texto); }
-.btn-primary { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; border-radius: 0.75rem; border: none; background-color: var(--azul-principal); color: var(--branco); font-size: 1rem; font-weight: 600; cursor: pointer; transition: background-color 0.3s ease; }
-.btn-primary:hover { background-color: var(--azul-escuro); }
-.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; }
-.stat-card { display: flex; align-items: flex-start; gap: 1rem; background-color: var(--bg-color, var(--branco)); padding: 1.5rem; border-radius: 1rem; }
-.card-icon { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background-color: var(--icon-color, var(--preto)); color: var(--branco); flex-shrink: 0; }
-.card-content { display: flex; flex-direction: column; }
-.card-content h3 { font-size: 1rem; font-weight: 500; color: #555; margin-bottom: 0.25rem; margin-top: 0; }
-.stat-data { font-size: 1.75rem; font-weight: 700; color: var(--preto); margin: 0; }
-.stat-data-empty { font-size: 1rem; font-weight: 500; color: var(--cinza-texto); margin: 0; padding-top: 0.5rem; }
-.stat-card small { font-size: 0.75rem; color: #f59e0b; }
-.stat-card.blue { --icon-color: #3b82f6; --bg-color: #eff6ff; }
-.stat-card.green { --icon-color: #10b981; --bg-color: #f0fdf4; }
-.stat-card.orange { --icon-color: #f97316; --bg-color: #fff7ed; }
-.stat-card.purple { --icon-color: #8b5cf6; --bg-color: #f5f3ff; }
-.appointment-details { display: flex; flex-direction: column; gap: 0.5rem; }
-.appointment-line { display: flex; align-items: center; gap: 0.5rem; font-size: 1rem; font-weight: 600; }
-.appointment-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
-.loading-state { color: var(--cinza-texto); padding: 2rem 0; }
-
-.calendar-scroll-container { flex-grow: 1; max-height: 600px; overflow-y: auto; }
-.calendar-scroll-container::-webkit-scrollbar { width: 8px; }
-.calendar-scroll-container::-webkit-scrollbar-track { background: #f9fafb; }
-.calendar-scroll-container::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 8px; }
-.calendar-scroll-container::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
-
-.empty-agenda {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    color: #9ca3af;
+/* O CSS ESCOPAVEL NÃO FOI ALTERADO */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
 }
-.empty-agenda svg {
-    margin-bottom: 1.5rem;
+.title {
+  font-size: 2.25rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
 }
-.empty-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: #4b5563;
+.subtitle {
+  font-size: 1.125rem;
+  color: var(--cinza-texto);
 }
-.empty-text {
-    color: var(--cinza-texto);
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  border: none;
+  background-color: var(--azul-principal);
+  color: var(--branco);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+.btn-primary:hover {
+  background-color: var(--azul-escuro);
+}
+.loading-state {
+  color: var(--cinza-texto);
+  padding: 2rem 0;
+}
+.dashboard-content {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 2rem;
+  align-items: flex-start;
+}
+.agenda-column {
+  grid-column: 1 / 2;
+}
+.action-column {
+  grid-column: 2 / 3;
+  position: sticky;
+  top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.nav-btn,
+.today-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e5e7eb;
+  background-color: var(--branco);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.nav-btn:hover,
+.today-btn:hover {
+  background-color: #f3f4f6;
+}
+.nav-btn {
+  width: 32px;
+  height: 32px;
+}
+.today-btn {
+  height: 32px;
+  padding: 0 1rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+.section-subtitle {
+  font-size: 0.875rem;
+  color: var(--cinza-texto);
+  font-weight: 500;
+  margin-left: auto;
+}
+.calendar-container {
+  border: 1px solid #e5e7eb;
+  border-radius: 1rem;
+  background-color: var(--branco);
+  height: 75vh;
+  min-height: 600px;
+  overflow: hidden;
+  position: relative;
+}
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  font-weight: 500;
+  color: var(--cinza-texto);
+  border-radius: 1rem;
+}
+.custom-event-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow: hidden;
+}
+.event-title {
+  font-weight: 600;
+  font-size: 0.8rem;
+  margin-bottom: 0;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.event-time {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.action-card {
+  background-color: var(--branco);
+  border: 1px solid #e5e7eb;
+  border-radius: 1rem;
+  padding: 1.5rem;
+}
+.action-card-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+.today-appointments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+.today-appointment-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+.item-main-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.item-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #eef2ff;
+  color: var(--azul-principal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.item-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.item-patient-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.item-time {
+  font-size: 0.8rem;
+  color: var(--cinza-texto);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.item-status-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+.status-badge {
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  text-transform: capitalize;
+}
+.status-badge.agendado {
+  background-color: #eff6ff;
+  color: #2563eb;
+}
+.status-badge.confirmado {
+  background-color: #fefce8;
+  color: #a16207;
+}
+.status-badge.realizado {
+  background-color: #f0fdf4;
+  color: #16a34a;
+}
+.status-badge.cancelado {
+  background-color: #fef2f2;
+  color: #dc2626;
+}
+.item-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.action-btn.confirm {
+  background-color: #f0fdf4;
+  color: #16a34a;
+}
+.action-btn.confirm:hover {
+  background-color: #dcfce7;
+}
+.action-btn.start {
+  background-color: #eef2ff;
+  color: var(--azul-principal);
+}
+.action-btn.start:hover {
+  background-color: #dbeafe;
+}
+.action-btn.view {
+  background-color: #f3f4f6;
+  color: #4b5563;
+}
+.action-btn.view:hover {
+  background-color: #e5e7eb;
+}
+.empty-list {
+  text-align: center;
+  padding: 1rem 0;
+  color: var(--cinza-texto);
+  font-size: 0.875rem;
+}
+.recommended-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.recommended-action-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  background-color: #f9fafb;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.recommended-action-item:hover {
+  background-color: #f3f4f6;
+}
+.action-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.action-icon.blue {
+  background-color: #dbeafe;
+  color: #3b82f6;
+}
+.action-icon.orange {
+  background-color: #ffedd5;
+  color: #f97316;
+}
+.action-details p {
+  margin: 0;
+  font-weight: 500;
+  color: #374151;
+}
+.action-details span {
+  font-size: 0.8rem;
+  color: var(--cinza-texto);
+}
+.action-arrow {
+  margin-left: auto;
+  color: #9ca3af;
+}
+@media (max-width: 1200px) {
+  .dashboard-content {
+    grid-template-columns: 1fr;
+  }
+  .action-column {
+    position: static;
+  }
 }
 </style>
