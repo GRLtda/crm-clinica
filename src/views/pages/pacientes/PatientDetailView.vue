@@ -4,8 +4,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { usePatientsStore } from '@/stores/patients'
 import { useAnamnesisStore } from '@/stores/anamnesis'
 import { useAppointmentsStore } from '@/stores/appointments'
+import { useAuthStore } from '@/stores/auth'
 import { useToast } from 'vue-toastification'
+import { generateAnamnesisPdf } from '@/helpers/pdf-generator'
+
 import {
+  FileDown,
   ArrowLeft,
   Edit,
   Clipboard,
@@ -26,12 +30,14 @@ import { fetchAddressByCEP } from '@/api/external'
 import AssignAnamnesisModal from '@/components/pages/pacientes/modals/AssignAnamnesisModal.vue'
 import ViewAnamnesisModal from '@/components/pages/pacientes/modals/ViewAnamnesisModal.vue'
 import CreateAppointmentModal from '@/components/pages/dashboard/CreateAppointmentModal.vue'
+import PdfPreviewModal from '@/components/pages/pacientes/modals/PdfPreviewModal.vue' // ✨ Importar o novo modal
 
 const route = useRoute()
 const router = useRouter()
 const patientsStore = usePatientsStore()
 const anamnesisStore = useAnamnesisStore()
 const appointmentsStore = useAppointmentsStore()
+const authStore = useAuthStore()
 const toast = useToast()
 
 const isEditing = ref(false)
@@ -40,8 +46,10 @@ const editablePatient = ref(null)
 const activeTab = ref('details')
 const viewingAnamnesis = ref(null)
 const isCreateAppointmentModalOpen = ref(false)
+const pdfPreview = ref({ url: null, name: null }) // ✨ Estado para o preview do PDF
 
 const patient = computed(() => patientsStore.selectedPatient)
+const clinic = computed(() => authStore.user?.clinic)
 const answeredAnamneses = computed(() => anamnesisStore.answeredAnamneses)
 const pendingAnamneses = computed(() => anamnesisStore.pendingAnamneses)
 const patientHistory = computed(() => appointmentsStore.patientAppointments)
@@ -73,17 +81,10 @@ onMounted(() => {
 
 watch(patient, (newVal) => {
   if (newVal) {
-    // Clona o objeto para edição, garantindo que o endereço exista
-    editablePatient.value = JSON.parse(
-      JSON.stringify({
-        ...newVal,
-        address: newVal.address || {},
-      }),
-    )
+    editablePatient.value = JSON.parse(JSON.stringify({ ...newVal, address: newVal.address || {} }))
   }
 })
 
-// Lógica para buscar CEP movida para dentro da view
 watch(
   () => editablePatient.value?.address?.cep,
   async (newCep) => {
@@ -92,10 +93,13 @@ watch(
       if (numericCep.length === 8) {
         const address = await fetchAddressByCEP(numericCep)
         if (address) {
-          editablePatient.value.address.street = address.street
-          editablePatient.value.address.district = address.neighborhood
-          editablePatient.value.address.city = address.city
-          editablePatient.value.address.state = address.state
+          editablePatient.value.address = {
+            ...editablePatient.value.address,
+            street: address.street,
+            district: address.neighborhood,
+            city: address.city,
+            state: address.state,
+          }
         }
       }
     }
@@ -135,10 +139,38 @@ function formatSimpleDate(dateString) {
 }
 
 function handleCopyLink(token) {
-  if (!token) return
   const link = `${window.location.origin}/responder-anamnese/${token}`
-  navigator.clipboard.writeText(link)
-  toast.info('Link de resposta copiado!')
+  navigator.clipboard.writeText(link).then(() => {
+    toast.info('Link de resposta copiado!')
+  })
+}
+
+// ✨ FUNÇÃO ATUALIZADA PARA ABRIR O MODAL DE PREVIEW ✨
+async function handleGeneratePdf(anamnesis) {
+  if (!patient.value || !clinic.value) {
+    toast.error('Dados do paciente ou da clínica não carregados.')
+    return
+  }
+
+  const loadingToast = toast.info('Gerando PDF...', { timeout: false })
+
+  const fullTemplate = await anamnesisStore.fetchTemplateById(anamnesis.template._id)
+
+  if (!fullTemplate) {
+    toast.dismiss(loadingToast)
+    toast.error('Não foi possível carregar o modelo da anamnese para gerar o PDF.')
+    return
+  }
+
+  const completeAnamnesisData = { ...anamnesis, template: fullTemplate }
+  const { fileName, pdfDataUri } = await generateAnamnesisPdf(
+    completeAnamnesisData,
+    patient.value,
+    clinic.value,
+  )
+
+  toast.dismiss(loadingToast)
+  pdfPreview.value = { url: pdfDataUri, name: fileName }
 }
 </script>
 
@@ -343,13 +375,23 @@ function handleCopyLink(token) {
                 class="clickable"
               >
                 <div class="anamnesis-info">
-                  <span class="anamnesis-name">{{ item.template.name }}</span>
+                  <span class="anamnesis-name">{{
+                    item.template?.name || 'Modelo não encontrado'
+                  }}</span>
                   <span class="anamnesis-date"
                     >Respondida em {{ formatSimpleDate(item.updatedAt) }}</span
                   >
                 </div>
+                <button
+                  @click.stop="handleGeneratePdf(item)"
+                  class="btn-icon"
+                  title="Visualizar PDF"
+                >
+                  <FileDown :size="16" />
+                </button>
               </li>
             </ul>
+
             <div v-else class="empty-state-card">
               <div class="empty-state-icon">
                 <ClipboardCheck :size="40" />
@@ -359,6 +401,14 @@ function handleCopyLink(token) {
                 As anamneses preenchidas pelo paciente aparecerão aqui.
               </p>
             </div>
+            <div class="patient-detail-view">
+              <PdfPreviewModal
+                v-if="pdfPreview.url"
+                :pdf-url="pdfPreview.url"
+                :file-name="pdfPreview.name"
+                @close="pdfPreview = { url: null, name: null }"
+              />
+            </div>
           </div>
 
           <div class="anamnesis-section">
@@ -366,7 +416,9 @@ function handleCopyLink(token) {
             <ul v-if="pendingAnamneses.length > 0" class="anamnesis-list">
               <li v-for="item in pendingAnamneses" :key="item._id">
                 <div class="anamnesis-info">
-                  <span class="anamnesis-name">{{ item.template.name }}</span>
+                  <span class="anamnesis-name">{{
+                    item.template?.name || 'Modelo não encontrado'
+                  }}</span>
                   <span class="anamnesis-date"
                     >Vence em {{ formatSimpleDate(item.patientAccessTokenExpires) }}</span
                   >

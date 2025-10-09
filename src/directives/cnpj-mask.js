@@ -1,20 +1,21 @@
-function formatCPF(value) {
+function formatCNPJ(value) {
   if (!value) return ''
   const digits = value.replace(/\D/g, '')
 
   return digits
-    .slice(0, 11)
+    .slice(0, 14)
+    .replace(/(\d{2})(\d)/, '$1.$2')
     .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d{1,2})$/, '$1-$2')
+    .replace(/(\d{3})(\d)/, '$1/$2')
+    .replace(/(\d{4})(\d{1,2})$/, '$1-$2')
 }
 
-export const cpfMask = {
+export const cnpjMask = {
   mounted(el, binding) {
     if (binding.value) {
       const onInput = (event) => {
         const value = event.target.value
-        const formatted = formatCPF(value)
+        const formatted = formatCNPJ(value)
 
         if (formatted !== value) {
           event.target.value = formatted
@@ -24,7 +25,7 @@ export const cpfMask = {
 
       el.addEventListener('input', onInput)
       el._onInput = onInput
-
+      
       setTimeout(() => {
         onInput({ target: el })
       }, 0)

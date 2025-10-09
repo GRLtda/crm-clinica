@@ -39,7 +39,15 @@ const utilityNavLinks = [
           <ClinicDropdown v-if="isClinicDropdownOpen" />
           <div class="clinic-info">
             <div class="clinic-avatar">
-              {{ authStore.user?.clinic?.name?.charAt(0) || 'C' }}
+              <img
+                v-if="authStore.user?.clinic?.logoUrl"
+                :src="authStore.user.clinic.logoUrl"
+                alt="Logo da Clínica"
+                class="clinic-logo-img"
+              />
+              <span v-else>
+                {{ authStore.user?.clinic?.name?.charAt(0) || 'C' }}
+              </span>
             </div>
             <div class="clinic-details">
               <span class="clinic-name">{{ authStore.user?.clinic?.name || 'Sua Clínica' }}</span>
@@ -109,7 +117,6 @@ const utilityNavLinks = [
   flex-grow: 1;
 }
 
-/* === NOVOS ESTILOS PARA CLINIC INFO === */
 .clinic-info-wrapper {
   position: relative;
   margin-bottom: 1.5rem;
@@ -125,11 +132,12 @@ const utilityNavLinks = [
   border-radius: 0.75rem;
 }
 
+/* ✨ ESTILOS DO AVATAR/LOGO ✨ */
 .clinic-avatar {
   width: 40px;
   height: 40px;
   flex-shrink: 0;
-  border-radius: 0.5rem; /* Quadrado com cantos arredondados */
+  border-radius: 0.5rem;
   background-color: #eef2ff;
   color: var(--azul-principal);
   display: flex;
@@ -138,13 +146,20 @@ const utilityNavLinks = [
   font-weight: 700;
   font-size: 1.2rem;
   font-family: var(--fonte-titulo);
+  overflow: hidden; /* Garante que a imagem não vaze */
+}
+
+.clinic-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Garante que a imagem preencha o espaço */
 }
 
 .clinic-details {
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  overflow: hidden; /* Para o text-overflow funcionar */
+  overflow: hidden;
 }
 
 .clinic-name {
@@ -158,9 +173,8 @@ const utilityNavLinks = [
 .user-role {
   font-size: 0.875rem;
   color: var(--cinza-texto);
-  text-transform: capitalize; /* Para deixar a primeira letra maiúscula */
+  text-transform: capitalize;
 }
-/* === FIM DOS NOVOS ESTILOS === */
 
 .options-btn {
   background: none;

@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { useClinicStore } from '@/stores/clinic'
 import FormInput from '@/components/global/FormInput.vue'
 import { fetchAddressByCEP } from '@/api/external'
+import { validateCNPJ } from '@/helpers/cnpj-validator'
 
 const emit = defineEmits(['success'])
 const clinicStore = useClinicStore()
@@ -38,13 +39,35 @@ watch(
   },
 )
 
+// ✨ FUNÇÃO DE CRIAÇÃO MODIFICADA ✨
 async function handleCreateClinic() {
   if (!clinicData.value.name || !clinicData.value.responsibleName) {
-    errorMessage.value = 'Por favor, preencha pelo menos o Nome da Clínica e o Nome do Responsável.'
+    errorMessage.value = 'Por favor, preencha os campos obrigatórios.'
     return
   }
+
+  const cleanedCnpj = clinicData.value.cnpj.replace(/\D/g, '')
+
+  if (cleanedCnpj && !validateCNPJ(clinicData.value.cnpj)) {
+    errorMessage.value = 'O CNPJ inserido não é válido. Por favor, verifique.'
+    return
+  }
+
   errorMessage.value = null
-  const { success } = await clinicStore.createClinic(clinicData.value)
+
+  // Cria o payload base sem o CNPJ
+  const payload = {
+    name: clinicData.value.name,
+    responsibleName: clinicData.value.responsibleName,
+    address: clinicData.value.address,
+  }
+
+  // Adiciona o CNPJ ao payload SOMENTE se ele não estiver vazio
+  if (cleanedCnpj) {
+    payload.cnpj = cleanedCnpj
+  }
+
+  const { success } = await clinicStore.createClinic(payload)
 
   if (success) {
     emit('success')
@@ -67,14 +90,16 @@ async function handleCreateClinic() {
         label="Nome da Clínica"
         placeholder="Ex: Clínica Bem-Estar"
         autocomplete="organization"
+        required
       />
       <FormInput
         v-model="clinicData.responsibleName"
         label="Nome do Responsável"
         placeholder="Quem é o responsável legal"
         autocomplete="name"
+        required
       />
-      <FormInput v-model="clinicData.cnpj" label="CNPJ" placeholder="00.000.000/0000-00" />
+      <FormInput v-model="clinicData.cnpj" label="CNPJ" placeholder="00.000.000/0000-00" cnpj-mask />
       <FormInput
         v-model="clinicData.address.cep"
         label="CEP"

@@ -31,6 +31,10 @@ export const phoneMask = {
 
       el.addEventListener('input', onInput)
       el._onInput = onInput
+
+      setTimeout(() => {
+        onInput({ target: el })
+      }, 0)
     }
   },
   unmounted(el) {

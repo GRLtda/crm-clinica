@@ -21,6 +21,7 @@ import {
   ChevronDown,
 } from 'lucide-vue-next'
 import CreateAppointmentModal from '@/components/pages/dashboard/CreateAppointmentModal.vue'
+import AppointmentDetailsModal from '@/components/pages/dashboard/AppointmentDetailsModal.vue' // Novo
 import VueCal from 'vue-cal'
 import 'vue-cal/dist/vuecal.css'
 import { startOfWeek, endOfWeek, format, addDays, subDays } from 'date-fns'
@@ -34,6 +35,8 @@ const router = useRouter()
 const toast = useToast()
 
 const isModalOpen = ref(false)
+const isDetailsModalOpen = ref(false) // Novo
+const selectedEventForDetails = ref(null) // Novo
 const initialAppointmentData = ref(null)
 const selectedDate = ref(new Date())
 const currentTime = ref(new Date())
@@ -55,6 +58,11 @@ const formattedDateTime = computed(() => {
 
 function handleModalClose() {
   isModalOpen.value = false
+  fetchWeekData()
+}
+
+function handleDetailsModalClose() {
+  isDetailsModalOpen.value = false
   fetchWeekData()
 }
 
@@ -171,6 +179,11 @@ function handleCellClick(date) {
   isModalOpen.value = true
 }
 
+function handleEventClick(event) {
+  selectedEventForDetails.value = event
+  isDetailsModalOpen.value = true
+}
+
 function handleStartAppointment(appointment) {
   const { _id: appointmentId, patient } = appointment
   router.push(`/app/atendimentos/${appointmentId}/patient/${patient._id}`)
@@ -190,6 +203,13 @@ async function handleConfirmArrival(appointment) {
     toast.error('Não foi possível confirmar a chegada.')
   }
 }
+
+function handleReschedule(appointmentToEdit) {
+  isDetailsModalOpen.value = false; // Fecha o modal de detalhes
+  // Lógica para abrir o modal de criação/edição com os dados do agendamento
+  // (Pode ser implementado no futuro)
+  toast.info('Funcionalidade de reagendamento em desenvolvimento!');
+}
 </script>
 
 <template>
@@ -198,6 +218,12 @@ async function handleConfirmArrival(appointment) {
       v-if="isModalOpen"
       @close="handleModalClose"
       :initial-data="initialAppointmentData"
+    />
+    <AppointmentDetailsModal
+        v-if="isDetailsModalOpen && selectedEventForDetails"
+        :event="selectedEventForDetails"
+        @close="handleDetailsModalClose"
+        @edit="handleReschedule"
     />
 
     <header class="dashboard-header">
@@ -259,7 +285,8 @@ async function handleConfirmArrival(appointment) {
             :min-cell-width="120"
             locale="pt-br"
             @cell-click="handleCellClick"
-            @event-click="handleStartAppointment($event.originalEvent)"
+            @event-click="handleEventClick"
+            no-events-text=""
           >
             <template #weekday-heading="{ heading }">
               <div class="custom-weekday-heading">

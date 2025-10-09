@@ -32,7 +32,7 @@ async function handleGenerateLink() {
   const { success, data } = await anamnesisStore.assignAnamnesis(props.patientId, selectedTemplateId.value);
   if (success) {
     const token = data.patientAccessToken;
-    generatedLink.value = `${window.location.origin}/responder-anamnese/${token}`;
+    generatedLink.value = `${window.location.origin}/anamnese/${token}`;
     toast.success('Link gerado com sucesso!');
   } else {
     toast.error('Não foi possível gerar o link.');
@@ -42,9 +42,30 @@ async function handleGenerateLink() {
 
 function copyLink() {
   if (!generatedLink.value) return;
-  navigator.clipboard.writeText(generatedLink.value);
-  toast.info('Link copiado para a área de transferência!');
+  const link = generatedLink.value;
+
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(link).then(() => {
+      toast.info('Link copiado para a área de transferência!');
+    });
+  } else {
+    const textArea = document.createElement('textarea');
+    textArea.value = link;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      toast.info('Link copiado para a área de transferência!');
+    } catch (err) {
+      toast.error('Não foi possível copiar o link.');
+    }
+    document.body.removeChild(textArea);
+  }
 }
+
 </script>
 
 <template>

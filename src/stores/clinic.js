@@ -2,13 +2,16 @@
 
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { createClinic as apiCreateClinic, updateClinic as apiUpdateClinic } from '@/api/clinics'
+import {
+  createClinic as apiCreateClinic,
+  updateClinic as apiUpdateClinic,
+} from '@/api/clinics'
+import { uploadImage as apiUploadImage } from '@/api/uploads'
 import { useAuthStore } from './auth'
 
 export const useClinicStore = defineStore('clinic', () => {
   const currentClinic = ref(null)
 
-  // ✨ NOVA FUNÇÃO: Permite que outras stores (como a de auth) setem a clínica
   function setClinic(clinicData) {
     currentClinic.value = clinicData
   }
@@ -16,7 +19,7 @@ export const useClinicStore = defineStore('clinic', () => {
   async function createClinic(clinicData) {
     try {
       const response = await apiCreateClinic(clinicData)
-      setClinic(response.data) // Usando a nova função
+      setClinic(response.data)
 
       const authStore = useAuthStore()
       await authStore.fetchUser()
@@ -31,7 +34,7 @@ export const useClinicStore = defineStore('clinic', () => {
   async function updateClinicDetails(clinicData) {
     try {
       const response = await apiUpdateClinic(clinicData)
-      setClinic(response.data) // Usando a nova função
+      setClinic(response.data)
 
       const authStore = useAuthStore()
       if (authStore.user) {
@@ -45,5 +48,25 @@ export const useClinicStore = defineStore('clinic', () => {
     }
   }
 
-  return { currentClinic, createClinic, updateClinicDetails, setClinic }
+  async function uploadLogo(formData) {
+    try {
+      const response = await apiUploadImage(formData)
+      // Pega a 'imageUrl' da resposta, conforme você especificou
+      const logoUrl = response.data.imageUrl
+
+      if (currentClinic.value) {
+        currentClinic.value.logoUrl = logoUrl
+      }
+
+      const authStore = useAuthStore()
+      await authStore.fetchUser()
+
+      return { success: true, data: { logoUrl } }
+    } catch (error) {
+      console.error('Erro ao fazer upload do logo:', error)
+      return { success: false, error }
+    }
+  }
+
+  return { currentClinic, createClinic, updateClinicDetails, setClinic, uploadLogo }
 })

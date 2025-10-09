@@ -29,6 +29,7 @@
     "axios": "^1.12.2",
     "canvas-confetti": "^1.9.3",
     "date-fns": "^4.1.0",
+    "jspdf": "^2.5.1",
     "lucide-vue-next": "^0.544.0",
     "pinia": "^3.0.3",
     "prettier": "^3.6.2",

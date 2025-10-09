@@ -8,8 +8,8 @@ defineProps({
   autocomplete: String,
   phoneMask: { type: Boolean, default: false },
   cpfMask: { type: Boolean, default: false },
+  cnpjMask: { type: Boolean, default: false },
   required: { type: Boolean, default: false },
-  error: { type: [Boolean, String], default: false },
 })
 const emit = defineEmits(['update:modelValue'])
 
@@ -33,10 +33,9 @@ function handleInput(event) {
       @input="handleInput"
       v-phone-mask="phoneMask"
       v-cpf-mask="cpfMask"
+      v-cnpj-mask="cnpjMask"
       class="form-input"
-      :class="{ 'has-error': !!error }"
     />
-    <p v-if="typeof error === 'string' && error" class="error-message">{{ error }}</p>
   </div>
 </template>
 
