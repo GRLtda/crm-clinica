@@ -42,15 +42,23 @@ function handleInput(event) {
 <style scoped>
 .form-group {
   text-align: left;
-  margin-bottom: 0;
-  padding-bottom: 1.25rem;
+  margin-bottom: 1.25rem;
 }
+
+/* ✨ Estilos do label atualizados aqui 👇 */
 .form-label {
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
   font-size: 0.875rem;
+
+  /* Impede a quebra de linha */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%; /* Garante que o overflow seja calculado corretamente */
 }
+
 .form-input {
   width: 100%;
   padding: 0.75rem 1rem;
@@ -70,18 +78,5 @@ function handleInput(event) {
 .required-asterisk {
   color: #ef4444;
   margin-left: 0.25rem;
-}
-
-.form-input.has-error {
-  border-color: #ef4444;
-}
-.form-input.has-error:focus {
-  border-color: #ef4444;
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3);
-}
-.error-message {
-  color: #ef4444;
-  font-size: 0.875rem;
-  margin-top: 0.5rem;
 }
 </style>

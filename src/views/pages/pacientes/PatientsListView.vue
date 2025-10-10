@@ -69,13 +69,11 @@ function toggleActionsMenu(patientId) {
   actionsMenuOpenFor.value = actionsMenuOpenFor.value === patientId ? null : patientId
 }
 
-// Para esta função funcionar, sua store precisa da action 'deletePatient'
 async function handleDelete(patientId) {
   if (confirm('Tem certeza que deseja excluir este paciente? Esta ação não pode ser desfeita.')) {
     const { success } = await patientsStore.deletePatient(patientId)
     if (success) {
       toast.success('Paciente excluído com sucesso!')
-      // A store já deve remover o paciente da lista, então a UI atualiza
     } else {
       toast.error(patientsStore.error || 'Não foi possível excluir o paciente.')
     }
@@ -94,7 +92,7 @@ const formatCPF = (cpf) => {
 <template>
   <div class="patients-list-page">
     <header class="page-header">
-      <div>
+      <div class="header-text">
         <h1 class="title">Pacientes</h1>
         <p class="subtitle">Gerencie todos os pacientes da sua clínica.</p>
       </div>
@@ -109,13 +107,13 @@ const formatCPF = (cpf) => {
         />
         <router-link to="/app/pacientes/novo" class="btn-primary">
           <UserPlus :size="16" />
-          Adicionar Paciente
+          <span class="btn-primary-text">Adicionar Paciente</span>
         </router-link>
       </div>
     </header>
 
     <div class="table-wrapper" :class="{ 'is-loading': patientsStore.isLoading && !isInitialLoad }">
-      <div class="table-container">
+      <div class="table-container desktop-only">
         <table>
           <thead>
             <tr>
@@ -189,6 +187,48 @@ const formatCPF = (cpf) => {
           </tbody>
         </table>
       </div>
+
+      <div class="mobile-list">
+        <div v-if="patientsStore.isLoading && isInitialLoad" class="state-cell">
+          Carregando pacientes...
+        </div>
+        <div v-else-if="patients.length === 0" class="state-cell">
+          Nenhum paciente encontrado.
+        </div>
+        <div
+          v-for="patient in patients"
+          :key="patient._id"
+          class="patient-card"
+          @click="goToPatient(patient._id)"
+        >
+          <div class="patient-avatar">{{ patient.name.charAt(0).toUpperCase() }}</div>
+          <div class="patient-info">
+            <div class="patient-name">{{ patient.name }}</div>
+            <div class="patient-cpf-masked">{{ formatCPF(patient.cpf) }}</div>
+          </div>
+          <div class="actions-cell" @click.stop>
+            <div class="actions-wrapper" v-click-outside="() => (actionsMenuOpenFor = null)">
+              <button @click.stop="toggleActionsMenu(patient._id)" class="btn-icon">
+                <MoreHorizontal :size="20" />
+              </button>
+              <Transition name="fade">
+                <div v-if="actionsMenuOpenFor === patient._id" class="actions-dropdown">
+                  <router-link
+                    :to="`/app/pacientes/${patient._id}?edit=true`"
+                    class="dropdown-item"
+                  >
+                    <Pencil :size="14" /> Editar
+                  </router-link>
+                  <button @click.stop="handleDelete(patient._id)" class="dropdown-item delete">
+                    <Trash2 :size="14" /> Excluir
+                  </button>
+                </div>
+              </Transition>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <AppPagination
         v-if="pagination && pagination.pages > 1"
         :current-page="pagination.page"
@@ -202,16 +242,19 @@ const formatCPF = (cpf) => {
 </template>
 
 <style scoped>
+/* ... (estilos anteriores permanecem os mesmos) ... */
 .page-header {
   display: flex;
   justify-content: space-between;
-  align-items: center; /* MODIFICADO: Garante alinhamento vertical */
+  align-items: center;
   margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1.5rem;
 }
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 0.75rem; /* Reduzido para um espaçamento mais agradável */
+  gap: 0.75rem;
 }
 .patient-search {
   width: 280px;
@@ -228,7 +271,7 @@ const formatCPF = (cpf) => {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0 1.5rem; /* AJUSTADO: Padding horizontal para centralizar texto */
+  padding: 0 1.5rem;
   border-radius: 0.75rem;
   border: none;
   background-color: var(--azul-principal);
@@ -238,25 +281,20 @@ const formatCPF = (cpf) => {
   cursor: pointer;
   transition: background-color 0.3s ease;
   text-decoration: none;
-  height: 44px; /* ADICIONADO: Altura fixa */
+  height: 44px;
 }
 .btn-primary:hover {
   background-color: var(--azul-escuro);
 }
-
-/* ADICIONADO: Bloco de estilos para o input de busca */
 .patient-search :deep(.input-wrapper) {
-  height: 44px; /* Mesma altura do botão */
-  border-radius: 0.75rem; /* Mesmo arredondamento do botão */
+  height: 44px;
+  border-radius: 0.75rem;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-
-/* ADICIONADO: Efeito de foco para o input de busca */
 .patient-search :deep(.input-wrapper:has(.select-input:focus)) {
   border-color: var(--azul-principal);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
 }
-
 .table-wrapper {
   background-color: var(--branco);
   border: 1px solid #e5e7eb;
@@ -264,14 +302,13 @@ const formatCPF = (cpf) => {
   overflow: hidden;
   position: relative;
 }
-.table-wrapper.is-loading .table-container {
+.table-wrapper.is-loading {
   opacity: 0.5;
   pointer-events: none;
 }
 .table-container {
   overflow-x: auto;
-  height: 75vh;
-  transition: opacity 0.3s ease;
+  min-height: 60vh;
 }
 table {
   width: 100%;
@@ -279,7 +316,7 @@ table {
 }
 th,
 td {
-  padding: 1rem 1.5rem; /* Aumenta o padding para mais respiro */
+  padding: 1rem 1.5rem;
   text-align: left;
   border-bottom: 1px solid #e5e7eb;
   vertical-align: middle;
@@ -301,7 +338,7 @@ th {
   gap: 0.5rem;
 }
 .avatar-header {
-  width: 72px; /* Aumenta o espaço do avatar */
+  width: 72px;
 }
 th.actions-header {
   width: 100px;
@@ -317,7 +354,7 @@ th.actions-header .th-content {
   background-color: #f9fafb;
 }
 .patient-avatar {
-  width: 40px; /* Aumenta o avatar */
+  width: 40px;
   height: 40px;
   border-radius: 50%;
   background-color: #eef2ff;
@@ -327,13 +364,14 @@ th.actions-header .th-content {
   justify-content: center;
   font-weight: 600;
   font-size: 1.1rem;
+  flex-shrink: 0;
 }
 .patient-name {
-  font-weight: 600; /* Deixa o nome mais forte */
+  font-weight: 600;
   color: #111827;
 }
 .state-cell {
-  padding: 4rem; /* Aumenta o padding do estado vazio/carregando */
+  padding: 4rem;
   text-align: center;
   color: var(--cinza-texto);
   font-size: 1rem;
@@ -368,13 +406,13 @@ th.actions-header .th-content {
   border-radius: 0.75rem;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   z-index: 10;
-  width: 140px; /* Aumenta a largura do dropdown */
+  width: 140px;
   padding: 0.5rem;
 }
 .dropdown-item {
   display: flex;
   align-items: center;
-  gap: 0.75rem; /* Aumenta o espaçamento interno */
+  gap: 0.75rem;
   padding: 0.6rem;
   border-radius: 0.5rem;
   width: 100%;
@@ -384,7 +422,7 @@ th.actions-header .th-content {
   text-decoration: none;
   color: #374151;
   font-size: 0.875rem;
-  font-weight: 500; /* Deixa o texto do item mais forte */
+  font-weight: 500;
 }
 .dropdown-item:hover {
   background-color: #f3f4f6;
@@ -405,5 +443,77 @@ th.actions-header .th-content {
 .fade-leave-to {
   opacity: 0;
   transform: translateY(-5px);
+}
+
+/* ✨ INÍCIO DAS MUDANÇAS PARA O RESPONSIVO ✨ */
+.mobile-list {
+  display: none; /* Escondido por padrão */
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .header-actions {
+    width: 100%;
+    flex-direction: column-reverse; /* Coloca o botão de adicionar por último */
+  }
+  .patient-search,
+  .btn-primary {
+    width: 100%;
+  }
+  .btn-primary {
+    justify-content: center;
+  }
+  .table-wrapper {
+    border: none;
+    background-color: transparent;
+    border-radius: 0;
+  }
+  .table-container {
+    display: none; /* Esconde a tabela no mobile */
+  }
+
+  /* Mostra e estiliza a lista no mobile */
+  .mobile-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .patient-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background-color: var(--branco);
+    border: 1px solid #e5e7eb;
+    border-radius: 1rem;
+    cursor: pointer;
+  }
+  .patient-info {
+    flex-grow: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .patient-name {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .patient-cpf-masked {
+    color: var(--cinza-texto);
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    flex-shrink: 1;
+
+    /* Efeito de degradê no final do CPF */
+    mask-image: linear-gradient(to right, black 70%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black 70%, transparent 100%);
+  }
 }
 </style>

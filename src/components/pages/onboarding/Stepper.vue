@@ -1,19 +1,53 @@
 <script setup>
-import { defineProps } from 'vue'
+import { defineProps, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { Check } from 'lucide-vue-next'
 
-defineProps({
+const props = defineProps({
   steps: Array,
   currentStep: Number,
+})
+
+const stepperContainer = ref(null)
+const stepItems = ref([])
+
+// Função para centralizar o passo ativo
+const scrollToActiveStep = async () => {
+  // Aguarda o DOM ser atualizado antes de procurar os elementos
+  await nextTick()
+
+  const activeStepElement = stepItems.value[props.currentStep - 1]
+
+  if (activeStepElement && window.innerWidth <= 768) {
+    activeStepElement.scrollIntoView({
+      behavior: 'smooth',
+      inline: 'center',
+      block: 'nearest',
+    })
+  }
+}
+
+// Observa mudanças no passo atual para acionar a rolagem
+watch(() => props.currentStep, scrollToActiveStep)
+
+// Rola para o passo inicial quando o componente é montado
+onMounted(() => {
+  // Pequeno delay para garantir que tudo foi renderizado
+  setTimeout(scrollToActiveStep, 100)
+  window.addEventListener('resize', scrollToActiveStep)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', scrollToActiveStep)
 })
 </script>
 
 <template>
-  <div class="stepper">
+  <div class="stepper" ref="stepperContainer">
     <template v-for="(step, index) in steps" :key="index">
       <div
         class="step-item"
         :class="{ active: index + 1 === currentStep, completed: index + 1 < currentStep }"
+        :ref="(el) => { if (el) stepItems[index] = el }"
       >
         <div class="step-circle">
           <Check v-if="index + 1 < currentStep" :size="16" stroke-width="3" />
@@ -37,14 +71,14 @@ defineProps({
   display: flex;
   align-items: center;
   width: 100%;
-  padding: 0 1rem; /* Adiciona um respiro nas laterais */
+  padding: 0 1rem;
 }
 
 .step-item {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  flex-shrink: 0; /* Impede que o item seja esmagado */
+  flex-shrink: 0;
 }
 
 .step-circle {
@@ -68,7 +102,7 @@ defineProps({
 }
 
 .step-name {
-  font-size: 0.875rem; /* Levemente menor para caber melhor */
+  font-size: 0.875rem;
   font-weight: 600;
   color: var(--cinza-texto);
   white-space: nowrap;
@@ -81,10 +115,10 @@ defineProps({
 }
 
 .step-line {
-  flex-grow: 1; /* Faz a linha ocupar todo o espaço disponível */
+  flex-grow: 1;
   height: 2px;
   background-color: #e5e7eb;
-  margin: 0 1rem; /* Mantém o espaçamento */
+  margin: 0 1rem;
   transition: background-color 0.3s ease;
 }
 
@@ -111,5 +145,46 @@ defineProps({
 
 .step-line.completed {
   background-color: var(--azul-principal);
+}
+
+@media (max-width: 768px) {
+  .stepper {
+    justify-content: flex-start;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    padding: 0 20%;
+  }
+
+  .stepper::-webkit-scrollbar {
+    display: none;
+  }
+
+  .step-item {
+    scroll-snap-align: center;
+    transition:
+      opacity 0.4s ease,
+      transform 0.4s ease;
+    opacity: 0.5;
+    transform: scale(0.9);
+  }
+
+  .step-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--branco) !important;
+  white-space: nowrap;
+}
+
+  .step-item.active {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .step-line {
+    flex-grow: 0;
+    width: 60px; /* ✨ Linha aumentada */
+  }
 }
 </style>

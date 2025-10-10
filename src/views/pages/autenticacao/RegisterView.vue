@@ -1,12 +1,12 @@
 <script setup>
-import { ref, watch } from 'vue' // 1. Importar o 'watch'
+import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import AuthCard from '@/components/pages/autenticacao/AuthCard.vue'
 import FormInput from '@/components/global/FormInput.vue'
 import PasswordInput from '@/components/global/PasswordInput.vue'
 import { CheckCircle2 } from 'lucide-vue-next'
-import confetti from 'canvas-confetti' // 2. Importar o confetti
+import confetti from 'canvas-confetti'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -21,14 +21,13 @@ const registrationSuccess = ref(false)
 const imageUrl =
   'https://images.unsplash.com/photo-1629909613654-28e377c37b09?q=80&w=1168&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'
 
-// 3. Usamos 'watch' para disparar os confetes quando registrationSuccess se torna 'true'
 watch(registrationSuccess, (newValue) => {
   if (newValue) {
     confetti({
       particleCount: 150,
       spread: 90,
       origin: { y: 0.6 },
-      zIndex: 9999, // Garante que os confetes fiquem na frente de tudo
+      zIndex: 9999,
     })
   }
 })
@@ -137,6 +136,7 @@ function handleRegistrationComplete() {
 
 .success-content {
   text-align: center;
+  padding: 0 1.5rem; /* Adiciona um padding lateral */
 }
 .success-icon {
   color: #10b981;
@@ -151,6 +151,10 @@ function handleRegistrationComplete() {
   color: var(--cinza-texto);
   margin-bottom: 2rem;
   font-size: 1.125rem;
+  max-width: 400px; /* Define uma largura máxima para o texto */
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.6; /* Melhora a leitura */
 }
 .confirm-button {
   max-width: 300px;

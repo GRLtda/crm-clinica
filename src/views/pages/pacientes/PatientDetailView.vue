@@ -30,7 +30,7 @@ import { fetchAddressByCEP } from '@/api/external'
 import AssignAnamnesisModal from '@/components/pages/pacientes/modals/AssignAnamnesisModal.vue'
 import ViewAnamnesisModal from '@/components/pages/pacientes/modals/ViewAnamnesisModal.vue'
 import CreateAppointmentModal from '@/components/pages/dashboard/CreateAppointmentModal.vue'
-import PdfPreviewModal from '@/components/pages/pacientes/modals/PdfPreviewModal.vue' // ✨ Importar o novo modal
+import PdfPreviewModal from '@/components/pages/pacientes/modals/PdfPreviewModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -46,7 +46,7 @@ const editablePatient = ref(null)
 const activeTab = ref('details')
 const viewingAnamnesis = ref(null)
 const isCreateAppointmentModalOpen = ref(false)
-const pdfPreview = ref({ url: null, name: null }) // ✨ Estado para o preview do PDF
+const pdfPreview = ref({ url: null, name: null })
 
 const patient = computed(() => patientsStore.selectedPatient)
 const clinic = computed(() => authStore.user?.clinic)
@@ -145,7 +145,6 @@ function handleCopyLink(token) {
   })
 }
 
-// ✨ FUNÇÃO ATUALIZADA PARA ABRIR O MODAL DE PREVIEW ✨
 async function handleGeneratePdf(anamnesis) {
   if (!patient.value || !clinic.value) {
     toast.error('Dados do paciente ou da clínica não carregados.')
@@ -190,6 +189,12 @@ async function handleGeneratePdf(anamnesis) {
       :anamnesis="viewingAnamnesis"
       @close="viewingAnamnesis = null"
     />
+    <PdfPreviewModal
+      v-if="pdfPreview.url"
+      :pdf-url="pdfPreview.url"
+      :file-name="pdfPreview.name"
+      @close="pdfPreview = { url: null, name: null }"
+    />
 
     <div v-if="patientsStore.isLoading && !patient" class="loading-state">
       Carregando dados do paciente...
@@ -211,10 +216,12 @@ async function handleGeneratePdf(anamnesis) {
         </div>
         <div class="header-actions">
           <button @click="isAssignModalOpen = true" class="btn-secondary">
-            <Clipboard :size="16" /> Aplicar Anamnese
+            <Clipboard :size="16" />
+            <span class="btn-text">Aplicar Anamnese</span>
           </button>
-          <button v-if="!isEditing" @click="isEditing = true" class="btn-primary">
-            <Edit :size="16" /> Editar Paciente
+          <button v-if="!isEditing" @click="isEditing = true" class="btn-primary btn-edit">
+            <Edit :size="16" />
+            <span class="btn-text">Editar</span>
           </button>
         </div>
       </header>
@@ -286,7 +293,9 @@ async function handleGeneratePdf(anamnesis) {
               </section>
 
               <footer class="edit-form-footer">
-                <button @click="cancelEditing" type="button" class="btn-secondary">Cancelar</button>
+                <button @click="cancelEditing" type="button" class="btn-secondary">
+                  Cancelar
+                </button>
                 <button type="submit" class="btn-primary">Salvar Alterações</button>
               </footer>
             </form>
@@ -368,13 +377,8 @@ async function handleGeneratePdf(anamnesis) {
           <div class="anamnesis-section">
             <h3 class="title-respondidas"><CheckSquare :size="20" /> Respondidas</h3>
             <ul v-if="answeredAnamneses.length > 0" class="anamnesis-list">
-              <li
-                v-for="item in answeredAnamneses"
-                :key="item._id"
-                @click="viewingAnamnesis = item"
-                class="clickable"
-              >
-                <div class="anamnesis-info">
+              <li v-for="item in answeredAnamneses" :key="item._id">
+                <div class="anamnesis-info clickable" @click="viewingAnamnesis = item">
                   <span class="anamnesis-name">{{
                     item.template?.name || 'Modelo não encontrado'
                   }}</span>
@@ -400,14 +404,6 @@ async function handleGeneratePdf(anamnesis) {
               <p class="empty-state-text">
                 As anamneses preenchidas pelo paciente aparecerão aqui.
               </p>
-            </div>
-            <div class="patient-detail-view">
-              <PdfPreviewModal
-                v-if="pdfPreview.url"
-                :pdf-url="pdfPreview.url"
-                :file-name="pdfPreview.name"
-                @close="pdfPreview = { url: null, name: null }"
-              />
             </div>
           </div>
 
@@ -469,7 +465,7 @@ async function handleGeneratePdf(anamnesis) {
                   class="btn-secondary"
                 >
                   <Eye :size="16" />
-                  Ver Relatório
+                  <span class="btn-text">Ver Relatório</span>
                 </router-link>
               </li>
             </ul>
@@ -499,15 +495,20 @@ async function handleGeneratePdf(anamnesis) {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 .patient-info {
   display: flex;
   align-items: center;
   gap: 1rem;
+  flex-grow: 1;
+  min-width: 200px;
 }
 .patient-avatar {
   width: 64px;
   height: 64px;
+  flex-shrink: 0;
   border-radius: 50%;
   background-color: #eef2ff;
   color: var(--azul-principal);
@@ -521,12 +522,15 @@ async function handleGeneratePdf(anamnesis) {
   font-size: 2rem;
   font-weight: 700;
   margin: 0;
+  line-height: 1.2;
 }
 .patient-meta {
   display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
   color: var(--cinza-texto);
   margin-top: 0.25rem;
+  font-size: 0.875rem;
 }
 .header-actions {
   display: flex;
@@ -534,7 +538,6 @@ async function handleGeneratePdf(anamnesis) {
 }
 .tabs-nav {
   display: flex;
-  gap: 0.5rem;
   border-bottom: 1px solid #e5e7eb;
   margin-bottom: 2rem;
 }
@@ -548,56 +551,11 @@ async function handleGeneratePdf(anamnesis) {
   color: var(--cinza-texto);
   border-bottom: 2px solid transparent;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 .tabs-nav button.active {
   color: var(--azul-principal);
   border-bottom-color: var(--azul-principal);
-}
-.anamnesis-section {
-  margin-bottom: 2.5rem;
-}
-.anamnesis-section h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.anamnesis-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 0;
-}
-.anamnesis-list li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.75rem;
-}
-.anamnesis-list li.clickable {
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-.anamnesis-list li.clickable:hover {
-  background-color: #f3f4f6;
-}
-.anamnesis-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-.anamnesis-name {
-  font-weight: 500;
-}
-.anamnesis-date {
-  font-size: 0.875rem;
-  color: var(--cinza-texto);
 }
 .unified-card {
   background-color: var(--branco);
@@ -635,26 +593,10 @@ async function handleGeneratePdf(anamnesis) {
   font-size: 0.8rem;
   color: var(--cinza-texto);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 .value {
   font-size: 1rem;
   font-weight: 500;
-  color: #374151;
-}
-.history-section h3 {
-  color: var(--azul-principal);
-}
-.value-with-badge {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 0.25rem;
-}
-.value-with-badge strong {
-  font-size: 1rem;
-  font-weight: 500;
-  color: #374151;
 }
 .edit-form-footer {
   display: flex;
@@ -663,39 +605,191 @@ async function handleGeneratePdf(anamnesis) {
   padding: 1.5rem 2rem;
   border-top: 1px solid #f3f4f6;
   background-color: #f9fafb;
-  border-bottom-left-radius: 1rem;
-  border-bottom-right-radius: 1rem;
 }
-.title-respondidas,
-.title-pendentes {
-  color: var(--azul-principal); /* Azul */
-}
-.btn-primary {
+.btn-primary,
+.btn-secondary {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
   border-radius: 0.75rem;
   border: none;
-  background-color: var(--azul-principal);
-  color: var(--branco);
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-.btn-secondary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background-color: #f3f4f6;
-  color: #374151;
-  border: 1px solid #e5e7eb;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.75rem;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
+}
+.btn-primary {
+  background-color: var(--azul-principal);
+  color: var(--branco);
+}
+.btn-secondary {
+  background-color: #f3f4f6;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+}
+
+/* Estilos das listas de Anamnese e Histórico */
+.anamnesis-section,
+.history-section {
+  margin-bottom: 2.5rem;
+}
+.anamnesis-section h3,
+.history-section h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--azul-principal);
+}
+.anamnesis-list,
+.history-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0;
+}
+.anamnesis-list li,
+.history-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background-color: var(--branco);
+  border: 1px solid #e5e7eb;
+  border-radius: 1rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.2s ease;
+}
+.anamnesis-list li:hover,
+.history-list li:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.06);
+}
+.anamnesis-info.clickable {
+  cursor: pointer;
+}
+.anamnesis-info,
+.history-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex-grow: 1;
+  min-width: 0;
+}
+.anamnesis-name,
+.history-date {
+  font-weight: 600;
+  color: #374151;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.anamnesis-date {
+  font-size: 0.875rem;
+  color: var(--cinza-texto);
+}
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--cinza-texto);
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+.btn-icon:hover {
+  background-color: #f3f4f6;
+  color: var(--preto);
+}
+.status-badge {
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: 99px;
+  font-size: 0.8rem;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+.status-badge.realizado {
+  background-color: #f0fdf4;
+  color: #16a34a;
+}
+.status-badge.agendado {
+  background-color: #eff6ff;
+  color: #2563eb;
+}
+.empty-state-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2.5rem;
+  border: 2px dashed #d1d5db;
+  border-radius: 1rem;
+}
+
+/* ✨ ESTILOS PARA O RESPONSIVO ✨ */
+@media (max-width: 768px) {
+  .patient-header {
+    align-items: center;
+  }
+  .patient-info {
+    width: 100%;
+  }
+  .patient-name {
+    font-size: 1.75rem;
+  }
+  .header-actions {
+    width: 100%;
+  }
+  .btn-secondary,
+  .btn-primary {
+    padding: 0.75rem 1rem;
+    flex-grow: 1;
+  }
+  .btn-edit {
+    flex-grow: 0;
+    min-width: 44px;
+  }
+  .btn-text {
+    display: block;
+  }
+  .btn-edit .btn-text {
+    display: none;
+  }
+
+  .tabs-nav {
+    justify-content: space-around;
+  }
+  .section-content.grid-2-cols {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .card-section {
+    padding: 1.5rem;
+  }
+
+  .anamnesis-list li,
+  .history-list li {
+    padding: 1rem;
+  }
+  .history-info {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .history-list .btn-secondary .btn-text {
+    display: none;
+  }
+  .history-list .btn-secondary {
+    padding: 0.6rem;
+    border-radius: 50%;
+  }
 }
 .empty-state-card {
   display: flex;
@@ -746,68 +840,5 @@ async function handleGeneratePdf(anamnesis) {
 
 .empty-state-button:hover {
   background-color: var(--azul-escuro);
-}
-.loading-state {
-  padding: 2rem;
-  text-align: center;
-  color: var(--cinza-texto);
-}
-.history-section h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.history-list {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-.history-list li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.25rem 1.5rem;
-  background-color: var(--branco);
-  border: 1px solid #e5e7eb;
-  border-radius: 1rem;
-}
-.history-info {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-.history-date {
-  font-weight: 500;
-  font-size: 1rem;
-  color: #374151;
-}
-.status-badge {
-  font-weight: 600;
-  padding: 0.25rem 0.75rem;
-  border-radius: 99px;
-  font-size: 0.8rem;
-  text-transform: capitalize;
-  width: fit-content;
-}
-.status-badge.realizado {
-  background-color: #f0fdf4;
-  color: #16a34a;
-}
-.status-badge.cancelado {
-  background-color: #fef2f2;
-  color: #dc2626;
-}
-.status-badge.agendado {
-  background-color: #eff6ff;
-  color: #2563eb;
-}
-.status-badge.não-compareceu {
-  background-color: #f1f5f9;
-  color: #64748b;
 }
 </style>
