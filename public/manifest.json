@@ -2,7 +2,7 @@
   "name": "Clínica CRM",
   "short_name": "ClínicaCRM",
   "description": "Gestão completa para sua clínica médica.",
-  "start_url": "/",
+  "start_url": "/app",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#3b82f6",
