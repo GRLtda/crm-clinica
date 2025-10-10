@@ -26,17 +26,10 @@ watch(
       const clinicName = clinic.name
       const clinicIcon = clinic.logoUrl || '/activity.svg'
       const baseUrl = window.location.origin
-      let shortName = clinicName.substring(0, 12)
-      if (clinicName.length > 12 && clinicName[12] !== ' ') {
-        const lastSpace = shortName.lastIndexOf(' ')
-        if (lastSpace > 0) {
-          shortName = shortName.substring(0, lastSpace)
-        }
-      }
 
       const manifest = {
         name: clinicName,
-        short_name: shortName,
+        short_name: clinicName,
         description: `Dashboard de gestão para a ${clinicName}.`,
         start_url: `${baseUrl}/app`,
         display: 'standalone',
