@@ -72,6 +72,23 @@ router.beforeEach((to, from, next) => {
 // --- SEO TÍTULO DA PÁGINA E ÍCONES DINÂMICOS ---
 router.afterEach((to) => {
   nextTick(() => {
+    // ✨ INÍCIO DA ALTERAÇÃO ✨
+    // Função para criar ou atualizar uma meta tag
+    const setMetaTag = (name, content) => {
+      let element = document.querySelector(`meta[name="${name}"]`);
+      if (!element) {
+        element = document.createElement('meta');
+        element.setAttribute('name', name);
+        document.head.appendChild(element);
+      }
+      element.setAttribute('content', content);
+    };
+
+    // Garante que as meta tags para a experiência de app iOS estejam sempre presentes
+    setMetaTag('apple-mobile-web-app-capable', 'yes');
+    setMetaTag('apple-mobile-web-app-status-bar-style', 'black-translucent');
+    // ✨ FIM DA ALTERAÇÃO ✨
+
     const authStore = useAuthStore()
     const clinic = authStore.user?.clinic
     const clinicName = clinic?.name

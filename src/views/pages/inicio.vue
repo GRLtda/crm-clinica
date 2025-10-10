@@ -42,7 +42,6 @@ const currentTime = ref(new Date())
 let timer = null
 const calendarView = ref('week')
 const isMobile = ref(window.innerWidth <= 768)
-const wasMobile = ref(isMobile.value)
 
 const stats = computed(() => dashboardStore.stats)
 const weekAppointments = computed(() => appointmentsStore.appointments)
@@ -118,13 +117,12 @@ function goToNext() {
 const updateCalendarView = () => {
   const isNowMobile = window.innerWidth <= 768
   isMobile.value = isNowMobile
+  const newView = isNowMobile ? 'day' : 'week'
 
-  if (isNowMobile !== wasMobile.value) {
-    calendarView.value = isNowMobile ? 'day' : 'week'
+  if (calendarView.value !== newView) {
+    calendarView.value = newView
     fetchDataForView()
   }
-
-  wasMobile.value = isNowMobile
 }
 
 
@@ -144,7 +142,7 @@ function backToWeekView() {
 onMounted(() => {
   dashboardStore.fetchDashboardStats()
   updateCalendarView()
-  fetchDataForView() // ✨ ADICIONADO: Garante que os agendamentos sejam carregados na primeira vez
+  fetchDataForView()
   window.addEventListener('resize', updateCalendarView)
   timer = setInterval(() => {
     currentTime.value = new Date()
