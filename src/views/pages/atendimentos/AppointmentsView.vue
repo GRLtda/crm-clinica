@@ -2,18 +2,29 @@
 import { onMounted, computed, ref } from 'vue'
 import { useAppointmentsStore } from '@/stores/appointments'
 import { useRouter } from 'vue-router'
-// ✨ 1. ÍCONE DE BUSCA IMPORTADO ✨
-import { CalendarDays, Plus, User, CheckCircle, Clock, Search } from 'lucide-vue-next'
+import {
+  CalendarDays,
+  Plus,
+  User,
+  CheckCircle,
+  Clock,
+  Search,
+  Check,
+  Play,
+  X,
+  CalendarPlus,
+} from 'lucide-vue-next'
 import CreateAppointmentModal from '@/components/pages/dashboard/CreateAppointmentModal.vue'
 import AppointmentInfoPopover from '@/components/pages/atendimentos/AppointmentInfoPopover.vue'
+import { useToast } from 'vue-toastification'
+import { format } from 'date-fns'
 
 const appointmentsStore = useAppointmentsStore()
 const router = useRouter()
+const toast = useToast()
 
 const isModalOpen = ref(false)
 const activePopover = ref({ appointment: null, event: null })
-
-// ✨ 2. LÓGICA DE BUSCA E FILTRAGEM ✨
 const searchQuery = ref('')
 
 const filteredAndSortedAppointments = computed(() => {
@@ -21,7 +32,7 @@ const filteredAndSortedAppointments = computed(() => {
 
   // 1. Filtra primeiro
   const filtered = appointmentsStore.appointments.filter((appt) =>
-    appt.patient.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+    appt.patient.name.toLowerCase().includes(searchQuery.value.toLowerCase()),
   )
 
   // 2. Depois ordena
@@ -30,7 +41,7 @@ const filteredAndSortedAppointments = computed(() => {
     Agendado: 2,
     Realizado: 3,
     Cancelado: 4,
-    'Nao Compareceu': 5,
+    'Não Compareceu': 5,
   }
 
   return filtered.sort((a, b) => {
@@ -46,15 +57,16 @@ const filteredAndSortedAppointments = computed(() => {
 })
 
 onMounted(() => {
-  appointmentsStore.fetchAppointmentsByDate()
+  const today = format(new Date(), 'yyyy-MM-dd')
+  appointmentsStore.fetchAppointmentsByDate(today)
 })
 
 function formatTime(dateString) {
   if (!dateString) return ''
+  // ✨ CORREÇÃO AQUI: Removido o 'timeZone: UTC'
   return new Date(dateString).toLocaleTimeString('pt-BR', {
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'UTC',
   })
 }
 
@@ -77,6 +89,19 @@ function openPopover(appointment, event) {
 
 function closePopover() {
   activePopover.value = { appointment: null, event: null }
+}
+
+async function handleStatusChange(appointment, newStatus) {
+  const { success } = await appointmentsStore.updateAppointmentStatus(appointment._id, newStatus)
+  if (success) {
+    toast.success(`Status alterado para "${newStatus}"!`)
+  } else {
+    toast.error(`Não foi possível alterar o status.`)
+  }
+}
+
+function rebookAppointment() {
+  isModalOpen.value = true
 }
 </script>
 
@@ -121,53 +146,116 @@ function closePopover() {
         </button>
       </div>
 
-      <div v-else class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th class="patient-header">
-                <User :size="14" />
-                <span>Paciente</span>
-              </th>
-              <th class="status-header">
-                <CheckCircle :size="14" />
-                <span>Status</span>
-              </th>
-              <th class="time-header">
-                <Clock :size="14" />
-                <span>Horário</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody v-auto-animate>
-            <tr
-              v-for="appt in filteredAndSortedAppointments"
-              :key="appt._id"
-              class="appointment-row"
-              @click="openPopover(appt, $event)"
-            >
-              <td>
+      <div v-else>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th class="patient-header">
+                  <User :size="14" />
+                  <span>Paciente</span>
+                </th>
+                <th class="status-header">
+                  <CheckCircle :size="14" />
+                  <span>Status</span>
+                </th>
+                <th class="time-header">
+                  <Clock :size="14" />
+                  <span>Horário</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody v-auto-animate>
+              <tr
+                v-for="appt in filteredAndSortedAppointments"
+                :key="appt._id"
+                class="appointment-row"
+                @click="openPopover(appt, $event)"
+              >
+                <td>
+                  <div class="patient-info">
+                    <div class="patient-avatar">{{ appt.patient.name.charAt(0) }}</div>
+                    <span class="patient-name">{{ appt.patient.name }}</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="status-wrapper">
+                    <span
+                      class="appointment-status"
+                      :class="appt.status.toLowerCase().replace(' ', '-')"
+                    >
+                      {{ appt.status }}
+                    </span>
+                  </div>
+                </td>
+                <td class="time-cell">
+                  {{ formatTime(appt.startTime) }} - {{ formatTime(appt.endTime) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="appointments-cards">
+          <div
+            v-for="appt in filteredAndSortedAppointments"
+            :key="appt._id"
+            class="appointment-card"
+          >
+            <div class="card-content">
+              <div class="card-top">
                 <div class="patient-info">
                   <div class="patient-avatar">{{ appt.patient.name.charAt(0) }}</div>
                   <span class="patient-name">{{ appt.patient.name }}</span>
                 </div>
-              </td>
-              <td>
-                <div class="status-wrapper">
-                  <span
-                    class="appointment-status"
-                    :class="appt.status.toLowerCase().replace(' ', '-')"
-                  >
-                    {{ appt.status }}
-                  </span>
-                </div>
-              </td>
-              <td class="time-cell">
-                {{ formatTime(appt.startTime) }} - {{ formatTime(appt.endTime) }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                <span
+                  class="appointment-status"
+                  :class="appt.status.toLowerCase().replace(' ', '-')"
+                >
+                  {{ appt.status }}
+                </span>
+              </div>
+              <div class="card-bottom">
+                <Clock :size="14" />
+                <span>{{ formatTime(appt.startTime) }} - {{ formatTime(appt.endTime) }}</span>
+              </div>
+            </div>
+            <div
+              class="card-actions"
+              v-if="
+                appt.status === 'Agendado' ||
+                appt.status === 'Confirmado' ||
+                appt.status === 'Não Compareceu'
+              "
+            >
+              <template v-if="appt.status === 'Agendado'">
+                <button
+                  @click.stop="handleStatusChange(appt, 'Confirmado')"
+                  class="btn-card-action confirm"
+                >
+                  <Check :size="16" /> Confirmar Chegada
+                </button>
+                <button
+                  @click.stop="handleStatusChange(appt, 'Cancelado')"
+                  class="btn-card-icon cancel"
+                  title="Cancelar"
+                >
+                  <X :size="18" />
+                </button>
+              </template>
+              <template v-else-if="appt.status === 'Confirmado'">
+                <button @click.stop="goToAppointmentPage(appt)" class="btn-card-action start">
+                  <Play :size="16" /> Iniciar Atendimento
+                </button>
+              </template>
+              <template v-else-if="appt.status === 'Não Compareceu'">
+                <button @click.stop="rebookAppointment(appt)" class="btn-card-action rebook">
+                  <CalendarPlus :size="16" /> Reagendar
+                </button>
+              </template>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -200,7 +288,6 @@ function closePopover() {
   color: var(--cinza-texto);
 }
 
-/* ✨ 4. ESTILOS PARA O CABEÇALHO PADRONIZADO ✨ */
 .header-actions {
   display: flex;
   align-items: center;
@@ -238,7 +325,6 @@ function closePopover() {
   border-color: var(--azul-principal);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
 }
-/* Fim dos estilos do cabeçalho */
 
 .content-wrapper {
   background-color: var(--branco);
@@ -431,5 +517,132 @@ th > * {
   color: var(--cinza-texto);
   max-width: 400px;
   margin-bottom: 1.5rem;
+}
+
+/* 📱 INÍCIO DOS ESTILOS RESPONSIVOS 📱 */
+
+.appointments-cards {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.5rem;
+  }
+
+  .header-actions {
+    width: 100%;
+  }
+
+  .search-input {
+    width: 100%;
+    flex-grow: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .title {
+    font-size: 1.75rem;
+  }
+  .table-container {
+    display: none;
+  }
+
+  .content-wrapper {
+    background-color: transparent;
+    border: none;
+    padding: 0;
+  }
+
+  .appointments-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .appointment-card {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--branco);
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    cursor: default;
+    overflow: hidden; /* Garante que os cantos arredondados sejam respeitados */
+  }
+
+  .card-content {
+    padding: 1rem;
+  }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+  }
+
+  .card-bottom {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--cinza-texto);
+    font-weight: 500;
+  }
+
+  .card-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background-color: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .btn-card-action {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: none;
+    cursor: pointer;
+    flex-grow: 1;
+    justify-content: center;
+  }
+
+  .btn-card-action.confirm {
+    background-color: #f0fdf4;
+    color: #16a34a;
+  }
+
+  .btn-card-action.start,
+  .btn-card-action.rebook {
+    background-color: #eef2ff;
+    color: var(--azul-principal);
+  }
+
+  .btn-card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    width: 34px;
+    height: 34px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .btn-card-icon.cancel {
+    color: #ef4444;
+    border-color: #fecaca;
+  }
 }
 </style>
