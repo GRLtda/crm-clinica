@@ -19,7 +19,7 @@ function removeManifest() {
 watch(
   () => authStore.user,
   (newUser) => {
-    removeManifest() 
+    removeManifest()
 
     if (newUser && newUser.clinic) {
       const clinic = newUser.clinic
@@ -41,7 +41,7 @@ watch(
         start_url: `${baseUrl}/app`,
         display: 'standalone',
         background_color: '#ffffff',
-        theme_color: '#3b82f6',
+        theme_color: '#ffffff',
         icons: [
           {
             src: clinicIcon.startsWith('http') ? clinicIcon : `${baseUrl}${clinicIcon}`,
