@@ -27,7 +27,7 @@ const routes = [
     meta: { requiresAuth: true, title: 'Configuração da Clínica' },
   },
   {
-    path: '/anamnese/:token',
+    path: '/responder-anamnese/:token',
     name: 'answer-anamnesis',
     component: AnswerAnamnesisView,
     meta: { public: true, title: 'Responder Anamnese' },
@@ -69,15 +69,30 @@ router.beforeEach((to, from, next) => {
   }
 })
 
-// --- SEO TÍTULO DA PÁGINA ---
+// --- SEO TÍTULO DA PÁGINA E ÍCONES DINÂMICOS ---
 router.afterEach((to) => {
   nextTick(() => {
     const authStore = useAuthStore()
-    const clinicName = authStore.user?.clinic?.name
+    const clinic = authStore.user?.clinic
+    const clinicName = clinic?.name
+    const clinicLogo = clinic?.logoUrl
     const pageTitle = to.meta.title
     const defaultAppName = 'Clínica CRM'
 
-    // Se é uma rota autenticada e temos o nome da clínica
+    // Elementos do <head> que vamos atualizar
+    const favicon = document.getElementById('favicon')
+    const appleTouchIcon = document.getElementById('apple-touch-icon')
+
+    // ✨ Atualiza o Favicon e o Ícone da Tela de Início (iOS)
+    if (clinicLogo) {
+      if (favicon) favicon.href = clinicLogo
+      if (appleTouchIcon) appleTouchIcon.href = clinicLogo
+    } else {
+      if (favicon) favicon.href = '/activity.svg'
+      if (appleTouchIcon) appleTouchIcon.href = '/icons/apple-touch-icon.png'
+    }
+
+    // ✨ Atualiza o título da página (usado como nome do app na tela de início)
     if (pageTitle && clinicName && to.meta.requiresAuth) {
       document.title = `${clinicName} - ${pageTitle}`
     }
@@ -89,5 +104,6 @@ router.afterEach((to) => {
     }
   })
 })
+
 
 export default router

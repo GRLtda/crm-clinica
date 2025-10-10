@@ -50,11 +50,12 @@ const isMobileSidebarOpen = ref(false)
 .app-layout {
   display: flex;
   background-color: var(--branco);
+  height: 100dvh;
+  overflow: hidden;
 }
 .main-content {
   flex: 1;
   padding: 2rem;
-  height: 100vh;
   overflow-y: auto;
 }
 .main-content.no-padding {

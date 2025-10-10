@@ -18,13 +18,12 @@ import {
   Plus,
   Search,
   SlidersHorizontal,
-  ChevronDown,
 } from 'lucide-vue-next'
 import CreateAppointmentModal from '@/components/pages/dashboard/CreateAppointmentModal.vue'
-import AppointmentDetailsModal from '@/components/pages/dashboard/AppointmentDetailsModal.vue' // Novo
+import AppointmentDetailsModal from '@/components/pages/dashboard/AppointmentDetailsModal.vue'
 import VueCal from 'vue-cal'
 import 'vue-cal/dist/vuecal.css'
-import { startOfWeek, endOfWeek, format, addDays, subDays } from 'date-fns'
+import { startOfWeek, endOfWeek, format, addDays, subDays, startOfDay, endOfDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useToast } from 'vue-toastification'
 
@@ -35,36 +34,15 @@ const router = useRouter()
 const toast = useToast()
 
 const isModalOpen = ref(false)
-const isDetailsModalOpen = ref(false) // Novo
-const selectedEventForDetails = ref(null) // Novo
+const isDetailsModalOpen = ref(false)
+const selectedEventForDetails = ref(null)
 const initialAppointmentData = ref(null)
 const selectedDate = ref(new Date())
 const currentTime = ref(new Date())
 let timer = null
-
-const formattedDateTime = computed(() => {
-  const options = {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }
-  const rawDate = currentTime.value
-  const formatted = new Intl.DateTimeFormat('pt-BR', options).format(rawDate)
-  return formatted.charAt(0).toUpperCase() + formatted.slice(1)
-})
-
-function handleModalClose() {
-  isModalOpen.value = false
-  fetchWeekData()
-}
-
-function handleDetailsModalClose() {
-  isDetailsModalOpen.value = false
-  fetchWeekData()
-}
+const calendarView = ref('week')
+const isMobile = ref(window.innerWidth <= 768)
+const wasMobile = ref(isMobile.value)
 
 const stats = computed(() => dashboardStore.stats)
 const weekAppointments = computed(() => appointmentsStore.appointments)
@@ -82,6 +60,10 @@ const weekStart = computed(() => startOfWeek(selectedDate.value, { weekStartsOn:
 const weekEnd = computed(() => endOfWeek(selectedDate.value, { weekStartsOn: 1 }))
 
 const calendarHeader = computed(() => {
+  if (calendarView.value === 'day') {
+    return format(selectedDate.value, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+  }
+
   const startMonth = format(weekStart.value, 'MMMM', { locale: ptBR })
   const endMonth = format(weekEnd.value, 'MMMM', { locale: ptBR })
   const year = format(weekStart.value, 'yyyy')
@@ -104,15 +86,66 @@ const getAbbreviatedDay = (fullDay) => {
   return dayName.substring(0, 3).toUpperCase()
 }
 
-async function fetchWeekData() {
-  const startDate = format(weekStart.value, 'yyyy-MM-dd')
-  const endDate = format(weekEnd.value, 'yyyy-MM-dd')
+async function fetchDataForView() {
+  let startDate, endDate
+  if (calendarView.value === 'day') {
+    startDate = format(startOfDay(selectedDate.value), 'yyyy-MM-dd')
+    endDate = format(endOfDay(selectedDate.value), 'yyyy-MM-dd')
+  } else {
+    startDate = format(weekStart.value, 'yyyy-MM-dd')
+    endDate = format(weekEnd.value, 'yyyy-MM-dd')
+  }
   await appointmentsStore.fetchAppointmentsByDate(startDate, endDate)
+}
+
+function goToPrevious() {
+  const daysToSubtract = calendarView.value === 'day' ? 1 : 7
+  selectedDate.value = subDays(selectedDate.value, daysToSubtract)
+  fetchDataForView()
+}
+
+function goToToday() {
+  selectedDate.value = new Date()
+  fetchDataForView()
+}
+
+function goToNext() {
+  const daysToAdd = calendarView.value === 'day' ? 1 : 7
+  selectedDate.value = addDays(selectedDate.value, daysToAdd)
+  fetchDataForView()
+}
+
+const updateCalendarView = () => {
+  const isNowMobile = window.innerWidth <= 768
+  isMobile.value = isNowMobile
+
+  // Se a tela mudou de estado (desktop > mobile ou mobile > desktop)
+  if (isNowMobile !== wasMobile.value) {
+    calendarView.value = isNowMobile ? 'day' : 'week'
+    fetchDataForView()
+  }
+
+  wasMobile.value = isNowMobile
+}
+
+
+function handleDayHeaderClick(date) {
+  if (calendarView.value === 'week' && !isMobile.value) {
+    selectedDate.value = date
+    calendarView.value = 'day'
+  }
+}
+
+function backToWeekView() {
+  if (!isMobile.value) {
+    calendarView.value = 'week'
+  }
 }
 
 onMounted(() => {
   dashboardStore.fetchDashboardStats()
-  fetchWeekData()
+  updateCalendarView()
+  window.addEventListener('resize', updateCalendarView)
   timer = setInterval(() => {
     currentTime.value = new Date()
   }, 1000)
@@ -120,6 +153,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   clearInterval(timer)
+  window.removeEventListener('resize', updateCalendarView)
 })
 
 function formatToVueCalString(dateString) {
@@ -152,21 +186,6 @@ function formatTime(dateString) {
   })
 }
 
-function goToPreviousWeek() {
-  selectedDate.value = subDays(selectedDate.value, 7)
-  fetchWeekData()
-}
-
-function goToToday() {
-  selectedDate.value = new Date()
-  fetchWeekData()
-}
-
-function goToNextWeek() {
-  selectedDate.value = addDays(selectedDate.value, 7)
-  fetchWeekData()
-}
-
 function handleCellClick(date) {
   const now = new Date()
   if (date < now) {
@@ -182,6 +201,16 @@ function handleCellClick(date) {
 function handleEventClick(event) {
   selectedEventForDetails.value = event
   isDetailsModalOpen.value = true
+}
+
+function handleModalClose() {
+  isModalOpen.value = false
+  fetchDataForView()
+}
+
+function handleDetailsModalClose() {
+  isDetailsModalOpen.value = false
+  fetchDataForView()
 }
 
 function handleStartAppointment(appointment) {
@@ -205,10 +234,8 @@ async function handleConfirmArrival(appointment) {
 }
 
 function handleReschedule(appointmentToEdit) {
-  isDetailsModalOpen.value = false; // Fecha o modal de detalhes
-  // Lógica para abrir o modal de criação/edição com os dados do agendamento
-  // (Pode ser implementado no futuro)
-  toast.info('Funcionalidade de reagendamento em desenvolvimento!');
+  isDetailsModalOpen.value = false
+  toast.info('Funcionalidade de reagendamento em desenvolvimento!')
 }
 </script>
 
@@ -220,10 +247,10 @@ function handleReschedule(appointmentToEdit) {
       :initial-data="initialAppointmentData"
     />
     <AppointmentDetailsModal
-        v-if="isDetailsModalOpen && selectedEventForDetails"
-        :event="selectedEventForDetails"
-        @close="handleDetailsModalClose"
-        @edit="handleReschedule"
+      v-if="isDetailsModalOpen && selectedEventForDetails"
+      :event="selectedEventForDetails"
+      @close="handleDetailsModalClose"
+      @edit="handleReschedule"
     />
 
     <header class="dashboard-header">
@@ -240,12 +267,16 @@ function handleReschedule(appointmentToEdit) {
 
       <div class="header-toolbar">
         <div class="calendar-nav">
+          <button v-if="calendarView === 'day' && !isMobile" @click="backToWeekView" class="today-btn">
+             <ChevronLeft :size="16" />
+            Semana
+          </button>
           <div class="nav-buttons">
-            <button @click="goToPreviousWeek" class="nav-btn" title="Semana anterior">
+            <button @click="goToPrevious" class="nav-btn" title="Anterior">
               <ChevronLeft :size="20" />
             </button>
             <button @click="goToToday" class="today-btn">Hoje</button>
-            <button @click="goToNextWeek" class="nav-btn" title="Próxima semana">
+            <button @click="goToNext" class="nav-btn" title="Próximo">
               <ChevronRight :size="20" />
             </button>
           </div>
@@ -275,8 +306,8 @@ function handleReschedule(appointmentToEdit) {
             class="vuecal--full-height-delete"
             :selected-date="selectedDate"
             :events="formattedEvents"
-            active-view="week"
-            :disable-views="['years', 'year', 'month']"
+            :active-view="calendarView"
+            :disable-views="['years', 'year', 'month', 'week']"
             hide-view-selector
             :time-from="7 * 60"
             :time-to="22 * 60"
@@ -289,7 +320,7 @@ function handleReschedule(appointmentToEdit) {
             no-events-text=""
           >
             <template #weekday-heading="{ heading }">
-              <div class="custom-weekday-heading">
+              <div class="custom-weekday-heading" @click="handleDayHeaderClick(heading.date)">
                 <div class="day-name">{{ getAbbreviatedDay(heading.label) }}</div>
                 <div class="day-number" :class="{ 'is-today': heading.today }">
                   {{ heading.date.getDate() }}
@@ -434,6 +465,11 @@ function handleReschedule(appointmentToEdit) {
 .vuecal--overflow-x.vuecal--week-view .vuecal__time-column {
   margin-top: 4.2em;
 }
+
+.vuecal--day-view .vuecal__bg .vuecal__time-column {
+  margin-top: 0;
+}
+
 .vuecal__event-time {
   display: none;
 }
@@ -441,6 +477,10 @@ function handleReschedule(appointmentToEdit) {
   height: auto;
   padding: 0;
   border-bottom: 1px solid #e5e7eb;
+}
+
+.vuecal--day-view .vuecal__heading {
+  display: none;
 }
 .vuecal__time-cell-label {
   font-size: 0.75rem;
@@ -458,6 +498,11 @@ function handleReschedule(appointmentToEdit) {
   justify-content: center;
   font-family: var(--fonte-principal);
   padding: 0.75rem 0;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.custom-weekday-heading:hover {
+  background-color: #f9fafb;
 }
 .day-name {
   font-size: 0.7rem;
@@ -475,6 +520,39 @@ function handleReschedule(appointmentToEdit) {
 .day-number.is-today {
   color: var(--azul-principal);
   font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .custom-weekday-heading {
+    padding: 0.5rem 0;
+    cursor: default; /* Remove cursor de ponteiro no mobile */
+  }
+  .custom-weekday-heading:hover {
+    background-color: transparent;
+  }
+  .day-name {
+    font-size: 0.6rem;
+  }
+  .day-number {
+    font-size: 1.25rem;
+  }
+
+  .vuecal--week-view .vuecal__bg .vuecal__time-column,
+  .vuecal--day-view .vuecal__bg .vuecal__time-column {
+    width: 55px; /* Reduz a largura da coluna de horário */
+  }
+
+  .vuecal__time-cell-label {
+    font-size: 0.65rem;
+  }
+
+  .event-title {
+    font-size: 0.75rem;
+  }
+
+  .event-time {
+    font-size: 0.7rem;
+  }
 }
 </style>
 
@@ -613,6 +691,7 @@ function handleReschedule(appointmentToEdit) {
   padding: 0 1rem;
   font-weight: 500;
   font-size: 0.875rem;
+  gap: 0.25rem;
 }
 /* --- Fim do Novo Header --- */
 
@@ -872,12 +951,58 @@ function handleReschedule(appointmentToEdit) {
   margin-left: auto;
   color: #9ca3af;
 }
+
 @media (max-width: 1200px) {
   .dashboard-content {
     grid-template-columns: 1fr;
   }
+}
+
+@media (max-width: 768px) {
+  .header-main {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .title {
+    font-size: 1.875rem; /* 30px */
+  }
+
+  .subtitle {
+    font-size: 1rem;
+  }
+
+  .btn-primary {
+    width: 100%;
+    justify-content: center;
+    padding: 0.875rem;
+  }
+
+  .header-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.5rem;
+  }
+
+  .calendar-nav {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .toolbar-filters {
+    display: none; /* Esconde filtros e busca no mobile para simplificar */
+  }
+
+  /* Oculta a coluna de ações no mobile */
   .action-column {
-    position: static;
+    display: none;
+  }
+
+  /* Faz a coluna da agenda ocupar todo o espaço */
+  .dashboard-content {
+    grid-template-columns: 1fr;
   }
 }
 </style>

@@ -99,7 +99,6 @@ const utilityNavLinks = [
   display: flex;
   flex-direction: column;
   width: 280px;
-  height: 100vh;
   padding: 1.5rem;
   background-color: #f7f8fa;
   border-right: 1px solid #e5e7eb;
