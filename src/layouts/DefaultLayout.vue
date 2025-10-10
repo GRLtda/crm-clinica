@@ -1,60 +1,81 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
-import { useAuthStore } from '@/stores/auth' // 👈 Importar a store de autenticação
+import { useAuthStore } from '@/stores/auth'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import { Menu } from 'lucide-vue-next'
 
 const route = useRoute()
-const authStore = useAuthStore() // 👈 Inicializar a store
+const authStore = useAuthStore()
 const isMobileSidebarOpen = ref(false)
+
+function removeManifest() {
+  const manifestLink = document.querySelector('link[rel="manifest"]')
+  if (manifestLink) {
+    document.head.removeChild(manifestLink)
+  }
+}
 
 watch(
   () => authStore.user,
   (newUser) => {
-    // Se o usuário e a clínica existirem, atualiza o manifest
-    if (newUser && newUser.clinic) {
-      const clinicName = newUser.clinic.name
+    removeManifest() 
 
-      // ✨ CORREÇÃO APLICADA AQUI ✨
+    if (newUser && newUser.clinic) {
+      const clinic = newUser.clinic
+      const clinicName = clinic.name
+      const clinicIcon = clinic.logoUrl || '/activity.svg'
       const baseUrl = window.location.origin
+      let shortName = clinicName.substring(0, 12)
+      if (clinicName.length > 12 && clinicName[12] !== ' ') {
+        const lastSpace = shortName.lastIndexOf(' ')
+        if (lastSpace > 0) {
+          shortName = shortName.substring(0, lastSpace)
+        }
+      }
 
       const manifest = {
         name: clinicName,
-        short_name: clinicName.substring(0, 12), // Um nome curto para o ícone na home screen
+        short_name: shortName,
         description: `Dashboard de gestão para a ${clinicName}.`,
-        start_url: `${baseUrl}/app`, // URL Absoluta
+        start_url: `${baseUrl}/app`,
         display: 'standalone',
         background_color: '#ffffff',
-        theme_color: '#3b82f6', // Pode ser dinâmico com a seoStore também
+        theme_color: '#3b82f6',
         icons: [
           {
-            src: `${baseUrl}/activity.svg`, // URL Absoluta
+            src: clinicIcon.startsWith('http') ? clinicIcon : `${baseUrl}${clinicIcon}`,
             sizes: '192x192',
-            type: 'image/svg+xml',
+            type: 'image/png',
             purpose: 'any maskable',
           },
           {
-            src: `${baseUrl}/activity.svg`, // URL Absoluta
+            src: clinicIcon.startsWith('http') ? clinicIcon : `${baseUrl}${clinicIcon}`,
             sizes: '512x512',
-            type: 'image/svg+xml',
+            type: 'image/png',
             purpose: 'any maskable',
           },
         ],
       }
 
-      // Converte o objeto para uma URL de dados e atualiza a tag <link>
       const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' })
       const manifestUrl = URL.createObjectURL(manifestBlob)
 
-      const manifestLink = document.querySelector('#manifest')
-      if (manifestLink) {
-        manifestLink.setAttribute('href', manifestUrl)
-      }
+      // Cria a tag <link> e a adiciona ao <head>
+      const manifestLink = document.createElement('link')
+      manifestLink.id = 'manifest'
+      manifestLink.rel = 'manifest'
+      manifestLink.href = manifestUrl
+      document.head.appendChild(manifestLink)
     }
   },
-  { immediate: true } // `immediate: true` executa o watch assim que o componente é montado
+  { immediate: true }
 )
+
+// Garante que o manifesto seja removido quando o usuário sair do layout (ex: logout)
+onUnmounted(() => {
+  removeManifest()
+})
 </script>
 
 <template>
