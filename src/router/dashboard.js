@@ -11,7 +11,7 @@ import CreatePatientView from '../views/pages/pacientes/CreatePatientView.vue'
 import PatientDetailView from '../views/pages/pacientes/PatientDetailView.vue'
 import AppointmentsView from '../views/pages/atendimentos/AppointmentsView.vue'
 import InProgressAppointmentView from '../views/pages/atendimentos/InProgressAppointmentView.vue'
-import AjudaView from '../views/pages/ajuda/AjudaView.vue' // 👈 Importado aqui
+import AjudaView from '../views/pages/ajuda/AjudaView.vue'
 
 
 const dashboardRoutes = [

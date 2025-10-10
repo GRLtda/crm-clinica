@@ -16,23 +16,26 @@ watch(
     if (newUser && newUser.clinic) {
       const clinicName = newUser.clinic.name
 
+      // ✨ CORREÇÃO APLICADA AQUI ✨
+      const baseUrl = window.location.origin
+
       const manifest = {
         name: clinicName,
         short_name: clinicName.substring(0, 12), // Um nome curto para o ícone na home screen
         description: `Dashboard de gestão para a ${clinicName}.`,
-        start_url: '/app', // Inicia direto no dashboard
+        start_url: `${baseUrl}/app`, // URL Absoluta
         display: 'standalone',
         background_color: '#ffffff',
-        theme_color: '#3b82f6',
+        theme_color: '#3b82f6', // Pode ser dinâmico com a seoStore também
         icons: [
           {
-            src: '/activity.svg',
+            src: `${baseUrl}/activity.svg`, // URL Absoluta
             sizes: '192x192',
             type: 'image/svg+xml',
             purpose: 'any maskable',
           },
           {
-            src: '/activity.svg',
+            src: `${baseUrl}/activity.svg`, // URL Absoluta
             sizes: '512x512',
             type: 'image/svg+xml',
             purpose: 'any maskable',

@@ -6,7 +6,11 @@ export const useSeoStore = defineStore('seo', () => {
 
   function setThemeColor(newColor) {
     themeColor.value = newColor
-    document.querySelector('meta[name="theme-color"]').setAttribute('content', newColor)
+    // Verifica se a tag existe antes de tentar alterá-la
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]')
+    if (themeColorMeta) {
+      themeColorMeta.setAttribute('content', newColor)
+    }
   }
 
   return {

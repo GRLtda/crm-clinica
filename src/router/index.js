@@ -89,21 +89,19 @@ router.afterEach((to) => {
       if (appleTouchIcon) appleTouchIcon.href = clinicLogo
     } else {
       if (favicon) favicon.href = '/activity.svg'
-      if (appleTouchIcon) appleTouchIcon.href = '/icons/apple-touch-icon.png'
+      // Se não tiver logo, voltamos ao padrão.
+      if (appleTouchIcon) appleTouchIcon.href = '/activity.svg'
     }
 
     // ✨ Atualiza o título da página (usado como nome do app na tela de início)
     if (pageTitle && clinicName && to.meta.requiresAuth) {
       document.title = `${clinicName} - ${pageTitle}`
-    }
-    else if (pageTitle) {
+    } else if (pageTitle) {
       document.title = `${pageTitle} | ${defaultAppName}`
-    }
-    else {
+    } else {
       document.title = clinicName || defaultAppName
     }
   })
 })
-
 
 export default router
