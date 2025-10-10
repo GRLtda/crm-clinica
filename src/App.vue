@@ -13,7 +13,7 @@ watch(
     if (newClinic && newClinic.themeColor) {
       seoStore.setThemeColor(newClinic.themeColor)
     } else {
-      seoStore.setThemeColor('#3b82f6')
+      seoStore.setThemeColor('#FFFFFF') // Default theme color
     }
   },
   { immediate: true }

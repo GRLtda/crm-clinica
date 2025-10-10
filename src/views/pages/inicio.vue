@@ -119,7 +119,6 @@ const updateCalendarView = () => {
   const isNowMobile = window.innerWidth <= 768
   isMobile.value = isNowMobile
 
-  // Se a tela mudou de estado (desktop > mobile ou mobile > desktop)
   if (isNowMobile !== wasMobile.value) {
     calendarView.value = isNowMobile ? 'day' : 'week'
     fetchDataForView()
@@ -145,6 +144,7 @@ function backToWeekView() {
 onMounted(() => {
   dashboardStore.fetchDashboardStats()
   updateCalendarView()
+  fetchDataForView() // ✨ ADICIONADO: Garante que os agendamentos sejam carregados na primeira vez
   window.addEventListener('resize', updateCalendarView)
   timer = setInterval(() => {
     currentTime.value = new Date()
@@ -302,12 +302,12 @@ function handleReschedule(appointmentToEdit) {
           <div class="loading-overlay" v-if="appointmentsStore.isLoading">
             <span>Carregando...</span>
           </div>
-          <vue-cal
+<vue-cal
             class="vuecal--full-height-delete"
             :selected-date="selectedDate"
             :events="formattedEvents"
             :active-view="calendarView"
-            :disable-views="['years', 'year', 'month', 'week']"
+            :disable-views="['years', 'year', 'month']"
             hide-view-selector
             :time-from="7 * 60"
             :time-to="22 * 60"
