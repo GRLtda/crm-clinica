@@ -5,7 +5,7 @@ import { usePatientsStore } from '@/stores/patients'
 import { useAppointmentsStore } from '@/stores/appointments'
 import { useClinicStore } from '@/stores/clinic'
 import { useToast } from 'vue-toastification'
-import { User, Calendar, Bell, Plus } from 'lucide-vue-next'
+import { User, Calendar, Bell, Plus, X, DoorClosed } from 'lucide-vue-next'
 
 import Stepper from '@/components/pages/onboarding/Stepper.vue'
 import SearchableSelect from '@/components/global/SearchableSelect.vue'
@@ -74,8 +74,14 @@ const appointmentData = ref({
 
 onMounted(() => {
   if (props.initialData) {
-    appointmentData.value.date = props.initialData.date
-    appointmentData.value.startTime = props.initialData.startTime
+    appointmentData.value.patient = props.initialData.patient?._id || props.initialData.patient
+    if (props.initialData.startTime) {
+      appointmentData.value.date = new Date(props.initialData.startTime)
+      appointmentData.value.startTime = new Date(props.initialData.startTime).toLocaleTimeString(
+        'pt-BR',
+        { hour: '2-digit', minute: '2-digit' },
+      )
+    }
     if (appointmentData.value.patient) {
       currentStep.value = 2
     }
@@ -109,7 +115,6 @@ const endTimeOptions = computed(() => {
 })
 
 function getDayOfWeek(date) {
-  // ✨ CORREÇÃO AQUI: de getUTCDay para getDay (mais seguro para hora local)
   const dayIndex = new Date(date).getDay()
   const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
   return days[dayIndex]
@@ -183,7 +188,6 @@ function nextStep() {
 async function handleSubmit() {
   if (!validateStep()) return
 
-  // ✨ CORREÇÃO PRINCIPAL: Construção explícita da data para evitar erros de fuso horário
   const [startHour, startMinute] = appointmentData.value.startTime.split(':').map(Number)
   const [endHour, endMinute] = appointmentData.value.endTime.split(':').map(Number)
 
@@ -200,12 +204,6 @@ async function handleSubmit() {
     startTime: startTime.toISOString(),
     endTime: endTime.toISOString(),
     sendReminder: appointmentData.value.sendReminder,
-    remindersSent: appointmentData.value.sendReminder
-      ? appointmentData.value.remindersSent
-      : {
-          oneDayBefore: false,
-          threeHoursBefore: false,
-        },
   }
 
   const { success } = await appointmentsStore.createAppointment(payload)
@@ -226,7 +224,10 @@ async function handleSubmit() {
           <h2>Novo Agendamento</h2>
           <p>Preencha os dados para criar um novo atendimento.</p>
         </div>
-        <Stepper :steps="steps" :currentStep="currentStep" />
+        <button @click="$emit('close')" class="btn-close-mobile">
+          <X :size="24" />
+        </button>
+        <Stepper :steps="steps" :currentStep="currentStep" class="stepper-component" />
       </header>
 
       <div class="modal-body" v-auto-animate>
@@ -259,7 +260,7 @@ async function handleSubmit() {
               format="dd/MM/yyyy"
               :enable-time-picker="false"
               auto-apply
-              :teleport="'.modal-content'"
+              :teleport="true"
               placeholder="Selecione a data"
             />
           </div>
@@ -283,7 +284,9 @@ async function handleSubmit() {
                 :error="!!errors.time"
               />
             </div>
-            <div v-else class="closed-message"><DoorClosedLocked /> Clínica fechada neste dia.</div>
+            <div v-else class="closed-message">
+              <DoorClosed :size="16" /> Clínica fechada neste dia.
+            </div>
             <p v-if="errors.time" class="error-message">{{ errors.time }}</p>
           </div>
         </div>
@@ -324,26 +327,28 @@ async function handleSubmit() {
 
       <footer class="modal-footer">
         <button @click="$emit('close')" type="button" class="btn-secondary">Cancelar</button>
-        <button v-if="currentStep > 1" @click="currentStep--" type="button" class="btn-secondary">
-          Voltar
-        </button>
-        <button
-          v-if="currentStep < steps.length"
-          @click="nextStep"
-          type="button"
-          class="btn-primary"
-        >
-          Avançar
-        </button>
-        <button
-          v-else
-          @click="handleSubmit"
-          type="button"
-          class="btn-primary"
-          :disabled="appointmentsStore.isLoading"
-        >
-          {{ appointmentsStore.isLoading ? 'Agendando...' : 'Confirmar Agendamento' }}
-        </button>
+        <div class="footer-actions">
+          <button v-if="currentStep > 1" @click="currentStep--" type="button" class="btn-secondary">
+            Voltar
+          </button>
+          <button
+            v-if="currentStep < steps.length"
+            @click="nextStep"
+            type="button"
+            class="btn-primary"
+          >
+            Avançar
+          </button>
+          <button
+            v-else
+            @click="handleSubmit"
+            type="button"
+            class="btn-primary"
+            :disabled="appointmentsStore.isLoading"
+          >
+            {{ appointmentsStore.isLoading ? 'Agendando...' : 'Confirmar' }}
+          </button>
+        </div>
       </footer>
     </div>
   </div>
@@ -390,6 +395,7 @@ async function handleSubmit() {
 .modal-header {
   padding: 1.5rem;
   border-bottom: 1px solid #e5e7eb;
+  position: relative;
 }
 .modal-header h2 {
   font-size: 1.25rem;
@@ -401,15 +407,20 @@ async function handleSubmit() {
 }
 .modal-body {
   padding: 2rem;
-  min-height: 290px;
+  flex-grow: 1;
+  overflow-y: auto;
 }
 .modal-footer {
   padding: 1rem 1.5rem;
   border-top: 1px solid #e5e7eb;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 1rem;
   background-color: #f9fafb;
+}
+.footer-actions {
+  display: flex;
+  gap: 1rem;
 }
 
 .step-content {
@@ -611,5 +622,66 @@ async function handleSubmit() {
 }
 .btn-secondary:hover {
   background-color: #f9fafb;
+}
+
+.btn-close-mobile {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 0;
+    background: var(--branco);
+    align-items: stretch;
+  }
+  .modal-content {
+    max-width: 100%;
+    height: 100%;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+  }
+  .btn-close-mobile {
+    display: block;
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+  }
+  .modal-footer {
+    margin-top: auto;
+    justify-content: flex-end;
+  }
+  .modal-footer > .btn-secondary:first-child {
+    display: none;
+  }
+  .footer-actions {
+    width: 100%;
+    display: flex;
+    gap: 0.75rem;
+  }
+  .footer-actions .btn-primary,
+  .footer-actions .btn-secondary {
+    flex-grow: 1;
+    justify-content: center;
+  }
+  .stepper-component :deep(.step-details),
+  .stepper-component :deep(.step-line) {
+    display: none;
+  }
+  .stepper-component :deep(.stepper) {
+    justify-content: center;
+    padding: 0;
+    gap: 1.5rem;
+  }
+  .modal-header p {
+    margin-bottom: 1rem;
+  }
+  .modal-body {
+    padding: 1.5rem;
+  }
 }
 </style>

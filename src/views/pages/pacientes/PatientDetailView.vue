@@ -239,251 +239,269 @@ async function handleGeneratePdf(anamnesis) {
       </nav>
 
       <div class="tab-content">
-        <div v-if="activeTab === 'details'">
-          <div v-if="isEditing && editablePatient" class="unified-card">
-            <form @submit.prevent="handleSaveChanges">
-              <section class="card-section">
-                <h3 class="section-title"><ClipboardList :size="18" /> Dados Pessoais</h3>
-                <div class="section-content grid-2-cols">
-                  <FormInput
-                    v-model="editablePatient.name"
-                    label="Nome Completo"
-                    placeholder="Nome do paciente"
-                    required
-                  />
-                  <FormInput
-                    v-model="editablePatient.birthDate"
-                    label="Data de Nascimento"
-                    type="date"
-                    required
-                  />
-                  <FormInput
-                    v-model="editablePatient.cpf"
-                    label="CPF"
-                    placeholder="000.000.000-00"
-                    cpf-mask
-                  />
-                  <FormInput
-                    v-model="editablePatient.phone"
-                    label="Telefone"
-                    placeholder="(00) 00000-0000"
-                    required
-                    phone-mask
-                  />
-                  <StyledSelect
-                    v-model="editablePatient.gender"
-                    label="Gênero"
-                    :options="genderOptions"
-                  />
-                </div>
-              </section>
+        <Transition name="fade" mode="out-in">
+          <div :key="activeTab">
+            <div v-if="activeTab === 'details'">
+              <div v-if="isEditing && editablePatient" class="unified-card">
+                <form @submit.prevent="handleSaveChanges">
+                  <section class="card-section">
+                    <h3 class="section-title"><ClipboardList :size="18" /> Dados Pessoais</h3>
+                    <div class="section-content grid-2-cols">
+                      <FormInput
+                        v-model="editablePatient.name"
+                        label="Nome Completo"
+                        placeholder="Nome do paciente"
+                        required
+                      />
+                      <FormInput
+                        v-model="editablePatient.birthDate"
+                        label="Data de Nascimento"
+                        type="date"
+                        required
+                      />
+                      <FormInput
+                        v-model="editablePatient.cpf"
+                        label="CPF"
+                        placeholder="000.000.000-00"
+                        cpf-mask
+                      />
+                      <FormInput
+                        v-model="editablePatient.phone"
+                        label="Telefone"
+                        placeholder="(00) 00000-0000"
+                        required
+                        phone-mask
+                      />
+                      <StyledSelect
+                        v-model="editablePatient.gender"
+                        label="Gênero"
+                        :options="genderOptions"
+                      />
+                    </div>
+                  </section>
 
-              <div class="divider"></div>
+                  <div class="divider"></div>
 
-              <section class="card-section">
-                <h3 class="section-title"><MapPin :size="18" /> Endereço</h3>
-                <div class="section-content grid-2-cols">
-                  <FormInput v-model="editablePatient.address.cep" label="CEP" />
-                  <FormInput v-model="editablePatient.address.street" label="Rua / Logradouro" />
-                  <FormInput v-model="editablePatient.address.number" label="Número" />
-                  <FormInput v-model="editablePatient.address.district" label="Bairro" />
-                  <FormInput v-model="editablePatient.address.city" label="Cidade" />
-                  <FormInput v-model="editablePatient.address.state" label="Estado" />
-                </div>
-              </section>
+                  <section class="card-section">
+                    <h3 class="section-title"><MapPin :size="18" /> Endereço</h3>
+                    <div class="section-content grid-2-cols">
+                      <FormInput v-model="editablePatient.address.cep" label="CEP" />
+                      <FormInput
+                        v-model="editablePatient.address.street"
+                        label="Rua / Logradouro"
+                      />
+                      <FormInput v-model="editablePatient.address.number" label="Número" />
+                      <FormInput v-model="editablePatient.address.district" label="Bairro" />
+                      <FormInput v-model="editablePatient.address.city" label="Cidade" />
+                      <FormInput v-model="editablePatient.address.state" label="Estado" />
+                    </div>
+                  </section>
 
-              <footer class="edit-form-footer">
-                <button @click="cancelEditing" type="button" class="btn-secondary">
-                  Cancelar
-                </button>
-                <button type="submit" class="btn-primary">Salvar Alterações</button>
-              </footer>
-            </form>
-          </div>
-          <div v-else class="unified-card">
-            <section class="card-section">
-              <h3 class="section-title"><ClipboardList :size="18" /> Dados Pessoais</h3>
-              <div class="section-content grid-2-cols">
-                <div class="detail-item">
-                  <span class="label">Data de Nasc.</span>
-                  <strong class="value">{{ formattedBirthDate }}</strong>
-                </div>
-                <div class="detail-item">
-                  <span class="label">Gênero</span>
-                  <strong class="value">{{ patient.gender }}</strong>
-                </div>
-                <div class="detail-item">
-                  <span class="label">CPF</span>
-                  <strong class="value">{{ patient.cpf }}</strong>
-                </div>
-                <div class="detail-item">
-                  <span class="label">Telefone</span>
-                  <strong class="value">{{ patient.phone }}</strong>
-                </div>
+                  <footer class="edit-form-footer">
+                    <button @click="cancelEditing" type="button" class="btn-secondary">
+                      Cancelar
+                    </button>
+                    <button type="submit" class="btn-primary">Salvar Alterações</button>
+                  </footer>
+                </form>
               </div>
-            </section>
-
-            <div class="divider"></div>
-
-            <section class="card-section" v-if="patient.address && patient.address.street">
-              <h3 class="section-title"><MapPin :size="18" /> Endereço</h3>
-              <div class="section-content grid-2-cols">
-                <div class="detail-item">
-                  <span class="label">Logradouro</span>
-                  <strong class="value"
-                    >{{ patient.address.street }}, {{ patient.address.number }}</strong
-                  >
-                </div>
-                <div class="detail-item">
-                  <span class="label">Bairro</span>
-                  <strong class="value">{{ patient.address.district }}</strong>
-                </div>
-                <div class="detail-item">
-                  <span class="label">Cidade / Estado</span>
-                  <strong class="value"
-                    >{{ patient.address.city }} - {{ patient.address.state }}</strong
-                  >
-                </div>
-                <div class="detail-item">
-                  <span class="label">CEP</span>
-                  <strong class="value">{{ patient.address.cep }}</strong>
-                </div>
-              </div>
-            </section>
-
-            <div class="divider"></div>
-
-            <section class="card-section">
-              <h3 class="section-title"><History :size="18" /> Histórico Recente</h3>
-              <div class="section-content">
-                <div v-if="lastAppointment" class="last-appointment-item">
-                  <span class="label">Último Atendimento</span>
-                  <div class="value-with-badge">
-                    <strong>{{ formatSimpleDate(lastAppointment.startTime) }}</strong>
-                    <span
-                      class="status-badge"
-                      :class="lastAppointment.status.toLowerCase().replace(' ', '-')"
-                      >{{ lastAppointment.status }}</span
-                    >
+              <div v-else class="unified-card">
+                <section class="card-section">
+                  <h3 class="section-title"><ClipboardList :size="18" /> Dados Pessoais</h3>
+                  <div class="section-content grid-2-cols">
+                    <div class="detail-item">
+                      <span class="label">Data de Nasc.</span>
+                      <strong class="value">{{ formattedBirthDate }}</strong>
+                    </div>
+                    <div class="detail-item">
+                      <span class="label">Gênero</span>
+                      <strong class="value">{{ patient.gender }}</strong>
+                    </div>
+                    <div class="detail-item">
+                      <span class="label">CPF</span>
+                      <strong class="value">{{ patient.cpf }}</strong>
+                    </div>
+                    <div class="detail-item">
+                      <span class="label">Telefone</span>
+                      <strong class="value">{{ patient.phone }}</strong>
+                    </div>
                   </div>
-                </div>
-                <p v-else class="empty-list-message">Nenhum atendimento anterior registrado.</p>
-              </div>
-            </section>
-          </div>
-        </div>
+                </section>
 
-        <div v-if="activeTab === 'anamneses'">
-          <div class="anamnesis-section">
-            <h3 class="title-respondidas"><CheckSquare :size="20" /> Respondidas</h3>
-            <ul v-if="answeredAnamneses.length > 0" class="anamnesis-list">
-              <li v-for="item in answeredAnamneses" :key="item._id">
-                <div class="anamnesis-info clickable" @click="viewingAnamnesis = item">
-                  <span class="anamnesis-name">{{
-                    item.template?.name || 'Modelo não encontrado'
-                  }}</span>
-                  <span class="anamnesis-date"
-                    >Respondida em {{ formatSimpleDate(item.updatedAt) }}</span
+                <div class="divider"></div>
+
+                <section class="card-section">
+                  <h3 class="section-title"><MapPin :size="18" /> Endereço</h3>
+                  <div
+                    v-if="patient.address && patient.address.street"
+                    class="section-content grid-2-cols"
                   >
-                </div>
-                <button
-                  @click.stop="handleGeneratePdf(item)"
-                  class="btn-icon"
-                  title="Visualizar PDF"
-                >
-                  <FileDown :size="16" />
-                </button>
-              </li>
-            </ul>
+                    <div class="detail-item">
+                      <span class="label">Logradouro</span>
+                      <strong class="value"
+                        >{{ patient.address.street }}, {{ patient.address.number }}</strong
+                      >
+                    </div>
+                    <div class="detail-item">
+                      <span class="label">Bairro</span>
+                      <strong class="value">{{ patient.address.district }}</strong>
+                    </div>
+                    <div class="detail-item">
+                      <span class="label">Cidade / Estado</span>
+                      <strong class="value"
+                        >{{ patient.address.city }} - {{ patient.address.state }}</strong
+                      >
+                    </div>
+                    <div class="detail-item">
+                      <span class="label">CEP</span>
+                      <strong class="value">{{ patient.address.cep }}</strong>
+                    </div>
+                  </div>
+                  <div v-else>
+                    <p class="empty-list-message">Endereço não cadastrado.</p>
+                  </div>
+                </section>
 
-            <div v-else class="empty-state-card">
-              <div class="empty-state-icon">
-                <ClipboardCheck :size="40" />
+                <div class="divider"></div>
+
+                <section class="card-section">
+                  <h3 class="section-title"><History :size="18" /> Histórico Recente</h3>
+                  <div class="section-content">
+                    <div v-if="lastAppointment" class="last-appointment-item">
+                      <span class="label">Último Atendimento</span>
+                      <div class="value-with-badge">
+                        <strong>{{ formatSimpleDate(lastAppointment.startTime) }}</strong>
+                        <span
+                          class="status-badge"
+                          :class="lastAppointment.status.toLowerCase().replace(' ', '-')"
+                          >{{ lastAppointment.status }}</span
+                        >
+                      </div>
+                    </div>
+                    <p v-else class="empty-list-message">
+                      Nenhum atendimento anterior registrado.
+                    </p>
+                  </div>
+                </section>
               </div>
-              <h4 class="empty-state-title">Nenhuma anamnese respondida</h4>
-              <p class="empty-state-text">
-                As anamneses preenchidas pelo paciente aparecerão aqui.
-              </p>
+            </div>
+
+            <div v-if="activeTab === 'anamneses'">
+              <div class="anamnesis-section">
+                <h3 class="title-respondidas"><CheckSquare :size="20" /> Respondidas</h3>
+                <ul v-if="answeredAnamneses.length > 0" class="anamnesis-list">
+                  <li v-for="item in answeredAnamneses" :key="item._id">
+                    <div class="anamnesis-info clickable" @click="viewingAnamnesis = item">
+                      <span class="anamnesis-name">{{
+                        item.template?.name || 'Modelo não encontrado'
+                      }}</span>
+                      <span class="anamnesis-date"
+                        >Respondida em {{ formatSimpleDate(item.updatedAt) }}</span
+                      >
+                    </div>
+                    <button
+                      @click.stop="handleGeneratePdf(item)"
+                      class="btn-icon"
+                      title="Visualizar PDF"
+                    >
+                      <FileDown :size="16" />
+                    </button>
+                  </li>
+                </ul>
+
+                <div v-else class="empty-state-card">
+                  <div class="empty-state-icon">
+                    <ClipboardCheck :size="40" />
+                  </div>
+                  <h4 class="empty-state-title">Nenhuma anamnese respondida</h4>
+                  <p class="empty-state-text">
+                    As anamneses preenchidas pelo paciente aparecerão aqui.
+                  </p>
+                </div>
+              </div>
+
+              <div class="anamnesis-section">
+                <h3 class="title-pendentes"><FileText :size="20" /> Pendentes</h3>
+                <ul v-if="pendingAnamneses.length > 0" class="anamnesis-list">
+                  <li v-for="item in pendingAnamneses" :key="item._id">
+                    <div class="anamnesis-info">
+                      <span class="anamnesis-name">{{
+                        item.template?.name || 'Modelo não encontrado'
+                      }}</span>
+                      <span class="anamnesis-date"
+                        >Vence em {{ formatSimpleDate(item.patientAccessTokenExpires) }}</span
+                      >
+                    </div>
+                    <button
+                      @click.stop="handleCopyLink(item.patientAccessToken)"
+                      class="btn-icon"
+                      title="Copiar link de resposta"
+                    >
+                      <Copy :size="16" />
+                    </button>
+                  </li>
+                </ul>
+                <div v-else class="empty-state-card">
+                  <div class="empty-state-icon">
+                    <ClipboardPlus :size="40" />
+                  </div>
+                  <h4 class="empty-state-title">Nenhuma anamnese pendente</h4>
+                  <p class="empty-state-text">
+                    Você pode aplicar um modelo de anamnese para gerar um link de resposta para o
+                    paciente.
+                  </p>
+                  <button @click="isAssignModalOpen = true" class="empty-state-button">
+                    <Clipboard :size="16" />
+                    Aplicar Anamnese
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="activeTab === 'history'">
+              <div class="history-section">
+                <h3 class="title-historico"><History :size="20" /> Histórico de Atendimentos</h3>
+                <div v-if="appointmentsStore.isLoading" class="loading-state">
+                  Carregando histórico...
+                </div>
+                <ul v-else-if="patientHistory.length > 0" class="history-list">
+                  <li v-for="item in patientHistory" :key="item._id">
+                    <div class="history-info">
+                      <span class="history-date">{{ formatSimpleDate(item.startTime) }}</span>
+                      <span
+                        class="status-badge"
+                        :class="item.status.toLowerCase().replace(' ', '-')"
+                        >{{ item.status }}</span
+                      >
+                    </div>
+                    <router-link
+                      v-if="item.status === 'Realizado'"
+                      :to="`/app/atendimentos/${item._id}/patient/${patient._id}`"
+                      class="btn-secondary"
+                    >
+                      <Eye :size="16" />
+                      <span class="btn-text">Ver Relatório</span>
+                    </router-link>
+                  </li>
+                </ul>
+                <div v-else class="empty-state-card">
+                  <div class="empty-state-icon">
+                    <History :size="40" />
+                  </div>
+                  <h4 class="empty-state-title">Nenhum histórico encontrado</h4>
+                  <p class="empty-state-text">
+                    Este paciente ainda não possui atendimentos registrados. Que tal agendar o
+                    primeiro?
+                  </p>
+                  <button @click="isCreateAppointmentModalOpen = true" class="empty-state-button">
+                    <CalendarPlus :size="16" />
+                    Agendar Atendimento
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-
-          <div class="anamnesis-section">
-            <h3 class="title-pendentes"><FileText :size="20" /> Pendentes</h3>
-            <ul v-if="pendingAnamneses.length > 0" class="anamnesis-list">
-              <li v-for="item in pendingAnamneses" :key="item._id">
-                <div class="anamnesis-info">
-                  <span class="anamnesis-name">{{
-                    item.template?.name || 'Modelo não encontrado'
-                  }}</span>
-                  <span class="anamnesis-date"
-                    >Vence em {{ formatSimpleDate(item.patientAccessTokenExpires) }}</span
-                  >
-                </div>
-                <button
-                  @click.stop="handleCopyLink(item.patientAccessToken)"
-                  class="btn-icon"
-                  title="Copiar link de resposta"
-                >
-                  <Copy :size="16" />
-                </button>
-              </li>
-            </ul>
-            <div v-else class="empty-state-card">
-              <div class="empty-state-icon">
-                <ClipboardPlus :size="40" />
-              </div>
-              <h4 class="empty-state-title">Nenhuma anamnese pendente</h4>
-              <p class="empty-state-text">
-                Você pode aplicar um modelo de anamnese para gerar um link de resposta para o
-                paciente.
-              </p>
-              <button @click="isAssignModalOpen = true" class="empty-state-button">
-                <Clipboard :size="16" />
-                Aplicar Anamnese
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="activeTab === 'history'">
-          <div class="history-section">
-            <h3 class="title-historico"><History :size="20" /> Histórico de Atendimentos</h3>
-            <div v-if="appointmentsStore.isLoading" class="loading-state">
-              Carregando histórico...
-            </div>
-            <ul v-else-if="patientHistory.length > 0" class="history-list">
-              <li v-for="item in patientHistory" :key="item._id">
-                <div class="history-info">
-                  <span class="history-date">{{ formatSimpleDate(item.startTime) }}</span>
-                  <span class="status-badge" :class="item.status.toLowerCase().replace(' ', '-')">{{
-                    item.status
-                  }}</span>
-                </div>
-                <router-link
-                  v-if="item.status === 'Realizado'"
-                  :to="`/app/atendimentos/${item._id}/patient/${patient._id}`"
-                  class="btn-secondary"
-                >
-                  <Eye :size="16" />
-                  <span class="btn-text">Ver Relatório</span>
-                </router-link>
-              </li>
-            </ul>
-            <div v-else class="empty-state-card">
-              <div class="empty-state-icon">
-                <History :size="40" />
-              </div>
-              <h4 class="empty-state-title">Nenhum histórico encontrado</h4>
-              <p class="empty-state-text">
-                Este paciente ainda não possui atendimentos registrados. Que tal agendar o primeiro?
-              </p>
-              <button @click="isCreateAppointmentModalOpen = true" class="empty-state-button">
-                <CalendarPlus :size="16" />
-                Agendar Atendimento
-              </button>
-            </div>
-          </div>
-        </div>
+        </Transition>
       </div>
     </div>
   </div>
@@ -630,7 +648,13 @@ async function handleGeneratePdf(anamnesis) {
   border: 1px solid #e5e7eb;
 }
 
-/* Estilos das listas de Anamnese e Histórico */
+/* ✨ ESTILO ADICIONADO PARA MENSAGENS DE LISTA VAZIA ✨ */
+.empty-list-message {
+  color: var(--cinza-texto);
+  font-size: 0.875rem;
+  padding: 0.5rem 0;
+}
+
 .anamnesis-section,
 .history-section {
   margin-bottom: 2.5rem;
@@ -732,8 +756,43 @@ async function handleGeneratePdf(anamnesis) {
   border: 2px dashed #d1d5db;
   border-radius: 1rem;
 }
-
-/* ✨ ESTILOS PARA O RESPONSIVO ✨ */
+.empty-state-icon {
+  color: var(--azul-principal);
+  margin-bottom: 1rem;
+}
+.empty-state-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+}
+.empty-state-text {
+  max-width: 400px;
+  color: var(--cinza-texto);
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+.empty-state-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: 0.5rem;
+  border: none;
+  background-color: var(--azul-principal);
+  color: var(--branco);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
 @media (max-width: 768px) {
   .patient-header {
     align-items: center;
@@ -762,7 +821,6 @@ async function handleGeneratePdf(anamnesis) {
   .btn-edit .btn-text {
     display: none;
   }
-
   .tabs-nav {
     justify-content: space-around;
   }
@@ -773,72 +831,15 @@ async function handleGeneratePdf(anamnesis) {
   .card-section {
     padding: 1.5rem;
   }
-
-  .anamnesis-list li,
-  .history-list li {
-    padding: 1rem;
-  }
   .history-info {
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-  }
-  .history-list .btn-secondary .btn-text {
-    display: none;
+    width: 100%;
   }
   .history-list .btn-secondary {
-    padding: 0.6rem;
-    border-radius: 50%;
+    width: 100%;
+    justify-content: center;
   }
-}
-.empty-state-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2.5rem;
-  margin-top: 1rem;
-  border: 2px dashed #d1d5db;
-  border-radius: 1rem;
-  background-color: rgba(239, 246, 255, 0.5);
-  text-align: center;
-}
-
-.empty-state-icon {
-  color: var(--azul-principal);
-  margin-bottom: 1rem;
-}
-
-.empty-state-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 0.5rem;
-}
-
-.empty-state-text {
-  max-width: 400px;
-  color: var(--cinza-texto);
-  margin-bottom: 1.5rem;
-  line-height: 1.6;
-}
-
-.empty-state-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.6rem 1.25rem;
-  border-radius: 0.5rem;
-  border: none;
-  background-color: var(--azul-principal);
-  color: var(--branco);
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.empty-state-button:hover {
-  background-color: var(--azul-escuro);
 }
 </style>

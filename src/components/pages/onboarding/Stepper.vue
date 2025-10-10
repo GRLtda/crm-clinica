@@ -12,26 +12,22 @@ const stepItems = ref([])
 
 // Função para centralizar o passo ativo
 const scrollToActiveStep = async () => {
-  // Aguarda o DOM ser atualizado antes de procurar os elementos
   await nextTick()
-
-  const activeStepElement = stepItems.value[props.currentStep - 1]
-
-  if (activeStepElement && window.innerWidth <= 768) {
-    activeStepElement.scrollIntoView({
-      behavior: 'smooth',
-      inline: 'center',
-      block: 'nearest',
-    })
+  if (props.currentStep > 0 && stepItems.value.length >= props.currentStep) {
+    const activeStepElement = stepItems.value[props.currentStep - 1]
+    if (activeStepElement && window.innerWidth <= 768) {
+      activeStepElement.scrollIntoView({
+        behavior: 'smooth',
+        inline: 'center',
+        block: 'nearest',
+      })
+    }
   }
 }
 
-// Observa mudanças no passo atual para acionar a rolagem
 watch(() => props.currentStep, scrollToActiveStep)
 
-// Rola para o passo inicial quando o componente é montado
 onMounted(() => {
-  // Pequeno delay para garantir que tudo foi renderizado
   setTimeout(scrollToActiveStep, 100)
   window.addEventListener('resize', scrollToActiveStep)
 })
@@ -47,7 +43,11 @@ onBeforeUnmount(() => {
       <div
         class="step-item"
         :class="{ active: index + 1 === currentStep, completed: index + 1 < currentStep }"
-        :ref="(el) => { if (el) stepItems[index] = el }"
+        :ref="
+          (el) => {
+            if (el) stepItems[index] = el
+          }
+        "
       >
         <div class="step-circle">
           <Check v-if="index + 1 < currentStep" :size="16" stroke-width="3" />
@@ -66,8 +66,10 @@ onBeforeUnmount(() => {
     </template>
   </div>
 </template>
+
 <style scoped>
 .stepper {
+  position: relative; /* Necessário para o degradê */
   display: flex;
   align-items: center;
   width: 100%;
@@ -154,11 +156,31 @@ onBeforeUnmount(() => {
     scroll-snap-type: x mandatory;
     -ms-overflow-style: none;
     scrollbar-width: none;
-    padding: 0 20%;
+    padding: 0; /* Remove padding para o efeito de scroll funcionar bem */
   }
 
   .stepper::-webkit-scrollbar {
     display: none;
+  }
+
+  /* ✨ Efeito de degradê nas laterais */
+  .stepper::before,
+  .stepper::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 40px; /* Largura do degradê */
+    z-index: 2;
+    pointer-events: none; /* Permite clicar através do degradê */
+  }
+  .stepper::before {
+    left: 0;
+    background: linear-gradient(to right, var(--branco) 20%, transparent);
+  }
+  .stepper::after {
+    right: 0;
+    background: linear-gradient(to left, var(--branco) 20%, transparent);
   }
 
   .step-item {
@@ -166,16 +188,17 @@ onBeforeUnmount(() => {
     transition:
       opacity 0.4s ease,
       transform 0.4s ease;
-    opacity: 0.5;
+    opacity: 0.4;
     transform: scale(0.9);
+    padding: 0 0.5rem; /* Adiciona um pequeno respiro */
   }
 
-  .step-name {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--branco) !important;
-  white-space: nowrap;
-}
+  .step-item:first-child {
+    padding-left: 30%; /* Espaço inicial para centralizar o primeiro item */
+  }
+  .step-item:last-child {
+    padding-right: 30%; /* Espaço final para centralizar o último item */
+  }
 
   .step-item.active {
     opacity: 1;
@@ -184,7 +207,8 @@ onBeforeUnmount(() => {
 
   .step-line {
     flex-grow: 0;
-    width: 60px; /* ✨ Linha aumentada */
+    width: 30px;
+    margin: 0;
   }
 }
 </style>
