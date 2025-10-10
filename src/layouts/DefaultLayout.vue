@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth' // 👈 Importar a store de autenticação
 import Sidebar from '@/components/layout/Sidebar.vue'
@@ -8,6 +8,50 @@ import { Menu } from 'lucide-vue-next'
 const route = useRoute()
 const authStore = useAuthStore() // 👈 Inicializar a store
 const isMobileSidebarOpen = ref(false)
+
+watch(
+  () => authStore.user,
+  (newUser) => {
+    // Se o usuário e a clínica existirem, atualiza o manifest
+    if (newUser && newUser.clinic) {
+      const clinicName = newUser.clinic.name
+
+      const manifest = {
+        name: clinicName,
+        short_name: clinicName.substring(0, 12), // Um nome curto para o ícone na home screen
+        description: `Dashboard de gestão para a ${clinicName}.`,
+        start_url: '/app', // Inicia direto no dashboard
+        display: 'standalone',
+        background_color: '#ffffff',
+        theme_color: '#3b82f6',
+        icons: [
+          {
+            src: '/activity.svg',
+            sizes: '192x192',
+            type: 'image/svg+xml',
+            purpose: 'any maskable',
+          },
+          {
+            src: '/activity.svg',
+            sizes: '512x512',
+            type: 'image/svg+xml',
+            purpose: 'any maskable',
+          },
+        ],
+      }
+
+      // Converte o objeto para uma URL de dados e atualiza a tag <link>
+      const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' })
+      const manifestUrl = URL.createObjectURL(manifestBlob)
+
+      const manifestLink = document.querySelector('#manifest')
+      if (manifestLink) {
+        manifestLink.setAttribute('href', manifestUrl)
+      }
+    }
+  },
+  { immediate: true } // `immediate: true` executa o watch assim que o componente é montado
+)
 </script>
 
 <template>
