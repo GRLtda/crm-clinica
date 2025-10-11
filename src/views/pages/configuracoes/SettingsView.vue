@@ -47,7 +47,6 @@ const activeTab = ref('geral')
 </template>
 
 <style scoped>
-/* Estilos permanecem os mesmos */
 .settings-header {
   margin-bottom: 2rem;
 }
@@ -79,9 +78,33 @@ const activeTab = ref('geral')
   color: var(--cinza-texto);
   border-bottom: 2px solid transparent;
   transition: all 0.2s ease;
+  white-space: nowrap; /* Impede que o texto quebre */
 }
 .tabs-nav button.active {
   color: var(--azul-principal);
   border-bottom-color: var(--azul-principal);
+}
+
+/* ✨ INÍCIO DAS MUDANÇAS PARA O RESPONSIVO ✨ */
+@media (max-width: 768px) {
+  .title {
+    font-size: 1.875rem;
+  }
+  .subtitle {
+    font-size: 1rem;
+  }
+  .tabs-nav {
+    overflow-x: auto;
+    /* Efeitos para esconder a barra de rolagem visualmente */
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  .tabs-nav::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, and Opera */
+  }
+  .tabs-nav button {
+    font-size: 0.9rem;
+    padding: 0.75rem 1rem;
+  }
 }
 </style>

@@ -164,16 +164,16 @@ async function handleDelete(templateId) {
   position: absolute;
   right: 0;
   top: calc(100% + 0.5rem);
-  width: 240px; /* Aumentado para caber o texto */
+  width: 240px;
   background-color: var(--branco);
   border: 1px solid #e5e7eb;
   border-radius: 0.75rem;
-  box-shadow: 0 4px S10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   padding: 1rem;
   z-index: 10;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem; /* Espaço entre os itens */
+  gap: 0.5rem;
 }
 .delete-confirmation h3 {
   margin: 0;
@@ -280,5 +280,26 @@ async function handleDelete(templateId) {
 }
 .create-button:hover {
   background-color: var(--azul-escuro);
+}
+
+/* ✨ INÍCIO DAS MUDANÇAS PARA O RESPONSIVO ✨ */
+@media (max-width: 768px) {
+  .header-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.5rem;
+  }
+  .btn-primary {
+    justify-content: center;
+  }
+  .template-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  .template-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
 }
 </style>

@@ -31,6 +31,12 @@ body {
   background-color: var(--branco);
 }
 
+body::before {
+  content: "";
+  display: block;
+  height: env(safe-area-inset-top);
+}
+
 h1,
 h2,
 h3,

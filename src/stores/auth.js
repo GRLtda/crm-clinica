@@ -5,7 +5,8 @@ import apiClient from '@/api/index'
 import { useClinicStore } from './clinic'
 
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref(null)
+  const storedUser = localStorage.getItem('user')
+  const user = ref(storedUser ? JSON.parse(storedUser) : null)
   const token = ref(localStorage.getItem('token') || null)
 
   const isAuthenticated = computed(() => !!token.value)
@@ -19,6 +20,13 @@ export const useAuthStore = defineStore('auth', () => {
 
   function setUser(newUser) {
     user.value = newUser
+    // Apenas salva no localStorage se o usuário não for nulo
+    if (newUser) {
+      localStorage.setItem('user', JSON.stringify(newUser))
+    } else {
+      localStorage.removeItem('user')
+    }
+
     if (newUser?.clinic) {
       const clinicStore = useClinicStore()
       clinicStore.setClinic(newUser.clinic)
@@ -33,8 +41,11 @@ export const useAuthStore = defineStore('auth', () => {
       return response.data
     } catch (error) {
       if (error.response && error.response.status === 403) {
+        // Para novos usuários sem clínica, a API pode retornar 403.
+        // Retornamos o usuário atual que pode ser o 'basicUser' do registro.
         return user.value
       } else {
+        // Para outros erros (ex: token inválido), limpamos tudo.
         logout()
         console.error('Erro ao buscar usuário, token pode ser inválido:', error)
         return null
@@ -45,15 +56,14 @@ export const useAuthStore = defineStore('auth', () => {
   async function login(credentials) {
     try {
       const response = await apiLogin(credentials)
-      const { token: authToken, ...basicUser } = response.data
+      const { token: authToken } = response.data // 1. Pegamos apenas o token
 
-      // 1. Salva o token e os dados básicos do usuário IMEDIATAMENTE.
-      setToken(authToken)
-      setUser(basicUser)
+      setToken(authToken) // 2. Configuramos o token na API
 
-      // 2. Tenta buscar os dados completos (com a clínica).
+      // 3. Buscamos os dados completos do usuário. A função fetchUser já vai chamar a setUser com os dados corretos.
       const fullUserData = await fetchUser()
-      return { success: true, user: fullUserData || basicUser }
+
+      return { success: true, user: fullUserData }
     } catch (error) {
       console.error('Erro no login:', error)
       return { success: false, error }
@@ -63,16 +73,14 @@ export const useAuthStore = defineStore('auth', () => {
   async function register(userData) {
     try {
       const response = await apiRegister(userData)
-      const { token: authToken, ...basicUser } = response.data
+      const { token: authToken } = response.data // 1. Pegamos apenas o token
 
-      // 1. Salva o token e os dados básicos do usuário IMEDIATAMENTE.
-      setToken(authToken)
-      setUser(basicUser)
+      setToken(authToken) // 2. Configuramos o token
 
-      // 2. Chamamos fetchUser, que agora vai lidar com o erro 403 corretamente.
-      await fetchUser()
+      // 3. Buscamos o usuário recém-criado.
+      const newUser = await fetchUser()
 
-      return { success: true, user: basicUser }
+      return { success: true, user: newUser }
     } catch (error) {
       console.error('Erro no registro:', error)
       return { success: false, error }
@@ -80,19 +88,25 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function logout() {
+    // Limpa o estado da store
     user.value = null
     token.value = null
+
+    // Limpa o localStorage
+    localStorage.removeItem('user')
     localStorage.removeItem('token')
+
+    // Limpa o cabeçalho da API e a store da clínica
     delete apiClient.defaults.headers.common['Authorization']
     const clinicStore = useClinicStore()
     clinicStore.setClinic(null)
   }
 
-  function checkAuth() {
+  async function checkAuth() {
     const storedToken = localStorage.getItem('token')
     if (storedToken) {
       setToken(storedToken)
-      fetchUser()
+      await fetchUser() // Usamos await para garantir que os dados sejam carregados
     }
   }
 

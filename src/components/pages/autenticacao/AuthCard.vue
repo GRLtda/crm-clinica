@@ -84,102 +84,29 @@ defineProps({
 /* ✨ INÍCIO DAS ALTERAÇÕES PARA RESPONSIVIDADE ✨ */
 @media (max-width: 900px) {
   .auth-container {
-    position: relative;
-    display: block;
+    display: block; /* Remove o flex layout */
   }
 
   .image-panel {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
-  }
-
-  /* Sobreposição escura sobre a imagem para melhor legibilidade */
-  .image-panel::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-color: rgba(25, 30, 50, 0.75); /* Sobreposição azulada escura */
-    backdrop-filter: blur(8px); /* Aumenta o desfoque do fundo */
+    display: none; /* Esconde completamente o painel da imagem */
   }
 
   .form-panel {
-    position: relative;
-    z-index: 2;
-    width: 100%;
+    width: 100%; /* Ocupa a largura total */
     min-height: 100vh;
-    background-color: transparent;
-    color: var(--branco);
     padding: 2rem 1.5rem;
+    /* Não precisa mais de z-index ou fundo transparente */
   }
 
   .content-title {
-    text-align: center;
+    text-align: center; /* Centraliza o título no mobile */
     font-size: 1.75rem;
-    color: var(--branco);
   }
 
-  .content-footer {
-    color: #d1d5db;
-  }
-
-  /* Estilos aplicados aos componentes filhos (inputs, links, etc.) */
-  .form-panel :deep(.link) {
-    color: var(--branco);
-    font-weight: 700;
-  }
-
-  .form-panel :deep(.form-label) {
-    color: #d1d5db; /* Cinza claro para labels */
-    font-weight: 500;
-  }
-  .form-panel :deep(.required-asterisk) {
-    color: #f87171; /* Vermelho claro para o asterisco */
-  }
-
-  .form-panel :deep(.form-input),
-  .form-panel :deep(.select-button) {
-    background-color: rgba(255, 255, 255, 0.08); /* Fundo translúcido */
-    border: 1px solid rgba(255, 255, 255, 0.2); /* Borda translúcida */
-    color: var(--branco);
-    padding-top: 0.875rem;
-    padding-bottom: 0.875rem;
-    transition: all 0.2s ease;
-  }
-
-  .form-panel :deep(.form-input:disabled) {
-    background-color: rgba(255, 255, 255, 0.05);
-    color: #9ca3af;
-    cursor: not-allowed;
-  }
-
-  .form-panel :deep(.form-input::placeholder) {
-    color: #9ca3af;
-  }
-
-  .form-panel :deep(.form-input:focus),
-  .form-panel :deep(.select-button:focus) {
-    background-color: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.5);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4); /* Mantém o brilho azul no foco */
-  }
-
-  /* Estilos para o componente de senha */
-  .form-panel :deep(.visibility-toggle) {
-    color: #d1d5db;
-  }
-  .form-panel :deep(.strength-text),
-  .form-panel :deep(.requirements-list) {
-    color: #d1d5db;
-  }
-  .form-panel :deep(.requirements-list li.satisfied) {
-    color: #34d399; /* Verde para requisitos atendidos */
-  }
-  .form-panel :deep(.bar-segment) {
-    background-color: rgba(255, 255, 255, 0.2) !important;
-  }
+  /*
+    Como o fundo agora é branco, não precisamos mais sobrescrever as cores
+    dos componentes filhos, então as regras :deep() foram removidas para
+    que eles voltem a usar seus estilos padrão.
+  */
 }
 </style>

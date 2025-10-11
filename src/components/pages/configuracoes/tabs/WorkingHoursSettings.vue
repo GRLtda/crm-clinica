@@ -110,7 +110,6 @@ async function handleUpdateHours() {
 </template>
 
 <style scoped>
-
 .days-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -238,5 +237,26 @@ async function handleUpdateHours() {
 }
 .save-button:hover {
   background-color: var(--azul-escuro);
+}
+
+/* ✨ INÍCIO DAS MUDANÇAS PARA O RESPONSIVO ✨ */
+@media (max-width: 768px) {
+  .days-grid {
+    grid-template-columns: 1fr; /* Uma coluna no mobile */
+  }
+  .summary-and-action {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.5rem;
+  }
+  .hours-summary {
+    justify-content: space-around; /* Distribui os itens do sumário */
+  }
+  .action-wrapper {
+    justify-content: center;
+  }
+  .save-button {
+    width: 100%;
+  }
 }
 </style>

@@ -238,12 +238,22 @@ async function handleUpdate() {
   background-color: var(--azul-escuro);
 }
 
+/* ✨ MUDANÇAS PARA O RESPONSIVO ✨ */
 @media (max-width: 900px) {
   .main-content-grid {
     grid-template-columns: 1fr;
   }
   .logo-upload-section {
     grid-row: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .footer-actions {
+    margin-top: 1.5rem;
+  }
+  .save-button {
+    width: 100%;
   }
 }
 </style>

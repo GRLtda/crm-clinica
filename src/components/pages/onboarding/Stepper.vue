@@ -69,7 +69,6 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .stepper {
-  position: relative; /* Necessário para o degradê */
   display: flex;
   align-items: center;
   width: 100%;
@@ -157,31 +156,29 @@ onBeforeUnmount(() => {
     -ms-overflow-style: none;
     scrollbar-width: none;
     padding: 0; /* Remove padding para o efeito de scroll funcionar bem */
+
+    /* ✨ CORREÇÃO: Usar máscara para o efeito de degradê que acompanha o scroll */
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 40px,
+      black calc(100% - 40px),
+      transparent
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 40px,
+      black calc(100% - 40px),
+      transparent
+    );
   }
 
   .stepper::-webkit-scrollbar {
     display: none;
   }
 
-  /* ✨ Efeito de degradê nas laterais */
-  .stepper::before,
-  .stepper::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 40px; /* Largura do degradê */
-    z-index: 2;
-    pointer-events: none; /* Permite clicar através do degradê */
-  }
-  .stepper::before {
-    left: 0;
-    background: linear-gradient(to right, var(--branco) 20%, transparent);
-  }
-  .stepper::after {
-    right: 0;
-    background: linear-gradient(to left, var(--branco) 20%, transparent);
-  }
+  /* ❌ Removemos os pseudo-elementos ::before e ::after que não funcionavam com o scroll */
 
   .step-item {
     scroll-snap-align: center;
