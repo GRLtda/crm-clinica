@@ -317,6 +317,7 @@ async function handleSubmit() {
 .clinic-logo {
   height: 40px;
   max-height: 40px;
+  border-radius: 1vh;
   width: auto;
   object-fit: contain;
 }

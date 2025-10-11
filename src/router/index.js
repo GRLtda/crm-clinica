@@ -27,7 +27,7 @@ const routes = [
     meta: { requiresAuth: true, title: 'Configuração da Clínica' },
   },
   {
-    path: '/responder-anamnese/:token',
+    path: '/anamnese/:token',
     name: 'answer-anamnesis',
     component: AnswerAnamnesisView,
     meta: { public: true, title: 'Responder Anamnese' },
