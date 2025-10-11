@@ -1,11 +1,12 @@
 <script setup>
 import { ref } from 'vue'
 import GeneralSettings from '@/components/pages/configuracoes/tabs/GeneralSettings.vue'
-import WorkingHoursSettings from '@/components/pages/configuracoes/tabs/WorkingHoursSettings.vue' // 1. Importar
-import AnamnesisTemplates from '@/components/pages/configuracoes/tabs/AnamnesisTemplates.vue' // 1. Importar
+import WorkingHoursSettings from '@/components/pages/configuracoes/tabs/WorkingHoursSettings.vue'
+import AnamnesisTemplates from '@/components/pages/configuracoes/tabs/AnamnesisTemplates.vue'
+import EmployeesSettings from '@/components/pages/configuracoes/tabs/EmployeesSettings.vue' // 1. Importar
 
 // 1. Importar os ícones
-import { SlidersHorizontal, Clock, FileText } from 'lucide-vue-next'
+import { SlidersHorizontal, Clock, FileText, Users } from 'lucide-vue-next' // 2. Adicionar ícone Users
 
 const activeTab = ref('geral')
 </script>
@@ -30,17 +31,23 @@ const activeTab = ref('geral')
         <FileText :size="18" />
         <span>Modelos de Anamnese</span>
       </button>
+      <button @click="activeTab = 'funcionarios'" :class="{ active: activeTab === 'funcionarios' }">
+        <Users :size="18" />
+        <span>Funcionários</span>
+      </button>
     </div>
 
     <div class="tab-content">
       <GeneralSettings v-if="activeTab === 'geral'" />
       <WorkingHoursSettings v-if="activeTab === 'horario'" />
       <AnamnesisTemplates v-if="activeTab === 'anamnese'" />
+      <EmployeesSettings v-if="activeTab === 'funcionarios'" />
     </div>
   </div>
 </template>
 
 <style scoped>
+/* Estilos permanecem os mesmos */
 .settings-header {
   margin-bottom: 2rem;
 }
@@ -59,7 +66,6 @@ const activeTab = ref('geral')
   border-bottom: 1px solid #e5e7eb;
   margin-bottom: 2rem;
 }
-/* 3. Ajustar o estilo do botão para aceitar ícones */
 .tabs-nav button {
   display: inline-flex;
   align-items: center;

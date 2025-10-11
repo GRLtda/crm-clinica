@@ -150,6 +150,12 @@ defineProps({
     transition: all 0.2s ease;
   }
 
+  .form-panel :deep(.form-input:disabled) {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #9ca3af;
+    cursor: not-allowed;
+  }
+
   .form-panel :deep(.form-input::placeholder) {
     color: #9ca3af;
   }

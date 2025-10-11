@@ -5,8 +5,7 @@ import apiClient from '@/api/index'
 import { useClinicStore } from './clinic'
 
 export const useAuthStore = defineStore('auth', () => {
-  const storedUser = localStorage.getItem('user')
-  const user = ref(storedUser ? JSON.parse(storedUser) : null)
+  const user = ref(null)
   const token = ref(localStorage.getItem('token') || null)
 
   const isAuthenticated = computed(() => !!token.value)
@@ -20,7 +19,6 @@ export const useAuthStore = defineStore('auth', () => {
 
   function setUser(newUser) {
     user.value = newUser
-    localStorage.setItem('user', JSON.stringify(newUser))
     if (newUser?.clinic) {
       const clinicStore = useClinicStore()
       clinicStore.setClinic(newUser.clinic)
@@ -84,7 +82,6 @@ export const useAuthStore = defineStore('auth', () => {
   function logout() {
     user.value = null
     token.value = null
-    localStorage.removeItem('user')
     localStorage.removeItem('token')
     delete apiClient.defaults.headers.common['Authorization']
     const clinicStore = useClinicStore()

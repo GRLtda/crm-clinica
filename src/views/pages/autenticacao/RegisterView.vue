@@ -1,7 +1,9 @@
 <script setup>
-import { ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { getInvitationDetails } from '@/api/employees'
+import { useToast } from 'vue-toastification'
 import AuthCard from '@/components/pages/autenticacao/AuthCard.vue'
 import FormInput from '@/components/global/FormInput.vue'
 import PasswordInput from '@/components/global/PasswordInput.vue'
@@ -9,7 +11,9 @@ import { CheckCircle2 } from 'lucide-vue-next'
 import confetti from 'canvas-confetti'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
+const toast = useToast()
 
 const name = ref('')
 const email = ref('')
@@ -18,8 +22,32 @@ const password = ref('')
 const errorMessage = ref(null)
 const registrationSuccess = ref(false)
 
+// Estado para o fluxo de convite
+const isInvitation = ref(false)
+const invitationToken = ref(null)
+
 const imageUrl =
   'https://images.unsplash.com/photo-1629909613654-28e377c37b09?q=80&w=1168&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'
+
+// Busca os dados do convite ao carregar a página
+onMounted(async () => {
+  const token = route.query.invitationToken
+  if (token) {
+    invitationToken.value = token
+    try {
+      const response = await getInvitationDetails(token)
+      if (response.data) {
+        email.value = response.data.email
+        isInvitation.value = true
+        toast.info(`Bem-vindo(a)! Complete seu cadastro para a clínica.`)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar detalhes do convite:', error)
+      toast.error('Seu link de convite é inválido ou já expirou!')
+      router.push('/register') // Limpa a URL
+    }
+  }
+})
 
 watch(registrationSuccess, (newValue) => {
   if (newValue) {
@@ -34,22 +62,33 @@ watch(registrationSuccess, (newValue) => {
 
 async function handleRegister() {
   errorMessage.value = null
-  const { success } = await authStore.register({
+
+  const payload = {
     name: name.value,
     email: email.value,
     phone: phone.value,
     password: password.value,
-  })
+  }
+
+  if (invitationToken.value) {
+    payload.invitationToken = invitationToken.value
+  }
+
+  const { success } = await authStore.register(payload)
 
   if (success) {
     registrationSuccess.value = true
   } else {
-    errorMessage.value = 'Não foi possível criar a conta. Verifique os dados.'
+    errorMessage.value = authStore.error || 'Não foi possível criar a conta. Verifique os dados.'
   }
 }
 
 function handleRegistrationComplete() {
-  router.push('/onboarding/clinic')
+  if (isInvitation.value) {
+    router.push('/app')
+  } else {
+    router.push('/onboarding/clinic')
+  }
 }
 </script>
 
@@ -84,6 +123,7 @@ function handleRegistrationComplete() {
           placeholder="seuemail@exemplo.com"
           autocomplete="email"
           required="true"
+          :disabled="isInvitation"
         />
         <FormInput
           v-model="phone"
@@ -109,7 +149,7 @@ function handleRegistrationComplete() {
 </template>
 
 <style scoped>
-/* Estilos para a nova tela de sucesso */
+/* Estilos da tela de sucesso (sem alterações) */
 .success-screen {
   position: fixed;
   top: 0;
@@ -124,7 +164,6 @@ function handleRegistrationComplete() {
   z-index: 2000;
   animation: fade-in 0.5s ease-out;
 }
-
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -133,10 +172,9 @@ function handleRegistrationComplete() {
     opacity: 1;
   }
 }
-
 .success-content {
   text-align: center;
-  padding: 0 1.5rem; /* Adiciona um padding lateral */
+  padding: 0 1.5rem;
 }
 .success-icon {
   color: #10b981;
@@ -151,10 +189,10 @@ function handleRegistrationComplete() {
   color: var(--cinza-texto);
   margin-bottom: 2rem;
   font-size: 1.125rem;
-  max-width: 400px; /* Define uma largura máxima para o texto */
+  max-width: 400px;
   margin-left: auto;
   margin-right: auto;
-  line-height: 1.6; /* Melhora a leitura */
+  line-height: 1.6;
 }
 .confirm-button {
   max-width: 300px;
