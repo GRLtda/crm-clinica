@@ -5,16 +5,16 @@ import { getClinicSummary } from '@/api/clinics'; // Importa a nova função
 export const useDashboardStore = defineStore('dashboard', () => {
   const stats = ref({
     totalPatients: 0,
-    appointmentsToday: [], // Continuará sendo o array de agendamentos
+    appointmentsToday: [], 
     nextAppointment: null,
   });
   const isLoading = ref(false);
 
-  async function fetchDashboardStats() {
+  async function fetchDashboardStats(params = {}) {
     isLoading.value = true;
     try {
       // Faz uma única chamada para o novo endpoint de sumário
-      const response = await getClinicSummary();
+      const response = await getClinicSummary(params);
       const summary = response.data;
 
       // Atualiza o estado com os dados recebidos

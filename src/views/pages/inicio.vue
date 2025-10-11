@@ -954,6 +954,10 @@ function handleReschedule(appointmentToEdit) {
   .dashboard-content {
     grid-template-columns: 1fr;
   }
+  .action-column {
+    grid-column: 1 / -1; /* Garante que ocupe a coluna inteira */
+    position: static; /* Remove o 'sticky' para que a coluna flua normalmente */
+  }
 }
 
 @media (max-width: 768px) {
@@ -993,14 +997,14 @@ function handleReschedule(appointmentToEdit) {
     display: none; /* Esconde filtros e busca no mobile para simplificar */
   }
 
-  /* Oculta a coluna de ações no mobile */
-  .action-column {
-    display: none;
-  }
-
   /* Faz a coluna da agenda ocupar todo o espaço */
   .dashboard-content {
     grid-template-columns: 1fr;
+  }
+
+  /* ✨ A COLUNA DE AÇÕES AGORA É VISÍVEL NO MOBILE ✨ */
+  .action-column {
+    display: flex; /* Garante que a coluna de ações seja exibida */
   }
 }
 </style>

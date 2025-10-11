@@ -9,6 +9,6 @@ export const updateClinic = (clinicData) => {
   return apiClient.put('/clinics', clinicData) //
 }
 
-export const getClinicSummary = () => {
-  return apiClient.get('/clinics/summary');
+export const getClinicSummary = (params) => {
+  return apiClient.get('/clinics/summary', { params });
 };
