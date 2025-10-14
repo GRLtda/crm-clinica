@@ -260,8 +260,9 @@ async function handleSubmit() {
               format="dd/MM/yyyy"
               :enable-time-picker="false"
               auto-apply
-              :teleport="true"
+              teleport="body"
               placeholder="Selecione a data"
+              :z-index="1001"
             />
           </div>
           <div class="form-group">
@@ -408,7 +409,8 @@ async function handleSubmit() {
 .modal-body {
   padding: 2rem;
   flex-grow: 1;
-  overflow-y: auto;
+  /* overflow-y: auto; */
+    overflow-y: visible; /* Adicione esta linha */
 }
 .modal-footer {
   padding: 1rem 1.5rem;
