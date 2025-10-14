@@ -137,7 +137,6 @@ async function handleUpdateHours() {
   color: #374151;
 }
 .card-body {
-  padding-left: 38px;
   min-height: 40px;
   display: flex;
   align-items: center;

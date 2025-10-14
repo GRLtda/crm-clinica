@@ -1,18 +1,20 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, watch, nextTick } from 'vue' // 1. Importar o nextTick
 import { useAuthStore } from '@/stores/auth'
 import { useClinicStore } from '@/stores/clinic'
 import { useToast } from 'vue-toastification'
 import { UploadCloud, Building } from 'lucide-vue-next'
 import FormInput from '@/components/global/FormInput.vue'
+import { fetchAddressByCEP } from '@/api/external'
 
 const authStore = useAuthStore()
 const clinicStore = useClinicStore()
 const toast = useToast()
 
+const isDataLoaded = ref(false) // 2. Criar a variável de controle
 const logoInput = ref(null)
-const selectedLogoFile = ref(null) // Armazena o ARQUIVO da imagem selecionada
-const logoPreviewUrl = ref('') // Armazena a URL para a PRÉ-VISUALIZAÇÃO
+const selectedLogoFile = ref(null)
+const logoPreviewUrl = ref('')
 
 const clinicData = ref({
   name: '',
@@ -28,61 +30,73 @@ const clinicData = ref({
   },
 })
 
-// Observa a store e preenche os dados do formulário quando eles estiverem disponíveis
+// 3. Modificar o 'watch' para usar a variável de controle
 watch(
   () => authStore.user?.clinic,
-  (clinic) => {
+  async (clinic) => {
     if (clinic) {
+      isDataLoaded.value = false // Esconde o form temporariamente
       clinicData.value = JSON.parse(JSON.stringify(clinic))
-      // Define a URL de pré-visualização inicial com o logo já existente
       logoPreviewUrl.value = clinic.logoUrl || ''
+      await nextTick() // Espera o Vue processar a mudança
+      isDataLoaded.value = true // Mostra o form novamente, agora com os dados
+    } else if (!authStore.isLoading) {
+      isDataLoaded.value = true // Garante que o form apareça se não houver clínica
     }
   },
   { immediate: true, deep: true },
 )
 
-// ✨ ETAPA 1: Apenas prepara a pré-visualização localmente
+watch(
+  () => clinicData.value.address.cep,
+  async (newCep) => {
+    const numericCep = newCep.replace(/\D/g, '')
+    if (numericCep.length === 8) {
+      const address = await fetchAddressByCEP(numericCep)
+      if (address) {
+        clinicData.value.address.street = address.street
+        clinicData.value.address.district = address.neighborhood
+        clinicData.value.address.city = address.city
+        clinicData.value.address.state = address.state
+      }
+    }
+  },
+)
+
+
 function handleFileSelect(event) {
   const file = event.target.files[0]
   if (!file) {
     return
   }
-  // Guarda o arquivo para enviá-lo mais tarde
   selectedLogoFile.value = file
-  // Cria uma URL temporária para mostrar a imagem selecionada na tela
   logoPreviewUrl.value = URL.createObjectURL(file)
 }
 
-// ✨ ETAPA 2: Orquestra o upload e o salvamento ao clicar no botão principal
 async function handleUpdate() {
   const savingToast = toast.info('Salvando alterações...', { timeout: false })
 
-  // Primeiro, verifica se um novo arquivo de logo foi selecionado
   if (selectedLogoFile.value) {
     const formData = new FormData()
     formData.append('image', selectedLogoFile.value)
 
-    // Envia o arquivo para a API de upload
     const { success, data } = await clinicStore.uploadLogo(formData)
 
     if (success) {
-      // Se o upload deu certo, atualiza a 'logoUrl' nos dados que serão salvos
       clinicData.value.logoUrl = data.logoUrl
     } else {
       toast.dismiss(savingToast)
       toast.error('Falha ao enviar o novo logo. Nenhuma alteração foi salva.')
-      return // Interrompe o processo se o upload do logo falhar
+      return
     }
   }
 
-  // Em seguida, salva todos os dados da clínica (com a URL do logo antiga ou a nova)
   const { success: updateSuccess } = await clinicStore.updateClinicDetails(clinicData.value)
 
   toast.dismiss(savingToast)
 
   if (updateSuccess) {
     toast.success('Informações da clínica salvas com sucesso!')
-    // Limpa o arquivo selecionado após o sucesso para não reenviá-lo desnecessariamente
     selectedLogoFile.value = null
   } else {
     toast.error('Erro ao salvar as informações da clínica.')
@@ -92,7 +106,7 @@ async function handleUpdate() {
 
 <template>
   <div class="general-settings">
-    <form @submit.prevent="handleUpdate">
+    <form v-if="isDataLoaded" @submit.prevent="handleUpdate">
       <div class="main-content-grid">
         <div class="logo-upload-section">
           <label class="form-label">Logo da Clínica</label>
@@ -122,7 +136,7 @@ async function handleUpdate() {
         </div>
 
         <FormInput v-model="clinicData.name" label="Nome da Clínica" />
-        <FormInput v-model="clinicData.cnpj" label="CNPJ" />
+        <FormInput v-model="clinicData.cnpj" label="CNPJ" cnpj-mask />
         <FormInput v-model="clinicData.address.cep" label="CEP" />
         <FormInput v-model="clinicData.address.street" label="Rua" />
         <FormInput v-model="clinicData.address.number" label="Número" />
@@ -135,6 +149,9 @@ async function handleUpdate() {
         <button type="submit" class="save-button">Salvar Alterações</button>
       </div>
     </form>
+    <div v-else>
+      <p>Carregando dados da clínica...</p>
+    </div>
   </div>
 </template>
 

@@ -67,7 +67,7 @@ function handleReschedule() {
             <h3 class="patient-name">{{ patient.name }}</h3>
             <div class="patient-contact">
               <Phone :size="14" />
-              <span>{{ patient.phone }}</span>
+              <span v-phone-mask>{{ patient.phone }}</span>
             </div>
           </div>
         </div>
@@ -123,7 +123,7 @@ function handleReschedule() {
 .modal-content {
   background: var(--branco);
   width: 100%;
-  max-width: 70vh;
+  max-width: 800px; /* Ajustado para um valor mais consistente */
   height: auto;
   border-radius: 1rem;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
@@ -232,7 +232,6 @@ function handleReschedule() {
     color: var(--cinza-texto);
 }
 
-
 .modal-footer {
   padding: 1rem 1.5rem;
   border-top: 1px solid #e5e7eb;
@@ -297,5 +296,54 @@ function handleReschedule() {
 }
 .btn-outline-danger:hover {
   background-color: #fef2f2;
+}
+
+
+/* ===== INÍCIO DAS MELHORIAS PARA MOBILE ===== */
+
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 0;
+    background: var(--branco); /* Fundo sólido para parecer uma página */
+    backdrop-filter: none;
+    align-items: stretch; /* Força o conteúdo a esticar verticalmente */
+  }
+
+  .modal-content {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    border-radius: 0;
+    box-shadow: none;
+    border: none;
+  }
+
+  .modal-body {
+    flex-grow: 1; /* Faz o corpo do modal crescer e empurrar o rodapé para baixo */
+    padding: 1.5rem;
+  }
+
+  .modal-footer {
+    flex-direction: column; /* Empilha os botões verticalmente */
+    gap: 0.75rem;
+    background-color: var(--branco);
+    padding: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .status-actions {
+    flex-direction: column; /* Empilha os botões de status também */
+    gap: 0.75rem;
+    width: 100%;
+  }
+
+  /* Faz todos os botões no rodapé ocuparem a largura total */
+  .modal-footer .btn-secondary,
+  .modal-footer .btn-danger,
+  .modal-footer .btn-outline-danger {
+    width: 100%;
+    justify-content: center; /* Centraliza o conteúdo (ícone e texto) */
+    padding: 1rem;
+  }
 }
 </style>

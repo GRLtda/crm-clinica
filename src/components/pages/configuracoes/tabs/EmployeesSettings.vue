@@ -210,13 +210,45 @@ function isOwner(employee) {
 
 
 /* Responsividade */
+/* Responsividade */
 @media (max-width: 768px) {
-  .header-actions { flex-direction: column; align-items: stretch; gap: 1rem; }
-  .list-item { flex-wrap: wrap; }
-  .item-main-info { width: 100%; margin-bottom: 1rem; }
-  .item-role, .item-actions { width: 50%; }
-  .item-role { text-align: left; }
-  .item-actions { justify-content: flex-end; }
-  .pending-text { text-align: right; width: 100%; }
+  .header-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  .btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
+  .list-item {
+    display: grid;
+    grid-template-columns: 1fr auto; /* Coluna flexível para info, coluna automática para ações */
+    grid-template-rows: auto auto;
+    gap: 0.75rem 1rem;
+    padding: 1rem;
+    align-items: center;
+  }
+  .item-main-info {
+    grid-column: 1 / -1; /* Ocupa a primeira linha inteira */
+  }
+  .item-role {
+    grid-column: 1; /* Ocupa a primeira coluna da segunda linha */
+    width: auto;
+    text-align: left;
+  }
+  .item-actions {
+    grid-column: 2; /* Ocupa a segunda coluna da segunda linha */
+    width: auto;
+    justify-content: flex-end;
+  }
+  .pending-text {
+    /* Ajusta o texto de status para se alinhar corretamente na grid */
+    font-size: 0.875rem;
+    text-align: right;
+  }
+  .section-title {
+    font-size: 1.125rem;
+  }
 }
 </style>
