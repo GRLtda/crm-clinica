@@ -90,6 +90,7 @@ export const useAnamnesisStore = defineStore('anamnesis', () => {
     async function assignAnamnesis(patientId, templateId) {
     try {
       const response = await apiAssignAnamnesis(patientId, templateId);
+      await fetchAnamnesisForPatient(patientId)
       // O backend retorna o documento completo, incluindo o patientAccessToken
       return { success: true, data: response.data };
     } catch (error) {

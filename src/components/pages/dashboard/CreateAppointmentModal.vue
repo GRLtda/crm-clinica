@@ -5,7 +5,7 @@ import { usePatientsStore } from '@/stores/patients'
 import { useAppointmentsStore } from '@/stores/appointments'
 import { useClinicStore } from '@/stores/clinic'
 import { useToast } from 'vue-toastification'
-import { User, Calendar, Bell, Plus, X, DoorClosed } from 'lucide-vue-next'
+import { User, Calendar, Bell, Plus, X, DoorClosed, Info } from 'lucide-vue-next'
 
 import Stepper from '@/components/pages/onboarding/Stepper.vue'
 import SearchableSelect from '@/components/global/SearchableSelect.vue'
@@ -95,19 +95,48 @@ const patientOptions = computed(() => {
 const timeOptions = computed(() => {
   const selectedDay = getDayOfWeek(appointmentData.value.date)
   const workingHours = clinicWorkingHours.value[selectedDay]
-  if (!workingHours) return []
+  const allowOutside = clinicStore.currentClinic?.allowAppointmentsOutsideWorkingHours;
 
   const options = []
+  const interval = 15; // 15 minutes
+
+  if (allowOutside) {
+    for (let i = 0; i < 24 * 60; i += interval) {
+        const hours = Math.floor(i / 60);
+        const minutes = i % 60;
+        const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        options.push({ value: timeStr, label: timeStr });
+    }
+    return options;
+  }
+
+  // Original logic for when only working hours are allowed
+  if (!workingHours) return []
   let currentTime = new Date(`1970-01-01T${workingHours.open}:00`)
   const closingTime = new Date(`1970-01-01T${workingHours.close}:00`)
 
   while (currentTime < closingTime) {
     const timeStr = currentTime.toTimeString().substring(0, 5)
     options.push({ value: timeStr, label: timeStr })
-    currentTime.setMinutes(currentTime.getMinutes() + 15)
+    currentTime.setMinutes(currentTime.getMinutes() + interval)
   }
   return options
 })
+
+const isOutsideWorkingHours = computed(() => {
+    if (!appointmentData.value.startTime || !clinicStore.currentClinic?.allowAppointmentsOutsideWorkingHours) {
+        return false;
+    }
+    const selectedDay = getDayOfWeek(appointmentData.value.date);
+    const workingHours = clinicWorkingHours.value[selectedDay];
+
+    if (!workingHours) {
+        return true; // The whole day is outside working hours
+    }
+
+    return appointmentData.value.startTime < workingHours.open || appointmentData.value.startTime >= workingHours.close;
+});
+
 
 const endTimeOptions = computed(() => {
   if (!appointmentData.value.startTime) return []
@@ -260,9 +289,8 @@ async function handleSubmit() {
               format="dd/MM/yyyy"
               :enable-time-picker="false"
               auto-apply
-              teleport="body"
+              :teleport="true"
               placeholder="Selecione a data"
-              :z-index="1001"
             />
           </div>
           <div class="form-group">
@@ -287,6 +315,10 @@ async function handleSubmit() {
             </div>
             <div v-else class="closed-message">
               <DoorClosed :size="16" /> Clínica fechada neste dia.
+            </div>
+             <div v-if="isOutsideWorkingHours" class="warning-message">
+              <Info :size="16" />
+              Atenção: O horário selecionado está fora do expediente da clínica.
             </div>
             <p v-if="errors.time" class="error-message">{{ errors.time }}</p>
           </div>
@@ -356,6 +388,19 @@ async function handleSubmit() {
 </template>
 
 <style scoped>
+.warning-message {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #fefce8;
+  color: #a16207;
+  border: 1px solid #fde68a;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  text-align: left;
+  font-size: 0.875rem;
+  margin-top: 1rem;
+}
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -409,8 +454,7 @@ async function handleSubmit() {
 .modal-body {
   padding: 2rem;
   flex-grow: 1;
-  /* overflow-y: auto; */
-    overflow-y: visible; /* Adicione esta linha */
+  overflow-y: auto;
 }
 .modal-footer {
   padding: 1rem 1.5rem;

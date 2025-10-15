@@ -2,8 +2,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useClinicStore } from '@/stores/clinic'
-import { Check } from 'lucide-vue-next'
+import { Check, Settings } from 'lucide-vue-next'
 import CustomSelect from '@/components/global/CustomSelect.vue'
+import Switch from '@/components/global/Switch.vue'
 import { useToast } from 'vue-toastification'
 
 const authStore = useAuthStore()
@@ -21,21 +22,25 @@ const timeOptions = Array.from({ length: 24 * 2 }, (_, i) => {
 })
 
 const workingHours = ref([])
+const allowAppointmentsOutsideWorkingHours = ref(false)
 
-// Preenche os dados com os horários salvos ou valores padrão
 onMounted(() => {
-  const savedHours = authStore.user?.clinic?.workingHours || []
-  workingHours.value = dayEnum.map((dayName) => {
-    const savedDay = savedHours.find((h) => h.day === dayName)
-    return (
-      savedDay || {
-        day: dayName,
-        startTime: '09:00',
-        endTime: '18:00',
-        isOpen: !['Sábado', 'Domingo'].includes(dayName),
-      }
-    )
-  })
+  const clinic = authStore.user?.clinic
+  if (clinic) {
+    allowAppointmentsOutsideWorkingHours.value = clinic.allowAppointmentsOutsideWorkingHours || false
+    const savedHours = clinic.workingHours || []
+    workingHours.value = dayEnum.map((dayName) => {
+      const savedDay = savedHours.find((h) => h.day === dayName)
+      return (
+        savedDay || {
+          day: dayName,
+          startTime: '09:00',
+          endTime: '18:00',
+          isOpen: !['Sábado', 'Domingo'].includes(dayName),
+        }
+      )
+    })
+  }
 })
 
 const totalOpenDays = computed(() => workingHours.value.filter((day) => day.isOpen).length)
@@ -54,9 +59,15 @@ const totalWeeklyHours = computed(() => {
 async function handleUpdateHours() {
   successMessage.value = ''
   const openDays = workingHours.value.filter((day) => day.isOpen)
-  const { success } = await clinicStore.updateClinicDetails({ workingHours: openDays })
+
+  const payload = {
+    workingHours: openDays,
+    allowAppointmentsOutsideWorkingHours: allowAppointmentsOutsideWorkingHours.value,
+  }
+
+  const { success } = await clinicStore.updateClinicDetails(payload)
   if (success) {
-    toast.success('Horários atualizados com sucesso!') // Usar o toast
+    toast.success('Horários atualizados com sucesso!')
   } else {
     toast.error('Erro ao atualizar os horários.')
   }
@@ -92,13 +103,21 @@ async function handleUpdateHours() {
 
     <div class="summary-and-action">
       <div class="hours-summary">
-        <div class="summary-item">
-          <span class="summary-label">Dias abertos</span>
-          <span class="summary-value">{{ totalOpenDays }} / 7</span>
+        <div class="summary-details">
+          <div class="summary-item">
+            <span class="summary-label">Dias abertos</span>
+            <span class="summary-value">{{ totalOpenDays }} / 7</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Total de horas / semana</span>
+            <span class="summary-value">{{ totalWeeklyHours.toFixed(1).replace('.', ',') }}h</span>
+          </div>
         </div>
-        <div class="summary-item">
-          <span class="summary-label">Total de horas / semana</span>
-          <span class="summary-value">{{ totalWeeklyHours.toFixed(1).replace('.', ',') }}h</span>
+        <div class="summary-allow">
+            <Switch
+              v-model="allowAppointmentsOutsideWorkingHours"
+              label="Permitir agendamentos fora do horário de funcionamento"
+            />
         </div>
       </div>
       <div class="action-wrapper">
@@ -146,7 +165,7 @@ async function handleUpdateHours() {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  width: 100%; /* ✨ 1. Garante que o container ocupe todo o espaço */
+  width: 100%;
 }
 .time-inputs :deep(.custom-select) {
   flex-grow: 1;
@@ -195,18 +214,32 @@ async function handleUpdateHours() {
   background-color: var(--azul-principal);
   border-color: var(--azul-principal);
 }
+
 .summary-and-action {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-end;
   margin-top: 2rem;
   padding-top: 2rem;
   border-top: 1px solid #e5e7eb;
+  gap: 2rem;
 }
+
 .hours-summary {
+  display: flex;
+  flex-direction: row;
+  gap: 1.5rem;
+  background-color: #eef2ff;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  flex-grow: 1;
+}
+
+.summary-details {
   display: flex;
   gap: 2rem;
 }
+
 .summary-item {
   display: flex;
   flex-direction: column;
@@ -214,17 +247,41 @@ async function handleUpdateHours() {
 }
 .summary-label {
   font-size: 0.875rem;
-  color: var(--cinza-texto);
+  color: #60a5fa;
 }
 .summary-value {
   font-size: 1.25rem;
   font-weight: 600;
-  color: var(--preto);
+  color: var(--azul-principal);
 }
+
+.extra-options-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #dbeafe;
+}
+
+.extra-options-section :deep(.switch-container) {
+  align-items: center;
+}
+
+.extra-options-section :deep(.switch-label) {
+  padding-top: 0;
+}
+
+
+.extra-options-section :deep(.switch-label) {
+  color: #1e3a8a;
+}
+
 .action-wrapper {
   display: flex;
   align-items: center;
   gap: 1rem;
+  flex-shrink: 0;
 }
 .success-message {
   color: #10b981;
@@ -245,18 +302,18 @@ async function handleUpdateHours() {
   background-color: var(--azul-escuro);
 }
 
-@media (max-width: 768px) {
-  .days-grid {
-    grid-template-columns: 1fr;
+@media (max-width: 900px) {
+  .hours-summary{
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2rem;
   }
   .summary-and-action {
     flex-direction: column;
     align-items: stretch;
     gap: 1.5rem;
   }
-  .hours-summary {
-    justify-content: space-around;
-  }
+
   .action-wrapper {
     justify-content: center;
   }
