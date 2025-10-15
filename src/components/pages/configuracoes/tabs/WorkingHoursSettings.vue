@@ -137,6 +137,7 @@ async function handleUpdateHours() {
   color: #374151;
 }
 .card-body {
+  padding-left: 38px;
   min-height: 40px;
   display: flex;
   align-items: center;
@@ -145,6 +146,12 @@ async function handleUpdateHours() {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  width: 100%; /* ✨ 1. Garante que o container ocupe todo o espaço */
+}
+.time-inputs :deep(.custom-select) {
+  flex-grow: 1;
+  width: auto;
+  min-width: 80px;
 }
 .separator {
   color: var(--cinza-texto);
@@ -238,10 +245,9 @@ async function handleUpdateHours() {
   background-color: var(--azul-escuro);
 }
 
-/* ✨ INÍCIO DAS MUDANÇAS PARA O RESPONSIVO ✨ */
 @media (max-width: 768px) {
   .days-grid {
-    grid-template-columns: 1fr; /* Uma coluna no mobile */
+    grid-template-columns: 1fr;
   }
   .summary-and-action {
     flex-direction: column;
@@ -249,7 +255,7 @@ async function handleUpdateHours() {
     gap: 1.5rem;
   }
   .hours-summary {
-    justify-content: space-around; /* Distribui os itens do sumário */
+    justify-content: space-around;
   }
   .action-wrapper {
     justify-content: center;

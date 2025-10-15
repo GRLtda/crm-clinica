@@ -26,7 +26,9 @@ import {
   FlaskConical,
   FilePlus2,
   Pill,
-  LoaderCircle, // 👈 1. Importar o ícone de loading
+  LoaderCircle,
+  Menu,
+  X,
 } from 'lucide-vue-next'
 import { useToast } from 'vue-toastification'
 
@@ -47,15 +49,14 @@ const patient = ref(null)
 const activeTab = ref('record')
 const selectedModel = ref(null)
 
-// 👇 2. Iniciar o modo de visualização como indefinido e adicionar um estado de loading
 const isViewMode = ref()
 const isLoadingData = ref(true)
+const isSidebarOpen = ref(false)
 
 const currentRecord = computed(() => recordsStore.currentRecord)
 const saveStatus = ref('idle')
 const lastSaved = ref(null)
 
-// Cronômetro
 const elapsedTimeInSeconds = ref(0)
 const timerInterval = ref(null)
 const formattedElapsedTime = computed(() => {
@@ -140,7 +141,7 @@ const patientAge = computed(() => {
 })
 
 onMounted(async () => {
-  isLoadingData.value = true // Manter o loading ativo
+  isLoadingData.value = true
 
   await patientsStore.fetchPatientById(patientId)
   patient.value = patientsStore.selectedPatient
@@ -153,7 +154,6 @@ onMounted(async () => {
     return
   }
 
-  // 👇 3. Determina o modo correto ANTES de carregar o conteúdo do editor
   isViewMode.value = appointment.value.status === 'Realizado'
 
   await recordsStore.fetchRecordByAppointmentId(appointmentId)
@@ -185,10 +185,8 @@ onMounted(async () => {
     }, 1000)
   }
 
-  // 👇 4. Apenas no final, desativa o loading para exibir a tela já no modo correto
   isLoadingData.value = false
 })
-
 
 onBeforeUnmount(() => {
   editor.value?.destroy()
@@ -221,9 +219,9 @@ function loadModel(modelValue) {
     `
   }
   editor.value.commands.setContent(content)
-  saveStatus.value = 'saving';
-  clearTimeout(debounceTimeout);
-  debounceTimeout = setTimeout(autoSave, 500);
+  saveStatus.value = 'saving'
+  clearTimeout(debounceTimeout)
+  debounceTimeout = setTimeout(autoSave, 500)
 }
 
 async function saveAndFinish() {
@@ -269,20 +267,30 @@ const menuItems = [
   </div>
 
   <div v-else class="in-progress-appointment-layout">
+    <div v-if="isSidebarOpen" @click="isSidebarOpen = false" class="sidebar-overlay"></div>
+
     <header class="top-bar">
       <div class="header-left">
+        <button @click="isSidebarOpen = true" class="mobile-sidebar-toggle">
+          <Menu :size="24" />
+        </button>
         <div class="header-title">
           {{ isViewMode ? 'Visualizando Atendimento' : 'Novo Atendimento' }}
         </div>
       </div>
-      <div class="header-center">
+      <div class="header-center desktop-only">
         <div v-if="!isViewMode" class="appointment-timer">
           <Clock :size="18" />
           <span>{{ formattedElapsedTime }}</span>
         </div>
       </div>
       <div class="header-right">
-        <SaveStatusIndicator v-if="!isViewMode" :status="saveStatus" :last-saved="lastSaved" />
+        <SaveStatusIndicator
+          v-if="!isViewMode"
+          :status="saveStatus"
+          :last-saved="lastSaved"
+          class="desktop-only"
+        />
 
         <button v-if="isViewMode" @click="router.back()" class="btn-secondary-solid">
           <ArrowLeft :size="16" />
@@ -301,7 +309,11 @@ const menuItems = [
     </header>
 
     <div class="content-area">
-      <aside class="left-sidebar">
+      <aside class="left-sidebar" :class="{ 'is-mobile-open': isSidebarOpen }">
+        <button @click="isSidebarOpen = false" class="mobile-close-btn">
+          <X :size="24" />
+        </button>
+
         <div v-if="patient" class="patient-card">
           <div class="avatar">{{ patient.name?.charAt(0) }}</div>
           <div class="patient-details">
@@ -335,6 +347,20 @@ const menuItems = [
             <span>{{ item.label }}</span>
           </button>
         </nav>
+
+        <div class="mobile-sidebar-footer">
+          <div v-if="!isViewMode" class="footer-info-group">
+            <div class="appointment-timer">
+              <Clock :size="18" />
+              <span>{{ formattedElapsedTime }}</span>
+            </div>
+            <SaveStatusIndicator :status="saveStatus" :last-saved="lastSaved" />
+          </div>
+          <button @click="router.back()" class="btn-secondary-solid">
+            <ArrowLeft :size="16" />
+            Voltar para a Agenda
+          </button>
+        </div>
       </aside>
 
       <main class="editor-main-content">
@@ -419,7 +445,6 @@ const menuItems = [
 </template>
 
 <style scoped>
-/* 👇 6. Adicionar estilos para o container de loading */
 .loading-container {
   display: flex;
   flex-direction: column;
@@ -442,7 +467,6 @@ const menuItems = [
   }
 }
 
-/* O resto dos estilos permanece igual */
 .in-progress-appointment-layout {
   display: flex;
   flex-direction: column;
@@ -529,6 +553,7 @@ const menuItems = [
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.2s ease;
+  justify-content: center; /* Para centralizar o conteúdo no mobile */
 }
 .btn-secondary-solid:hover {
   background-color: #e2e8f0;
@@ -545,6 +570,8 @@ const menuItems = [
   padding: 1.5rem;
   flex-shrink: 0;
   overflow-y: auto;
+  display: flex; /* Adicionado para o footer */
+  flex-direction: column; /* Adicionado para o footer */
 }
 .patient-card {
   display: flex;
@@ -631,13 +658,20 @@ const menuItems = [
   flex-grow: 1;
   overflow: hidden;
 }
+
 .combined-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid #e5e7eb;
   flex-shrink: 0;
+}
+
+.combined-toolbar > :deep(.editor-toolbar) {
+  flex-grow: 1;
 }
 .modelos-dropdown {
   width: 200px;
@@ -722,7 +756,6 @@ const menuItems = [
   padding: 1.5rem 2rem;
 }
 
-/* 👇 ESTILOS DO EMPTY STATE ADICIONADOS AQUI 👇 */
 .empty-state-container {
   display: flex;
   align-items: center;
@@ -782,5 +815,126 @@ const menuItems = [
 }
 .create-button:hover {
   background-color: #3b82f6;
+}
+
+.mobile-sidebar-toggle {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  margin-right: 0.5rem;
+}
+
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 4998;
+  display: none;
+}
+
+.mobile-close-btn {
+  display: none;
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--cinza-texto);
+}
+
+.desktop-only {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ✨ INÍCIO DAS NOVAS MUDANÇAS ✨ */
+.mobile-sidebar-footer {
+  display: none;
+  margin-top: auto;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+}
+.footer-info-group {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 1024px) {
+  .content-area {
+    display: block;
+    position: relative;
+  }
+
+  .top-bar {
+    padding: 0.75rem 1rem;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+  }
+
+  .header-title {
+    font-size: 1.1rem;
+  }
+
+  .mobile-sidebar-toggle {
+    display: block;
+  }
+
+  .sidebar-overlay {
+    display: block;
+  }
+
+  .left-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    height: 100vh;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 4999;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
+    border-right: 1px solid #e5e7eb;
+    background-color: var(--branco);
+  }
+
+  .left-sidebar.is-mobile-open {
+    transform: translateX(0);
+  }
+
+  .mobile-close-btn {
+    display: block;
+  }
+
+  .editor-main-content {
+    width: 100%;
+  }
+
+  .btn-finish-appointment,
+  .btn-secondary-solid {
+    padding: 0.6rem 1rem;
+    font-size: 0.875rem;
+  }
+  .appointment-timer {
+    font-size: 0.875rem;
+    padding: 0.4rem 0.8rem;
+  }
+
+  .desktop-only {
+    display: none;
+  }
+  .mobile-sidebar-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
 }
 </style>

@@ -62,7 +62,7 @@ watch(
       document.head.appendChild(manifestLink)
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 // Garante que o manifesto seja removido quando o usuário sair do layout (ex: logout)
@@ -86,7 +86,7 @@ onUnmounted(() => {
     ></div>
 
     <main class="main-content" :class="{ 'no-padding': route.meta.layout?.noPadding }">
-      <header class="mobile-header">
+      <header v-if="!route.meta.layout?.noPadding" class="mobile-header">
         <button @click="isMobileSidebarOpen = true" class="hamburger-button">
           <Menu :size="24" />
         </button>
@@ -137,7 +137,6 @@ onUnmounted(() => {
   margin-left: -0.5rem; /* Alinhamento visual */
 }
 
-/* ✨ Novos estilos para as informações da clínica no header mobile */
 .clinic-info-mobile {
   display: flex;
   align-items: center;
@@ -182,7 +181,6 @@ onUnmounted(() => {
 
 /* Breakpoint para tablets e celulares */
 @media (max-width: 1024px) {
-  /* ✨ Padding reduzido no mobile */
   .main-content {
     padding: 1.5rem 1rem;
   }
