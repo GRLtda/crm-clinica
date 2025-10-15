@@ -4,8 +4,8 @@ import { Settings, UserPlus, Info } from 'lucide-vue-next'
 
 const router = useRouter()
 
-function navigateTo(path) {
-  router.push(path)
+function navigateTo(path, query = {}) {
+  router.push({ path, query })
 }
 </script>
 
@@ -25,7 +25,7 @@ function navigateTo(path) {
         </button>
       </li>
       <li>
-        <button @click="navigateTo('/app/configuracoes')" class="dropdown-item">
+        <button @click="navigateTo('/app/configuracoes', { tab: 'funcionarios' })" class="dropdown-item">
           <UserPlus :size="16" />
           <span>Convidar Membro</span>
         </button>

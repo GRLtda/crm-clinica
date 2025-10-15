@@ -1,14 +1,28 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import GeneralSettings from '@/components/pages/configuracoes/tabs/GeneralSettings.vue'
 import WorkingHoursSettings from '@/components/pages/configuracoes/tabs/WorkingHoursSettings.vue'
 import AnamnesisTemplates from '@/components/pages/configuracoes/tabs/AnamnesisTemplates.vue'
 import EmployeesSettings from '@/components/pages/configuracoes/tabs/EmployeesSettings.vue' // 1. Importar
 
-// 1. Importar os ícones
-import { SlidersHorizontal, Clock, FileText, Users } from 'lucide-vue-next' // 2. Adicionar ícone Users
+import { SlidersHorizontal, Clock, FileText, Users } from 'lucide-vue-next'
 
 const activeTab = ref('geral')
+const route = useRoute()
+
+const tabs = [
+  { id: 'geral', label: 'Geral', icon: SlidersHorizontal },
+  { id: 'horario', label: 'Horário de Funcionamento', icon: Clock },
+  { id: 'anamnese', label: 'Modelos de Anamnese', icon: FileText },
+  { id: 'funcionarios', label: 'Usuários e Convites', icon: Users },
+]
+
+onMounted(() => {
+  if (route.query.tab && tabs.some(tab => tab.id === route.query.tab)) {
+    activeTab.value = route.query.tab
+  }
+})
 </script>
 
 <template>
@@ -64,6 +78,7 @@ const activeTab = ref('geral')
   gap: 0.5rem;
   border-bottom: 1px solid #e5e7eb;
   margin-bottom: 2rem;
+  overflow-x: auto; /* Para melhor visualização em telas pequenas */
 }
 .tabs-nav button {
   display: inline-flex;
@@ -78,33 +93,10 @@ const activeTab = ref('geral')
   color: var(--cinza-texto);
   border-bottom: 2px solid transparent;
   transition: all 0.2s ease;
-  white-space: nowrap; /* Impede que o texto quebre */
+  white-space: nowrap;
 }
 .tabs-nav button.active {
   color: var(--azul-principal);
   border-bottom-color: var(--azul-principal);
-}
-
-/* ✨ INÍCIO DAS MUDANÇAS PARA O RESPONSIVO ✨ */
-@media (max-width: 768px) {
-  .title {
-    font-size: 1.875rem;
-  }
-  .subtitle {
-    font-size: 1rem;
-  }
-  .tabs-nav {
-    overflow-x: auto;
-    /* Efeitos para esconder a barra de rolagem visualmente */
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
-  }
-  .tabs-nav::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, and Opera */
-  }
-  .tabs-nav button {
-    font-size: 0.9rem;
-    padding: 0.75rem 1rem;
-  }
 }
 </style>

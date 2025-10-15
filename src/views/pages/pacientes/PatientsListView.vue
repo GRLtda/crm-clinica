@@ -162,7 +162,7 @@ const formatCPF = (cpf) => {
               </td>
               <td>{{ formatCPF(patient.cpf) }}</td>
               <td class="patient-name">{{ patient.name }}</td>
-              <td>{{ patient.phone }}</td>
+              <td class="patient-phone" >{{ patient.phone }}</td>
               <td class="actions-cell" @click.stop>
                 <div class="actions-wrapper" v-click-outside="() => (actionsMenuOpenFor = null)">
                   <button @click.stop="toggleActionsMenu(patient._id)" class="btn-icon">
