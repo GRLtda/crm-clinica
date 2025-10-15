@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAppointmentsStore } from '@/stores/appointments'
 import { useRecordsStore } from '@/stores/records'
 import { usePatientsStore } from '@/stores/patients'
-import { useEditor, EditorContent, BubbleMenu } from '@tiptap/vue-3'
+import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 
@@ -26,9 +26,7 @@ import {
   FlaskConical,
   FilePlus2,
   Pill,
-  LoaderCircle,
-  Menu,
-  X,
+  LoaderCircle, // 👈 1. Importar o ícone de loading
 } from 'lucide-vue-next'
 import { useToast } from 'vue-toastification'
 
@@ -49,9 +47,9 @@ const patient = ref(null)
 const activeTab = ref('record')
 const selectedModel = ref(null)
 
+// 👇 2. Iniciar o modo de visualização como indefinido e adicionar um estado de loading
 const isViewMode = ref()
 const isLoadingData = ref(true)
-const isSidebarOpen = ref(false)
 
 const currentRecord = computed(() => recordsStore.currentRecord)
 const saveStatus = ref('idle')
@@ -142,7 +140,7 @@ const patientAge = computed(() => {
 })
 
 onMounted(async () => {
-  isLoadingData.value = true
+  isLoadingData.value = true // Manter o loading ativo
 
   await patientsStore.fetchPatientById(patientId)
   patient.value = patientsStore.selectedPatient
@@ -155,6 +153,7 @@ onMounted(async () => {
     return
   }
 
+  // 👇 3. Determina o modo correto ANTES de carregar o conteúdo do editor
   isViewMode.value = appointment.value.status === 'Realizado'
 
   await recordsStore.fetchRecordByAppointmentId(appointmentId)
@@ -186,8 +185,10 @@ onMounted(async () => {
     }, 1000)
   }
 
+  // 👇 4. Apenas no final, desativa o loading para exibir a tela já no modo correto
   isLoadingData.value = false
 })
+
 
 onBeforeUnmount(() => {
   editor.value?.destroy()
@@ -220,9 +221,9 @@ function loadModel(modelValue) {
     `
   }
   editor.value.commands.setContent(content)
-  saveStatus.value = 'saving'
-  clearTimeout(debounceTimeout)
-  debounceTimeout = setTimeout(autoSave, 500)
+  saveStatus.value = 'saving';
+  clearTimeout(debounceTimeout);
+  debounceTimeout = setTimeout(autoSave, 500);
 }
 
 async function saveAndFinish() {
@@ -378,15 +379,6 @@ const menuItems = [
                 />
               </div>
             </div>
-
-            <bubble-menu
-              v-if="editor"
-              :editor="editor"
-              :tippy-options="{ duration: 100, placement: 'top-start' }"
-              class="bubble-menu"
-            >
-              <EditorToolbar :editor="editor" />
-            </bubble-menu>
 
             <div v-if="isViewMode" class="view-mode-header">
               <FileText :size="22" stroke-width="2.5" />
