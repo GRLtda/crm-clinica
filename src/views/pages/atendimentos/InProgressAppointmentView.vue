@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAppointmentsStore } from '@/stores/appointments'
 import { useRecordsStore } from '@/stores/records'
 import { usePatientsStore } from '@/stores/patients'
-import { useEditor, EditorContent } from '@tiptap/vue-3'
+import { useEditor, EditorContent, BubbleMenu } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 
@@ -57,6 +57,7 @@ const currentRecord = computed(() => recordsStore.currentRecord)
 const saveStatus = ref('idle')
 const lastSaved = ref(null)
 
+// Cronômetro
 const elapsedTimeInSeconds = ref(0)
 const timerInterval = ref(null)
 const formattedElapsedTime = computed(() => {
@@ -377,6 +378,16 @@ const menuItems = [
                 />
               </div>
             </div>
+
+            <bubble-menu
+              v-if="editor"
+              :editor="editor"
+              :tippy-options="{ duration: 100, placement: 'top-start' }"
+              class="bubble-menu"
+            >
+              <EditorToolbar :editor="editor" />
+            </bubble-menu>
+
             <div v-if="isViewMode" class="view-mode-header">
               <FileText :size="22" stroke-width="2.5" />
               <h3>Anotações do Atendimento</h3>
@@ -553,7 +564,7 @@ const menuItems = [
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.2s ease;
-  justify-content: center; /* Para centralizar o conteúdo no mobile */
+  justify-content: center;
 }
 .btn-secondary-solid:hover {
   background-color: #e2e8f0;
@@ -570,8 +581,8 @@ const menuItems = [
   padding: 1.5rem;
   flex-shrink: 0;
   overflow-y: auto;
-  display: flex; /* Adicionado para o footer */
-  flex-direction: column; /* Adicionado para o footer */
+  display: flex;
+  flex-direction: column;
 }
 .patient-card {
   display: flex;
@@ -657,25 +668,55 @@ const menuItems = [
   flex-direction: column;
   flex-grow: 1;
   overflow: hidden;
+  position: relative;
 }
 
 .combined-toolbar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid #e5e7eb;
   flex-shrink: 0;
+  overflow-x: auto;
+  flex-wrap: nowrap;
 }
-
-.combined-toolbar > :deep(.editor-toolbar) {
-  flex-grow: 1;
+.combined-toolbar::-webkit-scrollbar {
+  height: 4px;
+}
+.combined-toolbar::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 4px;
 }
 .modelos-dropdown {
   width: 200px;
+  flex-shrink: 0;
 }
+
+:deep(.bubble-menu .editor-toolbar) {
+  background-color: #262626;
+  padding: 0.25rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+:deep(.bubble-menu .toolbar-group) {
+  border: none;
+  background-color: transparent;
+}
+:deep(.bubble-menu .editor-toolbar button) {
+  color: #a1a1aa;
+}
+:deep(.bubble-menu .editor-toolbar button:hover) {
+  background-color: #3f3f46;
+  color: white;
+}
+:deep(.bubble-menu .editor-toolbar button.is-active) {
+  background-color: var(--azul-principal);
+  color: white;
+}
+
 .view-mode-header {
   display: flex;
   align-items: center;
@@ -851,7 +892,6 @@ const menuItems = [
   justify-content: center;
 }
 
-/* ✨ INÍCIO DAS NOVAS MUDANÇAS ✨ */
 .mobile-sidebar-footer {
   display: none;
   margin-top: auto;
@@ -927,7 +967,6 @@ const menuItems = [
     font-size: 0.875rem;
     padding: 0.4rem 0.8rem;
   }
-
   .desktop-only {
     display: none;
   }

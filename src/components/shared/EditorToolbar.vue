@@ -82,22 +82,41 @@ const setTextAlign = (alignment) => {
 <style scoped>
 .editor-toolbar {
   display: flex;
-  flex-wrap: wrap; /* Permite que os grupos quebrem a linha em telas menores */
-  gap: 0.5rem; /* Espaçamento entre os grupos */
+  flex-wrap: nowrap; /* Impede que os grupos quebrem a linha */
+  overflow-x: auto;  /* Permite o scroll horizontal quando necessário */
+  gap: 0.5rem;
   padding: 0.75rem 1rem;
   background-color: #f9fafb;
   border-bottom: 1px solid #e5e7eb;
-  border-top-left-radius: 0.75rem; /* Aumentado o raio */
-  border-top-right-radius: 0.75rem; /* Aumentado o raio */
+  border-top-left-radius: 0.75rem;
+  border-top-right-radius: 0.75rem;
+
+  /* Estilização sutil da barra de scroll */
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
 }
+
+.editor-toolbar::-webkit-scrollbar {
+  height: 6px;
+}
+
+.editor-toolbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.editor-toolbar::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 6px;
+}
+/* Fim da estilização da barra de scroll */
 
 .toolbar-group {
   display: flex;
-  gap: 0.25rem; /* Espaçamento entre os botões dentro de um grupo */
-  border: 1px solid #e5e7eb; /* Adiciona uma borda sutil ao grupo */
-  border-radius: 0.5rem; /* Borda arredondada para o grupo */
+  gap: 0.25rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
   padding: 0.25rem;
-  background-color: var(--branco); /* Fundo branco para o grupo */
+  background-color: var(--branco);
 }
 
 .editor-toolbar button {
@@ -112,6 +131,7 @@ const setTextAlign = (alignment) => {
   cursor: pointer;
   color: var(--cinza-texto);
   transition: background-color 0.2s ease, color 0.2s ease;
+  flex-shrink: 0; /* Impede que os botões sejam espremidos */
 }
 
 .editor-toolbar button:hover {
