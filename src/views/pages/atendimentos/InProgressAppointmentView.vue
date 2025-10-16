@@ -4,9 +4,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAppointmentsStore } from '@/stores/appointments'
 import { useRecordsStore } from '@/stores/records'
 import { usePatientsStore } from '@/stores/patients'
-import { useEditor, EditorContent } from '@tiptap/vue-3'
+import { useEditor, EditorContent} from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
+import BubbleMenuExtension from '@tiptap/extension-bubble-menu'
 
 import EditorToolbar from '@/components/shared/EditorToolbar.vue'
 import StyledSelect from '@/components/global/StyledSelect.vue'
@@ -47,10 +48,13 @@ const appointment = ref(null)
 const patient = ref(null)
 const activeTab = ref('record')
 const selectedModel = ref(null)
-
-// 👇 2. Iniciar o modo de visualização como indefinido e adicionar um estado de loading
 const isViewMode = ref()
 const isLoadingData = ref(true)
+
+const isMobile = ref(false)
+const isKeyboardOpen = ref(false)
+// ✨ NOVO ESTADO PARA GUARDAR O ESTILO DINÂMICO DA TOOLBAR ✨
+const mobileToolbarStyle = ref({})
 
 const currentRecord = computed(() => recordsStore.currentRecord)
 const saveStatus = ref('idle')
@@ -76,6 +80,46 @@ const recordModels = ref([
   { label: 'Retorno', value: 'retorno' },
   { label: 'Avaliação Inicial', value: 'avaliacao-inicial' },
 ])
+
+// ✨ FUNÇÃO ATUALIZADA PARA CALCULAR A POSIÇÃO CORRETA EM TEMPO REAL ✨
+const handleViewportChange = () => {
+  const isNowMobile = window.innerWidth <= 768
+  isMobile.value = isNowMobile
+
+  if (isNowMobile && window.visualViewport) {
+    const viewport = window.visualViewport
+    const windowHeight = window.innerHeight
+    // Calcula a altura do teclado, considerando também a rolagem da página
+    const keyboardHeight = windowHeight - (viewport.height + viewport.offsetTop)
+
+    const isKeyboardUp = keyboardHeight > 100 // Uma tolerância para evitar falsos positivos
+
+    if (isKeyboardOpen.value !== isKeyboardUp) {
+      isKeyboardOpen.value = isKeyboardUp
+    }
+
+    if (isKeyboardUp) {
+      // Quando o teclado está aberto, movemos a barra para cima
+      mobileToolbarStyle.value = {
+        transform: `translateY(-${keyboardHeight}px)`,
+        visibility: 'visible',
+      }
+    } else {
+      // Quando o teclado está fechado, escondemos a barra
+      mobileToolbarStyle.value = {
+        transform: 'translateY(100%)',
+        visibility: 'hidden',
+      }
+    }
+  } else {
+    // Comportamento padrão para desktop ou navegadores sem suporte
+    isKeyboardOpen.value = false
+    mobileToolbarStyle.value = {
+      transform: 'translateY(100%)',
+      visibility: 'hidden',
+    }
+  }
+}
 
 async function autoSave() {
   let recordId = recordsStore.currentRecord?._id
@@ -109,7 +153,7 @@ async function autoSave() {
 
 const editor = useEditor({
   content: '',
-  extensions: [StarterKit, Underline],
+  extensions: [StarterKit, Underline, BubbleMenuExtension],
   editorProps: {
     attributes: {
       class: 'prose focus:outline-none max-w-none',
@@ -154,7 +198,6 @@ onMounted(async () => {
     return
   }
 
-  // 👇 3. Determina o modo correto ANTES de carregar o conteúdo do editor
   isViewMode.value = appointment.value.status === 'Realizado'
 
   await recordsStore.fetchRecordByAppointmentId(appointmentId)
@@ -186,15 +229,28 @@ onMounted(async () => {
     }, 1000)
   }
 
-  // 👇 4. Apenas no final, desativa o loading para exibir a tela já no modo correto
   isLoadingData.value = false
-})
 
+  // ✨ ADICIONAR "ESCUTADORES" DE EVENTO MAIS ROBUSTOS ✨
+  window.addEventListener('resize', handleViewportChange)
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', handleViewportChange)
+    window.visualViewport.addEventListener('scroll', handleViewportChange)
+  }
+  handleViewportChange() // Verificação inicial
+})
 
 onBeforeUnmount(() => {
   editor.value?.destroy()
   if (timerInterval.value) {
     clearInterval(timerInterval.value)
+  }
+
+  // ✨ REMOVER "ESCUTADORES" DE EVENTO ✨
+  window.removeEventListener('resize', handleViewportChange)
+  if (window.visualViewport) {
+    window.visualViewport.removeEventListener('resize', handleViewportChange)
+    window.visualViewport.removeEventListener('scroll', handleViewportChange)
   }
 })
 
@@ -222,9 +278,9 @@ function loadModel(modelValue) {
     `
   }
   editor.value.commands.setContent(content)
-  saveStatus.value = 'saving';
-  clearTimeout(debounceTimeout);
-  debounceTimeout = setTimeout(autoSave, 500);
+  saveStatus.value = 'saving'
+  clearTimeout(debounceTimeout)
+  debounceTimeout = setTimeout(autoSave, 500)
 }
 
 async function saveAndFinish() {
@@ -366,11 +422,13 @@ const menuItems = [
         </div>
       </aside>
 
-      <main class="editor-main-content">
+      <main
+        class="editor-main-content"
+        :class="{ 'keyboard-open-padding': isMobile && isKeyboardOpen }"
+      >
         <div v-if="activeTab === 'record'" class="tab-content">
           <div class="editor-wrapper">
-            <div v-if="editor && !isViewMode" class="combined-toolbar">
-              <EditorToolbar :editor="editor" />
+            <div v-if="editor && !isViewMode" class="editor-top-bar">
               <div class="modelos-dropdown">
                 <StyledSelect
                   :options="recordModels"
@@ -381,11 +439,21 @@ const menuItems = [
               </div>
             </div>
 
+            <EditorToolbar :editor="editor" />
+
             <div v-if="isViewMode" class="view-mode-header">
               <FileText :size="22" stroke-width="2.5" />
               <h3>Anotações do Atendimento</h3>
             </div>
             <EditorContent v-if="editor" :editor="editor" class="editor-content" />
+
+            <div
+              v-if="editor && isMobile"
+              class="mobile-editor-toolbar"
+              :style="mobileToolbarStyle"
+            >
+              <EditorToolbar :editor="editor" />
+            </div>
           </div>
         </div>
 
@@ -664,23 +732,6 @@ const menuItems = [
   position: relative;
 }
 
-.combined-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid #e5e7eb;
-  flex-shrink: 0;
-  overflow-x: auto;
-  flex-wrap: nowrap;
-}
-.combined-toolbar::-webkit-scrollbar {
-  height: 4px;
-}
-.combined-toolbar::-webkit-scrollbar-thumb {
-  background-color: #d1d5db;
-  border-radius: 4px;
-}
 .modelos-dropdown {
   width: 200px;
   flex-shrink: 0;
@@ -724,6 +775,15 @@ const menuItems = [
   font-weight: 600;
   margin: 0;
 }
+
+.editor-top-bar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
 .editor-content {
   flex-grow: 1;
   padding: 1.5rem;
@@ -898,6 +958,49 @@ const menuItems = [
   margin-bottom: 1rem;
 }
 
+/* ✨ ESTILO ATUALIZADO ✨ */
+.mobile-editor-toolbar {
+  position: fixed;
+  bottom: 0; /* Começa fixo na parte de baixo */
+  left: 0;
+  right: 0;
+  width: 100%;
+  background-color: #262626;
+  padding: 0.5rem;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+  z-index: 100;
+  visibility: hidden; /* Começa invisível */
+  transform: translateY(100%); /* Começa fora da tela */
+  /* A transição agora é mais simples e suave */
+  transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1), visibility 0.3s;
+}
+
+.mobile-editor-toolbar :deep(.editor-toolbar) {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  justify-content: center;
+}
+
+.mobile-editor-toolbar :deep(.toolbar-group) {
+  border: none;
+  background-color: transparent;
+}
+
+.mobile-editor-toolbar :deep(button) {
+  color: #a1a1aa;
+}
+
+.mobile-editor-toolbar :deep(button:hover) {
+  background-color: #3f3f46;
+  color: white;
+}
+
+.mobile-editor-toolbar :deep(button.is-active) {
+  background-color: var(--azul-principal);
+  color: white;
+}
+
 @media (max-width: 1024px) {
   .content-area {
     display: block;
@@ -932,7 +1035,7 @@ const menuItems = [
     bottom: 0;
     height: 100vh;
     transform: translateX(-100%);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1);
     z-index: 4999;
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
     border-right: 1px solid #e5e7eb;
@@ -967,6 +1070,14 @@ const menuItems = [
     display: flex;
     flex-direction: column;
     gap: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+
+
+  .editor-main-content.keyboard-open-padding .editor-content {
+    padding-bottom: 80px;
   }
 }
 </style>

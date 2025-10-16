@@ -13,6 +13,7 @@
     "@formkit/auto-animate": "^0.9.0",
     "@tiptap/extension-blockquote": "^3.6.1",
     "@tiptap/extension-bold": "^3.6.1",
+    "@tiptap/extension-bubble-menu": "^3.7.1",
     "@tiptap/extension-bullet-list": "^3.6.1",
     "@tiptap/extension-code": "^3.6.1",
     "@tiptap/extension-code-block": "^3.6.1",
@@ -39,7 +40,7 @@
     "vue-toastification": "^2.0.0-rc.5"
   },
   "engines": {
-  "node": "20.x"
+    "node": "20.x"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",
