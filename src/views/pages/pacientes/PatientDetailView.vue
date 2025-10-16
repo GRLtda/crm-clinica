@@ -139,7 +139,7 @@ function formatSimpleDate(dateString) {
 }
 
 function handleCopyLink(token) {
-  const link = `${window.location.origin}/responder-anamnese/${token}`
+  const link = `${window.location.origin}/anamnese/${token}`
   navigator.clipboard.writeText(link).then(() => {
     toast.info('Link de resposta copiado!')
   })

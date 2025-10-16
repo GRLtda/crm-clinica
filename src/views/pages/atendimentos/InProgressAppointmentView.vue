@@ -26,7 +26,8 @@ import {
   FlaskConical,
   FilePlus2,
   Pill,
-  LoaderCircle, // 👈 1. Importar o ícone de loading
+  LoaderCircle,
+  Menu,
 } from 'lucide-vue-next'
 import { useToast } from 'vue-toastification'
 
