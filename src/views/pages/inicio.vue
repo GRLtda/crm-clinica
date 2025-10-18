@@ -300,18 +300,18 @@ function handleReschedule(appointmentToEdit) {
           <div class="loading-overlay" v-if="appointmentsStore.isLoading">
             <span>Carregando...</span>
           </div>
-<vue-cal
+          <vue-cal
             class="vuecal--full-height-delete"
             :selected-date="selectedDate"
             :events="formattedEvents"
             :active-view="calendarView"
-            :disable-views="['years', 'year', 'month']"
+            :disable-views="['years', 'year', 'month', 'day']"
             hide-view-selector
             :time-from="7 * 60"
             :time-to="22 * 60"
-            :time-step="60"
+            :time-step="30"
             :snap-to-time="15"
-            :min-cell-width="120"
+            :min-cell-width="150"
             locale="pt-br"
             @cell-click="handleCellClick"
             @event-click="handleEventClick"
