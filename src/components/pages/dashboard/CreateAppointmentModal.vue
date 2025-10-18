@@ -6,6 +6,7 @@ import { useAppointmentsStore } from '@/stores/appointments'
 import { useClinicStore } from '@/stores/clinic'
 import { useToast } from 'vue-toastification'
 import { User, Calendar, Bell, Plus, X, DoorClosed, Info } from 'lucide-vue-next'
+import { isToday, isFuture, parse, setHours, setMinutes, setSeconds, setMilliseconds } from 'date-fns'
 
 import Stepper from '@/components/pages/onboarding/Stepper.vue'
 import SearchableSelect from '@/components/global/SearchableSelect.vue'
@@ -92,36 +93,50 @@ const patientOptions = computed(() => {
   return (patientsStore.searchResults || []).map((p) => ({ value: p._id, label: p.name }))
 })
 
+function isTimeInFuture(timeString, selectedDate) {
+  const now = new Date();
+  if (!isToday(selectedDate)) {
+    return true; // Se não for hoje, qualquer horário é futuro em relação a "agora"
+  }
+  const [hours, minutes] = timeString.split(':').map(Number);
+  const timeToCheck = setMilliseconds(setSeconds(setMinutes(setHours(selectedDate, hours), minutes), 0), 0);
+  return timeToCheck > now;
+}
+
+
 const timeOptions = computed(() => {
-  const selectedDay = getDayOfWeek(appointmentData.value.date)
-  const workingHours = clinicWorkingHours.value[selectedDay]
+  const selectedDate = appointmentData.value.date; // ✨ Data selecionada
+  const selectedDay = getDayOfWeek(selectedDate);
+  const workingHours = clinicWorkingHours.value[selectedDay];
   const allowOutside = clinicStore.currentClinic?.allowAppointmentsOutsideWorkingHours;
 
-  const options = []
-  const interval = 15; // 15 minutes
+  const options = [];
+  const interval = 15; // 15 minutos
 
-  if (allowOutside) {
-    for (let i = 0; i < 24 * 60; i += interval) {
-        const hours = Math.floor(i / 60);
-        const minutes = i % 60;
-        const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-        options.push({ value: timeStr, label: timeStr });
+  let startTime = 0; // 00:00
+  let endTime = 24 * 60; // 24:00
+
+  if (!allowOutside) {
+    if (!workingHours) return []; // Dia fechado e não permite fora do horário
+    const [startH, startM] = workingHours.open.split(':').map(Number);
+    const [endH, endM] = workingHours.close.split(':').map(Number);
+    startTime = startH * 60 + startM;
+    endTime = endH * 60 + endM;
+  }
+
+  for (let i = startTime; i < endTime; i += interval) {
+    const hours = Math.floor(i / 60);
+    const minutes = i % 60;
+    const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+
+    // ✨ VERIFICA SE O HORÁRIO É FUTURO APENAS SE FOR HOJE ✨
+    if (isTimeInFuture(timeStr, selectedDate)) {
+      options.push({ value: timeStr, label: timeStr });
     }
-    return options;
   }
 
-  // Original logic for when only working hours are allowed
-  if (!workingHours) return []
-  let currentTime = new Date(`1970-01-01T${workingHours.open}:00`)
-  const closingTime = new Date(`1970-01-01T${workingHours.close}:00`)
-
-  while (currentTime < closingTime) {
-    const timeStr = currentTime.toTimeString().substring(0, 5)
-    options.push({ value: timeStr, label: timeStr })
-    currentTime.setMinutes(currentTime.getMinutes() + interval)
-  }
-  return options
-})
+  return options;
+});
 
 const isOutsideWorkingHours = computed(() => {
     if (!appointmentData.value.startTime || !clinicStore.currentClinic?.allowAppointmentsOutsideWorkingHours) {
@@ -135,6 +150,15 @@ const isOutsideWorkingHours = computed(() => {
     }
 
     return appointmentData.value.startTime < workingHours.open || appointmentData.value.startTime >= workingHours.close;
+});
+
+const noTimeSlotsAvailable = computed(() => {
+  const selectedDay = getDayOfWeek(appointmentData.value.date);
+  const workingHours = clinicWorkingHours.value[selectedDay];
+  const allowOutside = clinicStore.currentClinic?.allowAppointmentsOutsideWorkingHours;
+  const shouldHaveTimes = allowOutside || (workingHours && workingHours.open && workingHours.close);
+
+  return shouldHaveTimes && timeOptions.value.length === 0;
 });
 
 
@@ -280,7 +304,7 @@ async function handleSubmit() {
           </button>
         </div>
 
-        <div v-if="currentStep === 2" class="step-content">
+<div v-if="currentStep === 2" class="step-content">
           <div class="form-group">
             <label class="form-label">Data do Atendimento</label>
             <Datepicker
@@ -295,7 +319,7 @@ async function handleSubmit() {
           </div>
           <div class="form-group">
             <label class="form-label">Horário</label>
-            <div v-if="timeOptions.length > 0" class="time-inputs">
+            <div v-if="!noTimeSlotsAvailable && timeOptions.length > 0" class="time-inputs">
               <StyledSelect
                 v-model="appointmentData.startTime"
                 :options="timeOptions"
@@ -312,6 +336,9 @@ async function handleSubmit() {
                 class="time-select"
                 :error="!!errors.time"
               />
+            </div>
+            <div v-else-if="noTimeSlotsAvailable" class="warning-message">
+              <Info :size="16" /> Sem horários disponíveis para este dia após o horário atual.
             </div>
             <div v-else class="closed-message">
               <DoorClosed :size="16" /> Clínica fechada neste dia.

@@ -13,7 +13,7 @@ watch(
     if (newClinic && newClinic.themeColor) {
       seoStore.setThemeColor(newClinic.themeColor)
     } else {
-      seoStore.setThemeColor('#FFFFFF') // Default theme color
+      seoStore.setThemeColor('#FFFFFF')
     }
   },
   { immediate: true }
