@@ -15,7 +15,7 @@ import {
 } from 'lucide-vue-next'
 import AppPagination from '@/components/global/AppPagination.vue'
 import SearchableSelect from '@/components/global/SearchableSelect.vue'
-import { formatPhone } from '@/directives/phone-mask.js' // ✨ Importa a função
+import { formatPhone } from '@/directives/phone-mask.js'
 
 const patientsStore = usePatientsStore()
 const router = useRouter()

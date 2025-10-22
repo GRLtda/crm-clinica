@@ -1,4 +1,4 @@
-function formatCPF(value) {
+export function formatCPF(value) {
   if (!value) return ''
   const digits = value.replace(/\D/g, '')
 

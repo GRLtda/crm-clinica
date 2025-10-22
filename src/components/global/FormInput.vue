@@ -1,5 +1,9 @@
 <script setup>
-defineProps({
+import { formatPhone } from '@/directives/phone-mask.js' // ✨ 1. Importa a função de formatação
+import { formatCPF } from '@/directives/cpf-mask.js'     // ✨ Importa outras funções se necessário
+import { formatCNPJ } from '@/directives/cnpj-mask.js'   // ✨ Importa outras funções se necessário
+
+const props = defineProps({
   modelValue: String,
   label: String,
   name: String,
@@ -15,7 +19,27 @@ defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 function handleInput(event) {
-  emit('update:modelValue', event.target.value)
+  let value = event.target.value
+  // ✨ 2. Aplica a formatação ANTES de emitir, se a máscara estiver ativa
+  if (props.phoneMask) {
+    value = formatPhone(value)
+    // Atualiza o valor no input imediatamente para manter a consistência visual
+    // e a posição correta do cursor (embora a diretiva também faça isso depois)
+    if (event.target.value !== value) {
+       event.target.value = value
+    }
+  } else if (props.cpfMask) { // ✨ Adiciona lógica para outras máscaras se houver
+     value = formatCPF(value)
+     if (event.target.value !== value) {
+       event.target.value = value
+    }
+  } else if (props.cnpjMask) { // ✨ Adiciona lógica para outras máscaras se houver
+     value = formatCNPJ(value)
+     if (event.target.value !== value) {
+       event.target.value = value
+    }
+  }
+  emit('update:modelValue', value) // ✨ 3. Emite o valor (potencialmente formatado)
 }
 </script>
 
@@ -42,6 +66,7 @@ function handleInput(event) {
 </template>
 
 <style scoped>
+/* Estilos permanecem os mesmos */
 .form-group {
   text-align: left;
   margin-bottom: 1.25rem;

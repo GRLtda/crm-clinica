@@ -1,4 +1,4 @@
-function formatCNPJ(value) {
+export function formatCNPJ(value) {
   if (!value) return ''
   const digits = value.replace(/\D/g, '')
 
@@ -25,7 +25,7 @@ export const cnpjMask = {
 
       el.addEventListener('input', onInput)
       el._onInput = onInput
-      
+
       setTimeout(() => {
         onInput({ target: el })
       }, 0)

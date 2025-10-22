@@ -18,6 +18,7 @@ import CreateAppointmentModal from '@/components/pages/dashboard/CreateAppointme
 import AppointmentInfoPopover from '@/components/pages/atendimentos/AppointmentInfoPopover.vue'
 import { useToast } from 'vue-toastification'
 import { format } from 'date-fns'
+import { useStatusBadge } from '@/composables/useStatusBadge'
 
 const appointmentsStore = useAppointmentsStore()
 const router = useRouter()
@@ -181,10 +182,10 @@ function rebookAppointment() {
                 <td>
                   <div class="status-wrapper">
                     <span
-                      class="appointment-status"
-                      :class="appt.status.toLowerCase().replace(' ', '-')"
+                      :class="useStatusBadge(appt.status).badgeClass.value"
+                      :style="useStatusBadge(appt.status).badgeStyle.value"
                     >
-                      {{ appt.status }}
+                      {{ useStatusBadge(appt.status).displayText.value }}
                     </span>
                   </div>
                 </td>
@@ -209,10 +210,10 @@ function rebookAppointment() {
                   <span class="patient-name">{{ appt.patient.name }}</span>
                 </div>
                 <span
-                  class="appointment-status"
-                  :class="appt.status.toLowerCase().replace(' ', '-')"
+                  :class="useStatusBadge(appt.status).badgeClass.value"
+                  :style="useStatusBadge(appt.status).badgeStyle.value"
                 >
-                  {{ appt.status }}
+                  {{ useStatusBadge(appt.status).displayText.value }}
                 </span>
               </div>
               <div class="card-bottom">
@@ -435,33 +436,13 @@ th > * {
   display: flex;
   justify-content: center;
 }
-.appointment-status {
+.status-badge {
   font-weight: 600;
   padding: 0.25rem 0.75rem;
   border-radius: 99px;
   font-size: 0.8rem;
   width: fit-content;
   text-transform: capitalize;
-}
-.appointment-status.agendado {
-  background-color: #eff6ff;
-  color: #2563eb;
-}
-.appointment-status.confirmado {
-  background-color: #fefce8;
-  color: #a16207;
-}
-.appointment-status.realizado {
-  background-color: #f0fdf4;
-  color: #16a34a;
-}
-.appointment-status.cancelado {
-  background-color: #fef2f2;
-  color: #dc2626;
-}
-.appointment-status.não-compareceu {
-  background-color: #f1f5f9;
-  color: #64748b;
 }
 
 .btn-primary {

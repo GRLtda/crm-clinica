@@ -4,6 +4,7 @@ import { useAppointmentsStore } from '@/stores/appointments'
 // ✨ 1. ÍCONE NOVO IMPORTADO ✨
 import { Play, FileText, Check, X, History, CalendarPlus } from 'lucide-vue-next'
 import { useToast } from 'vue-toastification'
+import { useStatusBadge } from '@/composables/useStatusBadge'
 
 const props = defineProps({
   appointment: { type: Object, required: true },
@@ -50,7 +51,7 @@ function positionPopover() {
 async function updateStatus(newStatus) {
   const { success } = await appointmentsStore.updateAppointmentStatus(
     props.appointment._id,
-    newStatus
+    newStatus,
   )
   if (success) {
     toast.success(`Status alterado para "${newStatus}"!`)
@@ -111,13 +112,20 @@ function formatTime(dateString) {
             <span>1ª consulta</span>
           </div>
           <div class="info-line">
-            <div class="appointment-status" :class="appointment.status.toLowerCase().replace(' ', '-')">
-              {{ appointment.status }}
+            <div
+              :class="useStatusBadge(appointment.status).badgeClass.value"
+              :style="useStatusBadge(appointment.status).badgeStyle.value"
+            >
+              {{ useStatusBadge(appointment.status).displayText.value }}
             </div>
           </div>
         </div>
         <div class="popover-actions">
-          <button v-if="canConfirm" @click="updateStatus('Confirmado')" class="action-button success">
+          <button
+            v-if="canConfirm"
+            @click="updateStatus('Confirmado')"
+            class="action-button success"
+          >
             <Check :size="16" />
             <span>Confirmar Chegada</span>
           </button>
@@ -250,34 +258,13 @@ function formatTime(dateString) {
   color: var(--cinza-texto);
 }
 
-.appointment-status {
+.status-badge {
   font-weight: 600;
   padding: 0.25rem 0.75rem;
   border-radius: 99px;
   font-size: 0.8rem;
   width: fit-content;
   text-transform: capitalize;
-}
-
-.appointment-status.agendado {
-  background-color: #eff6ff;
-  color: #2563eb;
-}
-.appointment-status.confirmado {
-  background-color: #fefce8;
-  color: #a16207;
-}
-.appointment-status.realizado {
-  background-color: #f0fdf4;
-  color: #16a34a;
-}
-.appointment-status.cancelado {
-  background-color: #fef2f2;
-  color: #dc2626;
-}
-.appointment-status.não-compareceu {
-  background-color: #f1f5f9;
-  color: #64748b;
 }
 
 .popover-actions {

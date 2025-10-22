@@ -7,6 +7,9 @@ import { useAppointmentsStore } from '@/stores/appointments'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from 'vue-toastification'
 import { generateAnamnesisPdf } from '@/helpers/pdf-generator'
+import { formatPhone } from '@/directives/phone-mask.js'
+import { formatCPF } from '@/directives/cpf-mask.js'
+import { useStatusBadge } from '@/composables/useStatusBadge'
 
 import {
   FileDown,
@@ -319,11 +322,11 @@ async function handleGeneratePdf(anamnesis) {
                     </div>
                     <div class="detail-item">
                       <span class="label">CPF</span>
-                      <strong class="value">{{ patient.cpf }}</strong>
+                      <strong class="value">{{ formatCPF(patient.cpf) }}</strong>
                     </div>
                     <div class="detail-item">
                       <span class="label">Telefone</span>
-                      <strong class="value">{{ patient.phone }}</strong>
+                      <strong class="value">{{ formatPhone(patient.phone) }}</strong>
                     </div>
                   </div>
                 </section>
@@ -372,15 +375,13 @@ async function handleGeneratePdf(anamnesis) {
                       <div class="value-with-badge">
                         <strong>{{ formatSimpleDate(lastAppointment.startTime) }}</strong>
                         <span
-                          class="status-badge"
-                          :class="lastAppointment.status.toLowerCase().replace(' ', '-')"
-                          >{{ lastAppointment.status }}</span
+                          :class="useStatusBadge(lastAppointment.status).badgeClass.value"
+                          :style="useStatusBadge(lastAppointment.status).badgeStyle.value"
+                          >{{ useStatusBadge(lastAppointment.status).displayText.value }}</span
                         >
                       </div>
                     </div>
-                    <p v-else class="empty-list-message">
-                      Nenhum atendimento anterior registrado.
-                    </p>
+                    <p v-else class="empty-list-message">Nenhum atendimento anterior registrado.</p>
                   </div>
                 </section>
               </div>
@@ -469,9 +470,9 @@ async function handleGeneratePdf(anamnesis) {
                     <div class="history-info">
                       <span class="history-date">{{ formatSimpleDate(item.startTime) }}</span>
                       <span
-                        class="status-badge"
-                        :class="item.status.toLowerCase().replace(' ', '-')"
-                        >{{ item.status }}</span
+                        :class="useStatusBadge(item.status).badgeClass.value"
+                        :style="useStatusBadge(item.status).badgeStyle.value"
+                        >{{ useStatusBadge(item.status).displayText.value }}</span
                       >
                     </div>
                     <router-link
