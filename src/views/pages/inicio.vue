@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, onUnmounted } from 'vue'
+import { ref, onMounted, computed, onUnmounted, nextTick } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useAppointmentsStore } from '@/stores/appointments'
@@ -23,7 +23,7 @@ import CreateAppointmentModal from '@/components/pages/dashboard/CreateAppointme
 import AppointmentDetailsModal from '@/components/pages/dashboard/AppointmentDetailsModal.vue'
 import VueCal from 'vue-cal'
 import 'vue-cal/dist/vuecal.css'
-import { startOfWeek, endOfWeek, format, addDays, subDays, startOfDay, endOfDay } from 'date-fns'
+import { startOfWeek, endOfWeek, format, addDays, subDays, startOfDay, endOfDay, isToday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useToast } from 'vue-toastification'
 
@@ -39,9 +39,11 @@ const selectedEventForDetails = ref(null)
 const initialAppointmentData = ref(null)
 const selectedDate = ref(new Date())
 const currentTime = ref(new Date())
+const vueCalRef = ref(null);
 let timer = null
 const calendarView = ref('week')
 const isMobile = ref(window.innerWidth <= 768)
+const isInitialLoad = ref(true);
 
 const stats = computed(() => dashboardStore.stats)
 const weekAppointments = computed(() => appointmentsStore.appointments)
@@ -85,6 +87,46 @@ const getAbbreviatedDay = (fullDay) => {
   return dayName.substring(0, 3).toUpperCase()
 }
 
+async function scrollToCurrentTime() {
+  await nextTick();
+
+  setTimeout(() => {
+    const instance = vueCalRef.value?.$ || vueCalRef.value;
+
+    if (instance && isToday(selectedDate.value)) {
+      console.log('VueCal instance target:', instance);
+
+      const scrollFunc = instance.scrollToTime;
+
+      if (typeof scrollFunc === 'function') {
+        console.log('scrollToTime function found via instance check, attempting scroll...');
+        const now = new Date();
+        const minutes = now.getHours() * 60 + now.getMinutes();
+        const scrollToMinutes = Math.max(0, minutes - 60);
+        try {
+          scrollFunc.call(instance, scrollToMinutes, 0, {});
+          console.log(`Scroll command sent for ${scrollToMinutes} minutes.`);
+        } catch (error) {
+          console.error('Error calling vue-cal scrollToTime:', error);
+        }
+      } else {
+        console.error('scrollToTime function is not available on the targeted instance.');
+      }
+    } else {
+      console.log('Scroll skipped. Instance available:', !!instance, 'Is today:', isToday(selectedDate.value));
+    }
+  }, 300);
+}
+
+
+function handleCalendarReady() {
+  console.log('VueCal @ready event fired.');
+  if (isInitialLoad.value) {
+    scrollToCurrentTime();
+    isInitialLoad.value = false;
+  }
+}
+
 async function fetchDataForView() {
   let startDate, endDate
   if (calendarView.value === 'day') {
@@ -94,7 +136,10 @@ async function fetchDataForView() {
     startDate = format(weekStart.value, 'yyyy-MM-dd')
     endDate = format(weekEnd.value, 'yyyy-MM-dd')
   }
-  await appointmentsStore.fetchAppointmentsByDate(startDate, endDate)
+  await appointmentsStore.fetchAppointmentsByDate(startDate, endDate);
+  if (!isInitialLoad.value && isToday(selectedDate.value)) {
+     scrollToCurrentTime();
+  }
 }
 
 function goToPrevious() {
@@ -139,20 +184,21 @@ function backToWeekView() {
   }
 }
 
-onMounted(() => {
-  dashboardStore.fetchDashboardStats()
-  updateCalendarView()
-  fetchDataForView()
-  window.addEventListener('resize', updateCalendarView)
+
+onMounted(async () => {
+  dashboardStore.fetchDashboardStats();
+  updateCalendarView();
+  await fetchDataForView();
+  window.addEventListener('resize', updateCalendarView);
   timer = setInterval(() => {
-    currentTime.value = new Date()
-  }, 1000)
-})
+    currentTime.value = new Date();
+  }, 1000);
+});
 
 onUnmounted(() => {
-  clearInterval(timer)
-  window.removeEventListener('resize', updateCalendarView)
-})
+  clearInterval(timer);
+  window.removeEventListener('resize', updateCalendarView);
+});
 
 function formatToVueCalString(dateString) {
   if (!dateString) return ''
@@ -301,17 +347,19 @@ function handleReschedule(appointmentToEdit) {
             <span>Carregando...</span>
           </div>
           <vue-cal
+            ref="vueCalRef"
+            @ready="handleCalendarReady"
             class="vuecal--full-height-delete"
             :selected-date="selectedDate"
             :events="formattedEvents"
             :active-view="calendarView"
-            :disable-views="['years', 'year', 'month', 'day']"
+            :disable-views="['years', 'year', 'month']"
             hide-view-selector
-            :time-from="7 * 60"
-            :time-to="22 * 60"
+            :time-from="0 * 60"
+            :time-to="24 * 60"
             :time-step="30"
             :snap-to-time="15"
-            :min-cell-width="150"
+            :min-cell-width="120"
             locale="pt-br"
             @cell-click="handleCellClick"
             @event-click="handleEventClick"
@@ -419,7 +467,6 @@ function handleReschedule(appointmentToEdit) {
 </template>
 
 <style>
-/* Reset de estilos do vue-cal */
 .vuecal__menu,
 .vuecal__title-bar {
   display: none;
@@ -432,13 +479,12 @@ function handleReschedule(appointmentToEdit) {
   font-family: var(--fonte-principal);
   transition: all 0.2s ease-in-out;
   border: none;
-  position: relative; /* Essencial para o efeito de flutuar */
+  position: relative;
 }
 
-/* Efeito de hover que faz o evento saltar para frente */
 .vuecal__event:hover {
   transform: scale(1.05);
-  z-index: 10; /* Garante que ele fique na frente dos outros */
+  z-index: 10;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
@@ -447,11 +493,11 @@ function handleReschedule(appointmentToEdit) {
   color: var(--branco);
 }
 .vuecal__event.status--confirmado {
-  background-color: #16a34a; /* Verde */
+  background-color: #16a34a;
   color: var(--branco);
 }
 .vuecal__event.status--realizado {
-  background-color: #6b7281; /* Cinza */
+  background-color: #6b7281;
   color: var(--branco);
 }
 .vuecal--week-view .vuecal__bg .vuecal__time-column {
@@ -523,7 +569,7 @@ function handleReschedule(appointmentToEdit) {
 @media (max-width: 768px) {
   .custom-weekday-heading {
     padding: 0.5rem 0;
-    cursor: default; /* Remove cursor de ponteiro no mobile */
+    cursor: default;
   }
   .custom-weekday-heading:hover {
     background-color: transparent;
@@ -537,7 +583,7 @@ function handleReschedule(appointmentToEdit) {
 
   .vuecal--week-view .vuecal__bg .vuecal__time-column,
   .vuecal--day-view .vuecal__bg .vuecal__time-column {
-    width: 55px; /* Reduz a largura da coluna de horário */
+    width: 55px;
   }
 
   .vuecal__time-cell-label {
@@ -555,7 +601,6 @@ function handleReschedule(appointmentToEdit) {
 </style>
 
 <style scoped>
-/* --- Novo Header --- */
 .dashboard-header {
   margin-bottom: 1.5rem;
   border-bottom: 1px solid #e5e7eb;
@@ -691,8 +736,6 @@ function handleReschedule(appointmentToEdit) {
   font-size: 0.875rem;
   gap: 0.25rem;
 }
-/* --- Fim do Novo Header --- */
-
 .loading-state {
   color: var(--cinza-texto);
   padding: 2rem 0;
@@ -955,8 +998,8 @@ function handleReschedule(appointmentToEdit) {
     grid-template-columns: 1fr;
   }
   .action-column {
-    grid-column: 1 / -1; /* Garante que ocupe a coluna inteira */
-    position: static; /* Remove o 'sticky' para que a coluna flua normalmente */
+    grid-column: 1 / -1;
+    position: static;
   }
 }
 
@@ -969,7 +1012,7 @@ function handleReschedule(appointmentToEdit) {
   }
 
   .title {
-    font-size: 1.875rem; /* 30px */
+    font-size: 1.875rem;
   }
 
   .subtitle {
@@ -994,17 +1037,15 @@ function handleReschedule(appointmentToEdit) {
   }
 
   .toolbar-filters {
-    display: none; /* Esconde filtros e busca no mobile para simplificar */
+    display: none;
   }
 
-  /* Faz a coluna da agenda ocupar todo o espaço */
   .dashboard-content {
     grid-template-columns: 1fr;
   }
 
-  /* ✨ A COLUNA DE AÇÕES AGORA É VISÍVEL NO MOBILE ✨ */
   .action-column {
-    display: flex; /* Garante que a coluna de ações seja exibida */
+    display: flex;
   }
 }
 </style>

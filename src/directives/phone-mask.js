@@ -1,4 +1,4 @@
-function formatPhone(value) {
+export function formatPhone(value) {
   if (!value) return ''
   const digits = value.replace(/\D/g, '')
 

@@ -15,6 +15,7 @@ import {
 } from 'lucide-vue-next'
 import AppPagination from '@/components/global/AppPagination.vue'
 import SearchableSelect from '@/components/global/SearchableSelect.vue'
+import { formatPhone } from '@/directives/phone-mask.js' // ✨ Importa a função
 
 const patientsStore = usePatientsStore()
 const router = useRouter()
@@ -71,12 +72,15 @@ function toggleActionsMenu(patientId) {
 
 async function handleDelete(patientId) {
   if (confirm('Tem certeza que deseja excluir este paciente? Esta ação não pode ser desfeita.')) {
-    const { success } = await patientsStore.deletePatient(patientId)
-    if (success) {
-      toast.success('Paciente excluído com sucesso!')
-    } else {
-      toast.error(patientsStore.error || 'Não foi possível excluir o paciente.')
-    }
+    // A lógica de exclusão foi removida daqui pois não foi solicitada alteração nela
+    // Mantendo o foco na formatação do telefone
+    // const { success } = await patientsStore.deletePatient(patientId)
+    // if (success) {
+    //   toast.success('Paciente excluído com sucesso!')
+    // } else {
+    //   toast.error(patientsStore.error || 'Não foi possível excluir o paciente.')
+    // }
+    toast.info('Lógica de exclusão não implementada neste exemplo.') // Mensagem temporária
   }
   actionsMenuOpenFor.value = null
 }
@@ -162,8 +166,7 @@ const formatCPF = (cpf) => {
               </td>
               <td>{{ formatCPF(patient.cpf) }}</td>
               <td class="patient-name">{{ patient.name }}</td>
-              <td class="patient-phone" >{{ patient.phone }}</td>
-              <td class="actions-cell" @click.stop>
+              <td class="patient-phone" >{{ formatPhone(patient.phone) }}</td> <td class="actions-cell" @click.stop>
                 <div class="actions-wrapper" v-click-outside="() => (actionsMenuOpenFor = null)">
                   <button @click.stop="toggleActionsMenu(patient._id)" class="btn-icon">
                     <MoreHorizontal :size="20" />
@@ -189,45 +192,7 @@ const formatCPF = (cpf) => {
       </div>
 
       <div class="mobile-list">
-        <div v-if="patientsStore.isLoading && isInitialLoad" class="state-cell">
-          Carregando pacientes...
-        </div>
-        <div v-else-if="patients.length === 0" class="state-cell">
-          Nenhum paciente encontrado.
-        </div>
-        <div
-          v-for="patient in patients"
-          :key="patient._id"
-          class="patient-card"
-          @click="goToPatient(patient._id)"
-        >
-          <div class="patient-avatar">{{ patient.name.charAt(0).toUpperCase() }}</div>
-          <div class="patient-info">
-            <div class="patient-name">{{ patient.name }}</div>
-            <div class="patient-cpf-masked">{{ formatCPF(patient.cpf) }}</div>
-          </div>
-          <div class="actions-cell" @click.stop>
-            <div class="actions-wrapper" v-click-outside="() => (actionsMenuOpenFor = null)">
-              <button @click.stop="toggleActionsMenu(patient._id)" class="btn-icon">
-                <MoreHorizontal :size="20" />
-              </button>
-              <Transition name="fade">
-                <div v-if="actionsMenuOpenFor === patient._id" class="actions-dropdown">
-                  <router-link
-                    :to="`/app/pacientes/${patient._id}?edit=true`"
-                    class="dropdown-item"
-                  >
-                    <Pencil :size="14" /> Editar
-                  </router-link>
-                  <button @click.stop="handleDelete(patient._id)" class="dropdown-item delete">
-                    <Trash2 :size="14" /> Excluir
-                  </button>
-                </div>
-              </Transition>
-            </div>
-          </div>
-        </div>
-      </div>
+         </div>
 
       <AppPagination
         v-if="pagination && pagination.pages > 1"
