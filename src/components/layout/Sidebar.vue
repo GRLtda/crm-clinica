@@ -11,7 +11,8 @@ import {
   LifeBuoy,
   Settings,
   MoreHorizontal,
-  X, // ✨ Importar o ícone de fechar
+  X,
+  Megaphone
 } from 'lucide-vue-next'
 
 const emit = defineEmits(['close']) // ✨ Definir o evento que o componente pode emitir
@@ -24,6 +25,7 @@ const mainNavLinks = [
   { icon: LayoutDashboard, text: 'Resumo', to: '/app' },
   { icon: Calendar, text: 'Atendimentos', to: '/app/atendimentos' },
   { icon: Users, text: 'Pacientes', to: '/app/pacientes' },
+  { icon: Megaphone, text: 'Marketing', to: '/app/marketing' },
 ]
 
 const utilityNavLinks = [

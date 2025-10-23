@@ -12,6 +12,7 @@ import PatientDetailView from '../views/pages/pacientes/PatientDetailView.vue'
 import AppointmentsView from '../views/pages/atendimentos/AppointmentsView.vue'
 import InProgressAppointmentView from '../views/pages/atendimentos/InProgressAppointmentView.vue'
 import AjudaView from '../views/pages/ajuda/AjudaView.vue'
+import MarketingView from '../views/pages/marketing/MarketingView.vue'
 
 
 const dashboardRoutes = [
@@ -46,7 +47,7 @@ const dashboardRoutes = [
         meta: { title: 'Detalhes do Paciente' },
       },
             {
-        path: 'ajuda', // 👈 Rota adicionada
+        path: 'ajuda',
         name: 'ajuda',
         component: AjudaView,
       },
@@ -61,6 +62,12 @@ const dashboardRoutes = [
         name: 'atendimento-em-andamento',
         component: InProgressAppointmentView,
         meta: { title: 'Em Atendimento', layout: { noPadding: true } },
+      },
+      {
+        path: 'marketing',
+        name: 'marketing',
+        component: MarketingView,
+        meta: { title: 'Marketing' },
       },
     ],
   },
