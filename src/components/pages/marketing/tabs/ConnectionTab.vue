@@ -7,8 +7,9 @@ const crmStore = useCrmStore()
 
 const status = computed(() => crmStore.status)
 const qrCode = computed(() => crmStore.qrCode)
-const isLoading = computed(() => crmStore.isLoading)
+const isLoading = computed(() => crmStore.isLoading) // Loading geral da store
 const connections = computed(() => crmStore.connections)
+const isLoadingQrImage = computed(() => crmStore.isLoadingQrImage) // Pega o novo estado
 
 async function initiateConnection() {
   await crmStore.initiateOrResetConnection()
@@ -19,6 +20,7 @@ async function logoutConnection() {
 }
 
 onMounted(() => {
+  // ✨ CHAMA A ACTION AQUI ✨
   crmStore.getInitialStatus()
 })
 
@@ -40,7 +42,7 @@ onUnmounted(() => {
         <div v-if="status === 'disconnected'">
           <button @click="initiateConnection" :disabled="isLoading" class="btn-primary btn-connect">
             <Smartphone :size="18" />
-            <span>Iniciar Conexão WhatsApp</span>
+            <span>{{ isLoading ? 'Iniciando...' : 'Iniciar Conexão WhatsApp' }}</span>
           </button>
           <p class="connection-info">
             Ao clicar, um QR Code será gerado. Escaneie-o com o aplicativo WhatsApp no celular da
@@ -58,16 +60,24 @@ onUnmounted(() => {
           <span>Inicializando... Aguarde enquanto preparamos a conexão.</span>
         </div>
 
-        <div v-if="status === 'qrcode'" class="qr-code-section">
-          <p class="qr-instruction">Escaneie o QR Code abaixo com o WhatsApp:</p>
-          <div class="qr-code-wrapper">
-            <img v-if="qrCode" :src="qrCode" alt="QR Code WhatsApp" />
-            <div v-else class="qr-placeholder">
-              <Loader :size="24" class="animate-spin" /> Carregando QR Code...
-            </div>
-          </div>
-          <p class="connection-info small">Aguardando leitura. Mantenha esta página aberta.</p>
-        </div>
+        <div v-if="status === 'qrcode_pending' || status === 'qrcode'" class="qr-code-section">
+           <p class="qr-instruction">Escaneie o QR Code abaixo com o WhatsApp:</p>
+           <div class="qr-code-wrapper">
+                 <img
+                   v-if="qrCode"
+                   :src="qrCode"
+                   alt="QR Code WhatsApp"
+                   :class="{ 'fade-out': isLoadingQrImage && qrCode }" />
+                 <div v-if="isLoadingQrImage" class="qr-placeholder loading-overlay">
+                    <Loader :size="24" class="animate-spin" /> Carregando QR Code...
+                 </div>
+                 <div v-else-if="!qrCode && !isLoadingQrImage" class="qr-placeholder">
+                     Aguardando QR code...
+                 </div>
+           </div>
+           <p class="connection-info small">Aguardando leitura. Mantenha esta página aberta.</p>
+         </div>
+
 
         <div v-if="status === 'connected'" class="status-display connected">
           <CheckCircle :size="24" />
@@ -78,7 +88,7 @@ onUnmounted(() => {
             class="btn-secondary btn-disconnect"
           >
             <LogOut :size="16" />
-            <span>Desconectar</span>
+            <span>{{ isLoading ? 'Desconectando...' : 'Desconectar' }}</span>
           </button>
         </div>
       </div>
@@ -94,8 +104,7 @@ onUnmounted(() => {
               />
               <div>
                 <span class="connection-name">{{ conn.name }}</span>
-                <span class="connection-number">{{ conn.number }}</span>
-              </div>
+                <span class="connection-number">{{ conn.number }}</span> </div>
             </div>
             <span class="connection-status" :class="`status--${conn.status}`">
               {{ conn.status === 'connected' ? 'Conectado' : 'Desconectado' }}
@@ -118,6 +127,36 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* Estilos permanecem os mesmos dos arquivos fornecidos */
+.qr-code-wrapper {
+  position: relative; /* Necessário para o overlay */
+}
+
+.qr-code-wrapper img {
+  transition: opacity 0.3s ease-in-out; /* Adiciona transição suave */
+}
+
+.qr-code-wrapper img.fade-out {
+  opacity: 0.3; /* Esmaece a imagem antiga durante o loading */
+}
+
+.qr-placeholder.loading-overlay {
+  position: absolute; /* Sobrepõe a imagem antiga */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(243, 244, 246, 0.8); /* Fundo semi-transparente */
+  display: flex; /* Reaplicar flex para centralizar */
+  align-items: center;
+  justify-content: center;
+  color: var(--cinza-texto);
+  font-size: 0.875rem;
+  gap: 0.5rem;
+  border-radius: 0.5rem; /* Para combinar com o wrapper */
+  z-index: 1; /* Garante que fique por cima */
+}
+
 .connection-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -261,12 +300,7 @@ onUnmounted(() => {
   border: 1px solid #e5e7eb;
   overflow: hidden;
 }
-.qr-code-wrapper img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
+
 .qr-placeholder {
   color: var(--cinza-texto);
   font-size: 0.875rem;
