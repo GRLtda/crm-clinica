@@ -1,19 +1,17 @@
 <script setup>
-import { onMounted, onUnmounted, computed } from 'vue' // Importa 'computed'
+import { onMounted, onUnmounted, computed } from 'vue'
 import { Smartphone, CheckCircle, XCircle, Loader, Wifi, QrCode, LogOut } from 'lucide-vue-next'
-import { useCrmStore } from '@/stores/crm' // 👈 Importa a store
+import { useCrmStore } from '@/stores/crm'
 
-const crmStore = useCrmStore() // 👈 Instancia a store
+const crmStore = useCrmStore()
 
-// --- Estados agora vêm da store ---
 const status = computed(() => crmStore.status)
 const qrCode = computed(() => crmStore.qrCode)
 const isLoading = computed(() => crmStore.isLoading)
-const connections = computed(() => crmStore.connections) // Lê a lista da store
+const connections = computed(() => crmStore.connections)
 
-// --- Funções agora chamam as actions da store ---
 async function initiateConnection() {
-  await crmStore.initiateConnection()
+  await crmStore.initiateOrResetConnection()
 }
 
 async function logoutConnection() {
@@ -21,12 +19,10 @@ async function logoutConnection() {
 }
 
 onMounted(() => {
-  // Busca o status inicial ao montar o componente
   crmStore.getInitialStatus()
 })
 
 onUnmounted(() => {
-  // Para o polling quando o componente é destruído
   crmStore.stopPolling()
 })
 </script>
@@ -52,12 +48,17 @@ onUnmounted(() => {
           </p>
         </div>
 
+        <div v-if="status === 'creating_qr'" class="status-display creating-qr">
+          <Loader :size="24" class="animate-spin" />
+          <span>Criando QR Code... Aguarde alguns segundos.</span>
+        </div>
+
         <div v-if="status === 'initializing'" class="status-display initializing">
           <Loader :size="24" class="animate-spin" />
           <span>Inicializando... Aguarde enquanto preparamos a conexão.</span>
         </div>
 
-        <div v-if="status === 'qr_ready'" class="qr-code-section">
+        <div v-if="status === 'qrcode'" class="qr-code-section">
           <p class="qr-instruction">Escaneie o QR Code abaixo com o WhatsApp:</p>
           <div class="qr-code-wrapper">
             <img v-if="qrCode" :src="qrCode" alt="QR Code WhatsApp" />
@@ -117,12 +118,11 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* Os estilos permanecem exatamente os mesmos da resposta anterior */
 .connection-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
   gap: 2rem;
-  align-items: start; /* Alinha os cards pelo topo */
+  align-items: start;
 }
 
 .connection-card {
@@ -139,7 +139,7 @@ onUnmounted(() => {
   font-size: 1.25rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
-  color: var(--preto); /* Garante cor do título */
+  color: var(--preto);
 }
 
 .connection-card p {
@@ -217,13 +217,17 @@ onUnmounted(() => {
   text-align: center;
   font-weight: 500;
 }
+.status-display.creating-qr {
+  background-color: #fef3c7;
+  color: #d97706;
+}
 .status-display.initializing {
-  background-color: #f0f9ff; /* Azul bem claro */
-  color: #0284c7; /* Azul texto */
+  background-color: #f0f9ff;
+  color: #0284c7;
 }
 .status-display.connected {
-  background-color: #f0fdf4; /* Verde bem claro */
-  color: #16a34a; /* Verde texto */
+  background-color: #f0fdf4;
+  color: #16a34a;
 }
 .animate-spin {
   animation: spin 1s linear infinite;
@@ -242,46 +246,46 @@ onUnmounted(() => {
 }
 .qr-instruction {
   font-weight: 500;
-  color: #374151; /* Cinza escuro */
+  color: #374151;
   margin-bottom: 1rem;
 }
 .qr-code-wrapper {
   width: 250px;
   height: 250px;
   margin: 0 auto;
-  background-color: #f3f4f6; /* Cinza claro */
+  background-color: #f3f4f6;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 0.5rem;
-  border: 1px solid #e5e7eb; /* Cinza borda */
-  overflow: hidden; /* Garante que a imagem não ultrapasse */
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
 }
 .qr-code-wrapper img {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain; /* Ajusta a imagem do QR Code */
+  object-fit: contain;
 }
 .qr-placeholder {
   color: var(--cinza-texto);
   font-size: 0.875rem;
-  display: flex; /* Adicionado para alinhar o loader */
-  align-items: center; /* Adicionado para alinhar o loader */
-  gap: 0.5rem; /* Adicionado para espaçar o loader */
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .btn-secondary.btn-disconnect {
-  background-color: #fee2e2; /* Vermelho bem claro */
-  color: #dc2626; /* Vermelho texto */
-  border: 1px solid #fecaca; /* Vermelho borda */
+  background-color: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
   padding: 0.6rem 1.25rem;
   border-radius: 0.5rem;
   font-weight: 600;
   margin-top: 1rem;
 }
 .btn-secondary.btn-disconnect:hover:not(:disabled) {
-  background-color: #fecaca; /* Vermelho borda hover */
+  background-color: #fecaca;
 }
 
 .connections-list {
@@ -294,16 +298,16 @@ onUnmounted(() => {
   align-items: center;
   gap: 1rem;
   padding: 1rem;
-  background-color: #f9fafb; /* Cinza muito claro */
+  background-color: #f9fafb;
   border-radius: 0.75rem;
-  border: 1px solid #e5e7eb; /* Cinza borda */
+  border: 1px solid #e5e7eb;
 }
 .connection-details {
   flex-grow: 1;
   display: flex;
   align-items: center;
   gap: 1rem;
-  min-width: 0; /* Evita que o nome/número empurre outros elementos */
+  min-width: 0;
 }
 .connection-details div {
   display: flex;
@@ -311,10 +315,10 @@ onUnmounted(() => {
   min-width: 0;
 }
 .icon-connected {
-  color: #10b981; /* Verde esmeralda */
+  color: #10b981;
 }
 .icon-disconnected {
-  color: #f87171; /* Vermelho claro */
+  color: #f87171;
 }
 .connection-name {
   font-weight: 600;
@@ -337,11 +341,11 @@ onUnmounted(() => {
 .status--connected {
   background-color: #dcfce7;
   color: #16a34a;
-} /* Verde status */
+}
 .status--disconnected {
   background-color: #fee2e2;
   color: #dc2626;
-} /* Vermelho status */
+}
 
 .btn-icon {
   background: none;
@@ -356,12 +360,12 @@ onUnmounted(() => {
 }
 .btn-icon:hover {
   background-color: #f3f4f6;
-} /* Cinza claro hover */
+}
 .btn-disconnect-list {
-  color: #ef4444; /* Vermelho */
+  color: #ef4444;
 }
 .btn-disconnect-list:hover {
-  background-color: #fee2e2; /* Vermelho bem claro hover */
+  background-color: #fee2e2;
 }
 
 .empty-list {
@@ -372,7 +376,7 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .connection-grid {
-    grid-template-columns: 1fr; /* Uma coluna em telas menores */
+    grid-template-columns: 1fr;
   }
   .qr-code-wrapper {
     width: 200px;
