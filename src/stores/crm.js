@@ -49,15 +49,25 @@ export const useCrmStore = defineStore('crm', () => {
     isFetchingQrCodeApi = true
     isLoadingQrImage.value = true // Indica que estamos buscando/carregando
     try {
-      const response = await initiateWhatsAppConnection()
-      if (response.data.status === 'qrcode' && response.data.qrCode) {
-        // Pré-carrega a imagem antes de atualizar o ref principal
+      const response = await initiateWhatsAppConnection() //
+
+      // 👇 *** CORREÇÃO APLICADA AQUI *** 👇
+      // Antes: if (response.data.status === 'qrcode' && response.data.qrCode) {
+      // Agora: Verifica se o status é 'qrcode' OU 'qrcode_pending'
+      if (
+        (response.data.status === 'qrcode' ||
+          response.data.status === 'qrcode_pending') &&
+        response.data.qrCode
+      ) {
+        // 👆 *** FIM DA CORREÇÃO *** 👆
+
         const newQrBase64 = response.data.qrCode
         const img = new Image();
         img.onload = () => {
           qrCode.value = newQrBase64 // Atualiza o QR code principal
           if (status.value !== 'qrcode') {
-             status.value = 'qrcode' // Define o status se não estiver
+             // Define o status para 'qrcode' (visível) após a imagem carregar
+             status.value = 'qrcode'
           }
           isLoadingQrImage.value = false // Carregamento da imagem concluído
         };
@@ -65,7 +75,7 @@ export const useCrmStore = defineStore('crm', () => {
            toast.error('Falha ao carregar a imagem do QR Code.');
            isLoadingQrImage.value = false;
            // Mantém o status como qrcode_pending para tentar de novo
-           status.value = 'qrcode_pending'
+           status.value = 'qrcode_pending' //
            if (currentPollingIntervalDuration !== 4000) {
               startPolling(4000); // Garante que o polling continue
            }
@@ -74,7 +84,7 @@ export const useCrmStore = defineStore('crm', () => {
 
       } else {
         // Se a API não retornou QR code, indica que não está mais carregando
-        isLoadingQrImage.value = false
+        isLoadingQrImage.value = false //
       }
     } catch (error) {
       toast.error('Falha ao obter QR Code da API.')

@@ -35,20 +35,20 @@ body {
 
 /* ✨ INÍCIO DA ALTERAÇÃO CORRIGIDA ✨ */
 /* Adiciona o pseudo-elemento para a textura de ruído */
-body::after {
+/* body::after {
   content: "";
-  position: fixed; /* Cobre toda a tela */
+  position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-image: url('../noise.jpg'); /* Caminho para a imagem de ruído */
-  background-repeat: repeat; /* Repete a textura */
-  opacity: 0.2; /* Ajuste a intensidade do ruído aqui */
-  mix-blend-mode: multiply; /* Modo de mesclagem */
-  pointer-events: none; /* Garante que o ruído não interfira com cliques */
-  z-index: 1; /* Coloca o ruído atrás do conteúdo */
-}
+  background-image: url('../noise.jpg');
+  background-repeat: repeat;
+  opacity: 0.2;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  z-index: 1;
+} */
 /* ✨ FIM DA ALTERAÇÃO CORRIGIDA ✨ */
 
 /* REMOVIDO o body::before que estava causando problemas
