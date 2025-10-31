@@ -25,7 +25,7 @@ const dashboardRoutes = [
         path: '',
         name: 'inicio',
         component: Inicio,
-        meta: { title: 'Resumo' },
+        meta: { title: 'Resumo', layout: { noPadding: true }},
       },
       {
         path: 'configuracoes',

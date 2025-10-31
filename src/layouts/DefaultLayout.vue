@@ -3,11 +3,13 @@ import { ref, watch, onUnmounted } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import Sidebar from '@/components/layout/Sidebar.vue'
-import { Menu } from 'lucide-vue-next'
+import TopBar from '@/components/layout/TopBar.vue' // ✨ 1. Importar a TopBar
+import CreateAppointmentModal from '@/components/pages/dashboard/CreateAppointmentModal.vue' // ✨ 2. Importar o Modal
 
 const route = useRoute()
 const authStore = useAuthStore()
 const isMobileSidebarOpen = ref(false)
+const isAppointmentModalOpen = ref(false) // ✨ 3. Estado para o modal global
 
 function removeManifest() {
   const manifestLink = document.querySelector('link[rel="manifest"]')
@@ -54,7 +56,6 @@ watch(
       const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' })
       const manifestUrl = URL.createObjectURL(manifestBlob)
 
-      // Cria a tag <link> e a adiciona ao <head>
       const manifestLink = document.createElement('link')
       manifestLink.id = 'manifest'
       manifestLink.rel = 'manifest'
@@ -65,7 +66,6 @@ watch(
   { immediate: true },
 )
 
-// Garante que o manifesto seja removido quando o usuário sair do layout (ex: logout)
 onUnmounted(() => {
   removeManifest()
 })
@@ -79,31 +79,27 @@ onUnmounted(() => {
       @close="isMobileSidebarOpen = false"
     />
 
+    <CreateAppointmentModal
+      v-if="isAppointmentModalOpen"
+      @close="isAppointmentModalOpen = false"
+    />
+
     <div
       v-if="isMobileSidebarOpen"
       @click="isMobileSidebarOpen = false"
       class="sidebar-overlay"
     ></div>
 
-    <main class="main-content" :class="{ 'no-padding': route.meta.layout?.noPadding }">
-      <header v-if="!route.meta.layout?.noPadding" class="mobile-header">
-        <button @click="isMobileSidebarOpen = true" class="hamburger-button">
-          <Menu :size="24" />
-        </button>
-        <div class="clinic-info-mobile">
-          <div class="clinic-logo-mobile">
-            <img
-              v-if="authStore.user?.clinic?.logoUrl"
-              :src="authStore.user.clinic.logoUrl"
-              alt="Logo da Clínica"
-            />
-            <span v-else>{{ authStore.user?.clinic?.name?.charAt(0) || 'C' }}</span>
-          </div>
-          <span class="clinic-name-mobile">{{ authStore.user?.clinic?.name }}</span>
-        </div>
-      </header>
-      <RouterView />
-    </main>
+    <div class="main-panel">
+      <TopBar
+        @toggle-sidebar="isMobileSidebarOpen = true"
+        @open-schedule-modal="isAppointmentModalOpen = true"
+      />
+
+      <main class="main-content" :class="{ 'no-padding': route.meta.layout?.noPadding }">
+        <RouterView />
+      </main>
+    </div>
   </div>
 </template>
 
@@ -114,58 +110,29 @@ onUnmounted(() => {
   height: 100dvh;
   overflow: hidden;
 }
+
+/* ✨ 6. Estilo para o novo Main Panel */
+.main-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Garante que o painel não ultrapasse a tela */
+  /* Isso garante que o painel não fique por baixo da sidebar */
+  min-width: 0;
+}
+
 .main-content {
   flex: 1;
   padding: 2rem;
-  overflow-y: auto;
+  overflow-y: auto; /* O scroll fica apenas no conteúdo principal */
 }
 .main-content.no-padding {
   padding: 0;
 }
 
+/* Remove o header mobile antigo, pois foi integrado na TopBar */
 .mobile-header {
-  display: none; /* Escondido no desktop */
-  align-items: center;
-  gap: 1rem; /* Espaçamento entre o hamburger e o logo */
-  margin-bottom: 1.5rem;
-}
-.hamburger-button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.5rem;
-  margin-left: -0.5rem; /* Alinhamento visual */
-}
-
-.clinic-info-mobile {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-.clinic-logo-mobile {
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-  border-radius: 0.375rem; /* Levemente arredondado */
-  background-color: var(--branco);
-  color: var(--azul-principal);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 1rem;
-  border: 1px solid #e5e7eb;
-  overflow: hidden;
-}
-.clinic-logo-mobile img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.clinic-name-mobile {
-  font-weight: 600;
-  font-size: 1.1rem;
-  color: var(--preto);
+  display: none;
 }
 
 .sidebar-overlay {
@@ -181,6 +148,9 @@ onUnmounted(() => {
 
 /* Breakpoint para tablets e celulares */
 @media (max-width: 1024px) {
+  .main-panel {
+    width: 100%; /* Ocupa toda a largura no mobile */
+  }
   .main-content {
     padding: 1.5rem 1rem;
   }
@@ -202,9 +172,6 @@ onUnmounted(() => {
   }
   .sidebar-overlay {
     display: block;
-  }
-  .mobile-header {
-    display: flex;
   }
 }
 </style>
