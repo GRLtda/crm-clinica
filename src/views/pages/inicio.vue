@@ -349,7 +349,7 @@ function handleReschedule(appointmentToEdit) {
 }
 .vuecal__event {
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: 1vh;
   padding: 0;
   box-sizing: border-box;
   font-family: var(--fonte-principal);
@@ -371,9 +371,9 @@ function handleReschedule(appointmentToEdit) {
   opacity: 0.8;
 }
 .vuecal__event:hover {
-  transform: translateY(-2px) scale(1.02);
+  transform: scale(0.98);
   z-index: 10;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.256);
 }
 .vuecal__event.clinic-event {
   background-color: #eef2ff;

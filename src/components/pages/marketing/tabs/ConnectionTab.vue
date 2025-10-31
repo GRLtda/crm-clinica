@@ -19,9 +19,12 @@ async function logoutConnection() {
   await crmStore.logoutConnection()
 }
 
+async function getInitialStatus() {
+  await crmStore.getInitialStatus()
+}
+
 onMounted(() => {
-  // ✨ CHAMA A ACTION AQUI ✨
-  crmStore.getInitialStatus()
+  getInitialStatus()
 })
 
 onUnmounted(() => {

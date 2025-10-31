@@ -199,14 +199,15 @@ function handleSearchSubmit() {
   font-weight: 500;
   color: var(--preto);
   border: 1px solid transparent;
-  background-color: transparent;
+  background-color: #f9fafb;
+  border-color: #f3f4f6;
   transition: all 0.2s ease;
 }
 .search-input::placeholder {
   color: var(--cinza-texto);
 }
 .search-input:hover:not(:focus) {
-  background-color: #f9fafb;
+  background-color: #f3f4f6;
   border-color: #f3f4f6;
 }
 .search-input:focus,

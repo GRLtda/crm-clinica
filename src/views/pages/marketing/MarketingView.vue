@@ -14,7 +14,7 @@ const tabs = [
   { id: 'mensagens', label: 'Mensagens', icon: MessageSquare, component: MessagesTab },
   { id: 'modelos', label: 'Modelos', icon: LayoutTemplate, component: TemplatesTab },
   { id: 'conexao', label: 'Conexão', icon: Link, component: ConnectionTab },
-  { id: 'logs', label: 'Histórico', icon: History, component: LogsTab }, // 👈 Adicionar aba
+  { id: 'logs', label: 'Histórico', icon: History, component: LogsTab },
 ]
 </script>
 
