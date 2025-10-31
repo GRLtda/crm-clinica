@@ -191,8 +191,48 @@ const formatCPF = (cpf) => {
         </table>
       </div>
 
-      <div class="mobile-list">
-         </div>
+      <div class="mobile-list" v-auto-animate>
+        <div
+          v-for="patient in patients"
+          :key="patient._id"
+          class="patient-card"
+          @click="goToPatient(patient._id)"
+        >
+          <div class="patient-info-mobile">
+            <div class="patient-avatar">{{ patient.name.charAt(0).toUpperCase() }}</div>
+            <div class="patient-details-mobile">
+              <span class="patient-name">{{ patient.name }}</span>
+              <span class="patient-cpf-masked">{{ formatCPF(patient.cpf) }}</span>
+            </div>
+          </div>
+
+          <div
+            class="actions-wrapper"
+            v-click-outside="() => (actionsMenuOpenFor = null)"
+            @click.stop
+          >
+            <button @click.stop="toggleActionsMenu(patient._id)" class="btn-icon">
+              <MoreHorizontal :size="20" />
+            </button>
+            <Transition name="fade">
+              <div v-if="actionsMenuOpenFor === patient._id" class="actions-dropdown">
+                <router-link
+                  :to="`/app/pacientes/${patient._id}?edit=true`"
+                  class="dropdown-item"
+                >
+                  <Pencil :size="14" /> Editar
+                </router-link>
+                <button @click.stop="handleDelete(patient._id)" class="dropdown-item delete">
+                  <Trash2 :size="14" /> Excluir
+                </button>
+              </div>
+            </Transition>
+          </div>
+        </div>
+        <div v-if="patients.length === 0 && !patientsStore.isLoading" class="state-cell">
+          Nenhum paciente encontrado.
+        </div>
+      </div>
 
       <AppPagination
         v-if="pagination && pagination.pages > 1"
@@ -432,9 +472,11 @@ th.actions-header .th-content {
     justify-content: center;
   }
   .table-wrapper {
+    /* ✨ Corrigido para garantir que o container da lista móvel não corte o dropdown */
     border: none;
     background-color: transparent;
     border-radius: 0;
+    overflow: visible; /* IMPORTANTE: Garante que o dropdown não seja cortado */
   }
   .table-container {
     display: none; /* Esconde a tabela no mobile */
@@ -445,9 +487,11 @@ th.actions-header .th-content {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+    overflow: visible; /* Garante que o dropdown não seja cortado por este container */
   }
   .patient-card {
     display: flex;
+    justify-content: space-between;
     align-items: center;
     gap: 0.75rem;
     padding: 0.75rem 1rem;
@@ -455,13 +499,20 @@ th.actions-header .th-content {
     border: 1px solid #e5e7eb;
     border-radius: 1rem;
     cursor: pointer;
+    overflow: visible; /* IMPORTANTE: Garante que o dropdown dentro dele não seja cortado */
   }
-  .patient-info {
+  .patient-info-mobile {
     flex-grow: 1;
     min-width: 0;
     display: flex;
     align-items: center;
     gap: 0.75rem;
+  }
+  .patient-details-mobile {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex-grow: 1;
   }
   .patient-name {
     font-weight: 600;
@@ -475,10 +526,29 @@ th.actions-header .th-content {
     white-space: nowrap;
     overflow: hidden;
     flex-shrink: 1;
+    text-overflow: ellipsis;
 
     /* Efeito de degradê no final do CPF */
     mask-image: linear-gradient(to right, black 70%, transparent 100%);
     -webkit-mask-image: linear-gradient(to right, black 70%, transparent 100%);
+  }
+
+  /* ✨ CORREÇÃO CRÍTICA AQUI: Aumentar Z-INDEX e garantir posicionamento superior */
+  .actions-wrapper {
+    z-index: 100; /* Garante que ele fique acima dos cards vizinhos */
+  }
+
+  .actions-dropdown {
+    position: absolute;
+    right: 0;
+    /* Faz o menu abrir para cima (bottom: 100%) mais uma margem de 5px */
+    bottom: calc(100% + 5px);
+    top: auto; /* Anula o valor de desktop */
+    z-index: 100; /* Mantém o z-index alto */
+  }
+
+  .mobile-list > .state-cell {
+    padding: 2rem 0;
   }
 }
 </style>

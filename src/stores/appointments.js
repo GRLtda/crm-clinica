@@ -28,7 +28,7 @@ export const useAppointmentsStore = defineStore('appointments', () => {
       }
     } catch (error) {
       console.error('Erro ao buscar agendamentos:', error)
-      appointments.value = [] // Garante que seja um array em caso de erro
+      appointments.value = []
     } finally {
       isLoading.value = false
     }

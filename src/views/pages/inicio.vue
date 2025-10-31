@@ -40,6 +40,11 @@ const weekEnd = computed(() => endOfWeek(selectedDate.value, { weekStartsOn: 1 }
 
 const calendarHeader = computed(() => {
   if (calendarView.value === 'day') {
+    // 💡 ALTERAÇÃO AQUI: Formato curto (DD/MM/AA) para mobile
+    if (isMobile.value) {
+      return format(selectedDate.value, 'dd/MM/yy')
+    }
+    // Formato longo para desktop em vista 'day'
     return format(selectedDate.value, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
   }
 
@@ -112,7 +117,7 @@ async function fetchDataForView() {
     endDate = format(endOfDay(selectedDate.value), 'yyyy-MM-dd')
   } else {
     startDate = format(weekStart.value, 'yyyy-MM-dd')
-    endDate = format(weekEnd.value, 'yyyy-MM-dd')
+    endDate = format(endOfWeek(selectedDate.value), 'yyyy-MM-dd')
   }
   await appointmentsStore.fetchAppointmentsByDate(startDate, endDate);
   if (!isInitialLoad.value && isToday(selectedDate.value)) {
@@ -710,7 +715,16 @@ function handleReschedule(appointmentToEdit) {
     gap: 0.25rem;
   }
   .calendar-header-display {
-    display: none;
+    font-size: 0.875rem;
+    color: var(--preto);
+    font-weight: 600; /* Aumenta a visibilidade */
+    text-align: center;
+    flex-grow: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 0.5rem;
   }
 }
 </style>
