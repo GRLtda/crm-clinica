@@ -596,4 +596,62 @@ p {
     opacity: 1;
   }
 }
+
+/* ✨ INÍCIO DOS ESTILOS RESPONSIVOS PARA MOBILE ✨ */
+@media (max-width: 768px) {
+  .page-header {
+    padding: 1rem;
+    justify-content: space-between;
+  }
+  .main-content {
+    padding: 1rem; /* Reduz o padding externo */
+  }
+  .page-footer {
+    padding: 1rem;
+  }
+  .card {
+    margin: 0; /* Remove a margem horizontal */
+    padding: 1.5rem 1rem; /* Diminui o padding interno */
+    box-shadow: none; /* Remove a sombra */
+    border: none; /* Remove a borda */
+    background: transparent; /* Remove o background */
+  }
+
+  .patient-info-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.75rem;
+  }
+  .patient-details {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .patient-meta {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .patient-name {
+    text-align: center;
+    font-size: 1.125rem;
+  }
+  .form-header {
+    margin-bottom: 2rem;
+  }
+  .form-header h1 {
+    font-size: 1.5rem;
+  }
+  /* Mantém o background e a borda para as telas de status, mas ajusta o padding/margin */
+  .card.success-card,
+  .card.error-card {
+    padding: 3rem 1rem;
+    margin-top: 2rem;
+    background: var(--branco);
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
+  }
+}
+/* ✨ FIM DOS ESTILOS RESPONSIVOS PARA MOBILE ✨ */
 </style>
