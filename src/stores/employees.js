@@ -5,6 +5,7 @@ import {
   inviteEmployee as apiInviteEmployee,
   deactivateEmployee as apiDeactivateEmployee,
   updateEmployeeRole as apiUpdateEmployeeRole,
+  cancelInvitation as apiCancelInvitation,
 } from '@/api/employees'
 
 export const useEmployeesStore = defineStore('employees', () => {
@@ -64,6 +65,16 @@ export const useEmployeesStore = defineStore('employees', () => {
     }
   }
 
+  async function cancelPendingInvitation(inviteId) {
+    try {
+      await apiCancelInvitation(inviteId)
+      await fetchEmployees()
+      return { success: true }
+    } catch (err) {
+      return { success: false, error: 'Erro ao cancelar convite.' }
+    }
+  }
+
   return {
     activeEmployees,
     pendingInvitations,
@@ -73,5 +84,6 @@ export const useEmployeesStore = defineStore('employees', () => {
     inviteEmployee,
     deactivateEmployee,
     updateEmployeeRole,
+    cancelPendingInvitation,
   }
 })

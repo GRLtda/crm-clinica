@@ -44,3 +44,12 @@ export const updateEmployeeRole = (employeeId, role) => {
 export const getInvitationDetails = (token) => {
   return apiClient.get(`/employees/invitation/${token}`)
 }
+
+/**
+ * Cancela um convite pendente.
+ * Rota: DELETE /api/employees/invite/:id/cancel
+ * @param {string} inviteId - O ID do convite.
+ */
+export const cancelInvitation = (inviteId) => {
+  return apiClient.delete(`/employees/invite/${inviteId}/cancel`)
+}
