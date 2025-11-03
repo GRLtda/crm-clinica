@@ -1,6 +1,5 @@
-/* 1. Importa as duas fontes do Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap');
+/* 1. Importa as novas fontes solicitadas */
+@import url('https://fonts.googleapis.com/css2?family=Funnel+Display:wght@300..800&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Syne:wght@400..800&display=swap');
 
 /* 2. Define as variáveis globais */
 :root {
@@ -13,9 +12,9 @@
   --cinza-texto: #6b7281;
 
   /* Fontes */
-  --fonte-principal: 'Poppins', sans-serif;
-  --fonte-titulo: 'Inter', sans-serif; /* Nova fonte para títulos */
-  --dp-font-family: 'Poppins', sans-serif;
+  --fonte-principal: 'Montserrat', sans-serif;
+  --fonte-titulo: 'Syne', sans-serif; /* Fonte de título atualizada */
+  --dp-font-family: 'Montserrat', sans-serif; /* Atualiza a fonte do Datepicker também */
   --dp-border-radius: 0.75rem;
   --dp-input-padding: 0.75rem 1rem;
   --dp-primary-color: var(--azul-principal);
@@ -33,31 +32,7 @@ body {
   z-index: 1; /* Garante que o conteúdo fique sobre o noise */
 }
 
-/* ✨ INÍCIO DA ALTERAÇÃO CORRIGIDA ✨ */
-/* Adiciona o pseudo-elemento para a textura de ruído */
-/* body::after {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-image: url('../noise.jpg');
-  background-repeat: repeat;
-  opacity: 0.2;
-  mix-blend-mode: multiply;
-  pointer-events: none;
-  z-index: 1;
-} */
-/* ✨ FIM DA ALTERAÇÃO CORRIGIDA ✨ */
 
-/* REMOVIDO o body::before que estava causando problemas
-body::before {
-  content: "";
-  display: block;
-  height: env(safe-area-inset-top);
-}
-*/
 
 h1,
 h2,

@@ -5,8 +5,9 @@ import GeneralSettings from '@/components/pages/configuracoes/tabs/GeneralSettin
 import WorkingHoursSettings from '@/components/pages/configuracoes/tabs/WorkingHoursSettings.vue'
 import AnamnesisTemplates from '@/components/pages/configuracoes/tabs/AnamnesisTemplates.vue'
 import EmployeesSettings from '@/components/pages/configuracoes/tabs/EmployeesSettings.vue'
+import AuditLog from '@/components/pages/configuracoes/tabs/AuditLog.vue' // 📋 1. Importar o novo componente
 
-import { SlidersHorizontal, Clock, FileText, Users } from 'lucide-vue-next'
+import { SlidersHorizontal, Clock, FileText, Users, History } from 'lucide-vue-next' // 📋 2. Importar o ícone History
 
 const activeTab = ref('geral')
 const route = useRoute()
@@ -19,6 +20,7 @@ const tabs = [
   { id: 'horario', label: 'Horário de Funcionamento', icon: Clock },
   { id: 'anamnese', label: 'Modelos de Anamnese', icon: FileText },
   { id: 'funcionarios', label: 'Usuários e Convites', icon: Users },
+  { id: 'auditoria', label: 'Histórico de Atividades', icon: History }, // 📋 3. Adicionar nova aba
 ]
 
 // ✨ 4. Função para verificar a posição do scroll
@@ -81,7 +83,8 @@ onUnmounted(() => {
       <WorkingHoursSettings v-if="activeTab === 'horario'" />
       <AnamnesisTemplates v-if="activeTab === 'anamnese'" />
       <EmployeesSettings v-if="activeTab === 'funcionarios'" />
-    </div>
+      <AuditLog v-if="activeTab === 'auditoria'" />
+      </div>
   </div>
 </template>
 
