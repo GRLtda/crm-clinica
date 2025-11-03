@@ -1,6 +1,6 @@
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue';
-import { ChevronDown } from 'lucide-vue-next';
+import { ref, computed, watch, nextTick, onUnmounted } from 'vue' // 1. Importar onUnmounted
+import { ChevronDown } from 'lucide-vue-next'
 
 const props = defineProps({
   modelValue: [String, Number],
@@ -8,52 +8,71 @@ const props = defineProps({
   options: { type: Array, required: true },
   required: { type: Boolean, default: false },
   error: { type: Boolean, default: false },
-});
-const emit = defineEmits(['update:modelValue']);
+})
+const emit = defineEmits(['update:modelValue'])
 
-const isOpen = ref(false);
-const selectButtonRef = ref(null); // Ref para o botão
-const dropdownStyle = ref({}); // Estilo dinâmico para o dropdown
+const isOpen = ref(false)
+const selectButtonRef = ref(null)
+const optionsListRef = ref(null) // 2. Criar ref para a lista de opções
+const dropdownStyle = ref({})
 
 const selectedLabel = computed(() => {
-  const selectedOption = props.options.find(opt => opt.value === props.modelValue);
-  return selectedOption ? selectedOption.label : 'Selecione';
-});
+  const selectedOption = props.options.find((opt) => opt.value === props.modelValue)
+  return selectedOption ? selectedOption.label : 'Selecione'
+})
 
-// ✨ NOVA FUNÇÃO PARA CALCULAR A POSIÇÃO DO DROPDOWN ✨
 async function updateDropdownPosition() {
-  if (!isOpen.value || !selectButtonRef.value) return;
-
-  // Espera o DOM ser atualizado para garantir que o botão está visível
-  await nextTick();
-
-  const rect = selectButtonRef.value.getBoundingClientRect();
+  if (!isOpen.value || !selectButtonRef.value) return
+  await nextTick()
+  const rect = selectButtonRef.value.getBoundingClientRect()
   dropdownStyle.value = {
     position: 'absolute',
-    top: `${rect.bottom + 4}px`, // 4px abaixo do botão
+    top: `${rect.bottom + 4}px`,
     left: `${rect.left}px`,
-    width: `${rect.width}px`, // A mesma largura do botão
-  };
+    width: `${rect.width}px`,
+  }
 }
 
-// Observa quando o menu é aberto para calcular sua posição
+// 3. Função para tratar o clique fora
+const handleClickOutside = (event) => {
+  if (
+    selectButtonRef.value &&
+    !selectButtonRef.value.contains(event.target) &&
+    optionsListRef.value &&
+    !optionsListRef.value.contains(event.target)
+  ) {
+    isOpen.value = false
+  }
+}
+
+// 4. Atualizar o watch para adicionar e remover o listener de clique
 watch(isOpen, (newValue) => {
   if (newValue) {
-    updateDropdownPosition();
-    // Adiciona "escutas" para reposicionar se a tela rolar ou mudar de tamanho
-    window.addEventListener('scroll', updateDropdownPosition, true);
-    window.addEventListener('resize', updateDropdownPosition);
+    updateDropdownPosition()
+    window.addEventListener('scroll', updateDropdownPosition, true)
+    window.addEventListener('resize', updateDropdownPosition)
+    // Adiciona o listener de clique no próximo 'tick'
+    nextTick(() => {
+      document.addEventListener('click', handleClickOutside)
+    })
   } else {
-    // Remove as "escutas" quando o menu é fechado
-    window.removeEventListener('scroll', updateDropdownPosition, true);
-    window.removeEventListener('resize', updateDropdownPosition);
+    // Remove os listeners
+    window.removeEventListener('scroll', updateDropdownPosition, true)
+    window.removeEventListener('resize', updateDropdownPosition)
+    document.removeEventListener('click', handleClickOutside)
   }
-});
+})
 
+// 5. Garantir a remoção do listener quando o componente for destruído
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('scroll', updateDropdownPosition, true)
+  window.removeEventListener('resize', updateDropdownPosition)
+})
 
 function selectOption(option) {
-  emit('update:modelValue', option.value);
-  isOpen.value = false;
+  emit('update:modelValue', option.value)
+  isOpen.value = false
 }
 </script>
 
@@ -77,7 +96,7 @@ function selectOption(option) {
 
       <Teleport to="body">
         <Transition name="fade">
-          <ul v-if="isOpen" class="options-list" :style="dropdownStyle">
+          <ul v-if="isOpen" ref="optionsListRef" class="options-list" :style="dropdownStyle">
             <li
               v-for="option in options"
               :key="option.value"
@@ -128,7 +147,8 @@ function selectOption(option) {
 .select-button.has-error {
   border-color: #ef4444;
 }
-.select-button:focus, .select-button:focus-visible {
+.select-button:focus,
+.select-button:focus-visible {
   outline: none;
   border-color: var(--azul-principal);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
@@ -148,7 +168,7 @@ function selectOption(option) {
   background-color: var(--branco);
   border: 1px solid #e5e7eb;
   border-radius: 0.75rem;
-  box-shadow: 0 10px 20px rgba(0,0,0,0.1); /* Sombra mais pronunciada */
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1); /* Sombra mais pronunciada */
   z-index: 5000;
   padding: 0.5rem;
   list-style: none;

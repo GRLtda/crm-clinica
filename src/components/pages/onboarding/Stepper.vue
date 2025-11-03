@@ -148,64 +148,42 @@ onBeforeUnmount(() => {
   background-color: var(--azul-principal);
 }
 
+/* ✨ INÍCIO DAS MUDANÇAS PARA RESPONSIVO ✨ */
 @media (max-width: 768px) {
   .stepper {
-    justify-content: flex-start;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-    padding: 0; /* Remove padding para o efeito de scroll funcionar bem */
-
-    /* ✨ CORREÇÃO: Usar máscara para o efeito de degradê que acompanha o scroll */
-    -webkit-mask-image: linear-gradient(
-      to right,
-      transparent,
-      black 40px,
-      black calc(100% - 40px),
-      transparent
-    );
-    mask-image: linear-gradient(
-      to right,
-      transparent,
-      black 40px,
-      black calc(100% - 40px),
-      transparent
-    );
-  }
-
-  .stepper::-webkit-scrollbar {
-    display: none;
-  }
-
-  /* ❌ Removemos os pseudo-elementos ::before e ::after que não funcionavam com o scroll */
-
-  .step-item {
-    scroll-snap-align: center;
-    transition:
-      opacity 0.4s ease,
-      transform 0.4s ease;
-    opacity: 0.4;
-    transform: scale(0.9);
-    padding: 0 0.5rem; /* Adiciona um pequeno respiro */
-  }
-
-  .step-item:first-child {
-    padding-left: 30%; /* Espaço inicial para centralizar o primeiro item */
-  }
-  .step-item:last-child {
-    padding-right: 30%; /* Espaço final para centralizar o último item */
-  }
-
-  .step-item.active {
-    opacity: 1;
-    transform: scale(1);
+    flex-direction: column; /* 1. Empilha verticalmente */
+    align-items: flex-start; /* 2. Alinha à esquerda */
+    gap: 0.75rem; /* 3. Adiciona espaço entre os itens */
+    width: 100%;
+    padding: 0; /* 4. Remove padding lateral */
   }
 
   .step-line {
-    flex-grow: 0;
-    width: 30px;
-    margin: 0;
+    display: none; /* 5. Esconde as linhas horizontais */
+  }
+
+  .step-item {
+    width: 100%; /* 6. Ocupa 100% da largura */
+    padding: 0.75rem 1rem; /* 7. Adiciona padding interno */
+    border-radius: 0.75rem;
+    border: 2px solid transparent; /* 8. Prepara borda para estado ativo */
+    background-color: #f9fafb; /* 9. Fundo claro para itens */
+    transition: all 0.3s ease;
+  }
+
+  .step-item.active {
+    background-color: var(--branco);
+    border-color: var(--azul-principal); /* 10. Destaca o passo ativo */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  }
+
+  .step-item.completed {
+    background-color: #f9fafb;
+    opacity: 0.7; /* 11. Suaviza os passos completos */
+  }
+
+  .step-item.active .step-name {
+    color: var(--preto);
   }
 }
 </style>

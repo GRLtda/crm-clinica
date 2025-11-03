@@ -213,4 +213,45 @@ async function submitForm() {
   opacity: 0;
   transform: translateX(30px);
 }
+
+/* 📱 INÍCIO DAS MUDANÇAS PARA RESPONSIVO 📱 */
+@media (max-width: 768px) {
+  .header-main {
+    gap: 1rem; /* ✨ Aumentei o espaçamento */
+    margin-bottom: 1.5rem;
+    align-items: center; /* ✨ CORRIGIDO: Voltando para 'center' */
+  }
+  .back-button {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+  }
+  .title {
+    font-size: 1.5rem; /* Título menor */
+    line-height: 1.3;
+  }
+  .subtitle {
+    font-size: 0.875rem; /* Subtítulo menor */
+    line-height: 1.4;
+  }
+
+  .separator {
+    margin-bottom: 1.5rem;
+  }
+
+  .form-content {
+    padding: 1.5rem 1rem; /* Reduz o padding do card */
+  }
+
+  .form-actions {
+    flex-direction: column-reverse; /* Empilha os botões */
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+  }
+  .btn-primary,
+  .btn-secondary {
+    width: 100%;
+    justify-content: center; /* Centraliza o texto */
+  }
+}
 </style>

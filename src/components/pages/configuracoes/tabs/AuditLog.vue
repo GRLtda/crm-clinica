@@ -304,7 +304,6 @@ function formatChange(change) {
     </div>
   </div>
 </template>
-
 <style scoped>
 .audit-log-container {
   /* ✨ 1. REMOVIDO max-height e min-height, agora usa 100% da altura do pai */
@@ -497,6 +496,7 @@ function formatChange(change) {
   padding-left: 1rem;
   display: flex;
   flex-direction: column;
+  border-left: 2px solid #0d924d;
   gap: 0.5rem;
 }
 .change-item {
@@ -569,46 +569,47 @@ function formatChange(change) {
     display: none;
   }
 
-
   .changes-list {
     padding-left: 10px !important;
-    border-left: 1.5px solid #0d924d !important;
   }
 
   .change-item {
     gap: 5px !important;
   }
 
+  /* ✨ INÍCIO DAS ALTERAÇÕES NO FILTRO ✨ */
   .filters-header {
-    flex-direction: row;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem;
-    overflow-x: auto;
+    flex-direction: column; /* ✨ ALTERADO: Empilha os itens */
+    align-items: stretch; /* ✨ ALTERADO: Faz os filhos ocuparem 100% da largura */
+    gap: 0.75rem; /* ✨ ALTERADO: Ajusta o espaçamento entre os filtros */
+    padding: 1rem; /* ✨ ALTERADO: Ajusta o padding */
+    overflow-x: hidden; /* ✨ ALTERADO: Remove o scroll horizontal */
     border-radius: 0;
     border-left: none;
     border-right: none;
-    scrollbar-width: none;
+    /* ✨ REMOVIDO: scrollbar-width: none; */
   }
   .filters-header::-webkit-scrollbar {
-    display: none;
+    display: none; /* (Mantido para garantir) */
   }
 
   .filters-icon {
-    display: block;
+    display: none; /* ✨ ALTERADO: Esconde o ícone de filtro */
   }
   .filters-label {
     display: none;
   }
   .filter-group {
-    flex-direction: row;
-    flex-grow: 0;
+    flex-direction: column; /* ✨ ALTERADO: Empilha os selects */
+    flex-grow: 1; /* ✨ ALTERADO: Deixa o grupo crescer */
+    width: 100%; /* ✨ NOVO: Garante 100% da largura */
   }
   .filter-group :deep(.select-button) {
-    min-width: auto;
-    width: auto;
-    white-space: nowrap;
+    min-width: 100%; /* ✨ ALTERADO: Ocupa 100% */
+    width: 100%; /* ✨ ALTERADO: Ocupa 100% */
+    white-space: nowrap; /* (Mantido) */
   }
+  /* ✨ FIM DAS ALTERAÇÕES NO FILTRO ✨ */
 
   .audit-list {
     padding: 0;

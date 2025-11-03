@@ -37,7 +37,7 @@ const maxBirthDate = ref(new Date())
         :error="errors.name"
       />
       <div class="form-group">
-        <label class="form-label"> Data de Nascimento <span class="required-asterisk">*</span> </label>
+        <label class="form-label">Data de Nascimento<span class="required-asterisk">*</span></label>
         <Datepicker
           :modelValue="modelValue.birthDate"
           @update:modelValue="updateField('birthDate', $event)"
@@ -99,6 +99,7 @@ const maxBirthDate = ref(new Date())
   margin-bottom: 0.5rem;
   font-weight: 500;
   font-size: 0.875rem;
+  white-space: nowrap; /* ✨ 2. CORRIGIDO: Adicionado para impedir a quebra de linha */
 }
 .required-asterisk {
   color: #ef4444;
@@ -111,5 +112,18 @@ const maxBirthDate = ref(new Date())
 }
 :deep(.dp-custom-input.has-error) {
   border-color: #ef4444;
+}
+
+/* ✨ INÍCIO DAS MUDANÇAS PARA RESPONSIVO ✨ */
+@media (max-width: 768px) {
+  .form-grid {
+    grid-template-columns: 1fr; /* 1. Uma coluna por linha no mobile */
+    gap: 0 1.5rem; /* 2. Remove o gap de linha, mantém o de coluna */
+  }
+
+  .form-group {
+    /* 3. Reduz o espaçamento inferior para campos que não são FormInput */
+    padding-bottom: 1rem;
+  }
 }
 </style>

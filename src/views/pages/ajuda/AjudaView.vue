@@ -94,7 +94,7 @@ function toggleQuestion(id) {
         <p class="subtitle">Encontre respostas para as suas dúvidas mais comuns.</p>
         <div class="search-bar">
           <Search :size="18" class="search-icon" />
-          <input disabled type="text" v-model="searchQuery" placeholder="Pesquisar..." />
+          <input type="text" v-model="searchQuery" placeholder="Pesquisar..." />
         </div>
       </div>
     </aside>
@@ -320,6 +320,10 @@ function toggleQuestion(id) {
 @media (max-width: 1024px) {
   .help-page {
     flex-direction: column;
+  }
+  .icon-wrapper {
+    margin: 0 auto;
+    margin-bottom: 20px;
   }
   .help-sidebar {
     width: 100%;
