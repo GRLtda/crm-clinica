@@ -5,7 +5,9 @@ import { usePatientsStore } from '@/stores/patients'
 import { useAppointmentsStore } from '@/stores/appointments'
 import { useClinicStore } from '@/stores/clinic'
 import { useToast } from 'vue-toastification'
-import { User, Calendar, Bell, Plus, X, DoorClosed, Info } from 'lucide-vue-next'
+// ✨ 1. Importar o LoaderCircle e a nova função da API
+import { User, Calendar, Bell, Plus, X, DoorClosed, Info, LoaderCircle } from 'lucide-vue-next'
+import { checkConflict } from '@/api/appointments'
 import { isToday, isFuture, parse, setHours, setMinutes, setSeconds, setMilliseconds } from 'date-fns'
 
 import Stepper from '@/components/pages/onboarding/Stepper.vue'
@@ -32,6 +34,11 @@ const router = useRouter()
 let debounceTimeout = null
 const currentStep = ref(1)
 const errors = ref({})
+
+// ✨ 2. Novos estados para verificação de conflito
+const conflictError = ref(null)
+const isCheckingConflict = ref(false)
+let conflictCheckDebounce = null
 
 const clinicWorkingHours = computed(() => {
   if (!clinicStore.currentClinic?.workingHours) {
@@ -185,11 +192,75 @@ function goToCreatePatient() {
   router.push('/app/pacientes/novo')
 }
 
+// ✨ 3. Função para formatar data para ISO (necessária para a API)
+function getISOString(date, timeString) {
+  const [hour, minute] = timeString.split(':').map(Number)
+  const baseDate = new Date(date)
+  const year = baseDate.getFullYear()
+  const month = baseDate.getMonth()
+  const day = baseDate.getDate()
+  // Usa o fuso horário local para montar a data
+  return new Date(year, month, day, hour, minute).toISOString()
+}
+
+// ✨ 4. Nova função para checar conflitos
+async function checkAppointmentConflict() {
+  // Só executa se todos os dados estiverem presentes
+  if (
+    !appointmentData.value.patient ||
+    !appointmentData.value.date ||
+    !appointmentData.value.startTime ||
+    !appointmentData.value.endTime
+  ) {
+    return
+  }
+
+  isCheckingConflict.value = true
+  conflictError.value = null
+  // Limpa erro de "horário inválido" para dar lugar à verificação
+  if (errors.value.time) errors.value.time = null
+
+  // Debounce para evitar chamadas excessivas enquanto o usuário está digitando/clicando
+  clearTimeout(conflictCheckDebounce)
+  conflictCheckDebounce = setTimeout(async () => {
+    try {
+      const startTimeISO = getISOString(appointmentData.value.date, appointmentData.value.startTime)
+      const endTimeISO = getISOString(appointmentData.value.date, appointmentData.value.endTime)
+
+      const response = await checkConflict(
+        appointmentData.value.patient,
+        startTimeISO,
+        endTimeISO
+      )
+
+      if (response.data.conflict) {
+        conflictError.value = response.data.message
+        errors.value.time = response.data.message // Para destacar os campos
+      } else {
+        conflictError.value = null
+        // Limpa o erro SÓ SE for um erro de conflito
+        if (errors.value.time && (errors.value.time.includes('conflito') || errors.value.time.includes('existe'))) {
+          errors.value.time = null
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar conflito:', error)
+      conflictError.value = 'Erro ao verificar disponibilidade.'
+      errors.value.time = 'Erro ao verificar disponibilidade.'
+    } finally {
+      isCheckingConflict.value = false
+    }
+  }, 500) // 500ms de debounce
+}
+
+// ✨ 5. Watchers atualizados
 watch(
   () => appointmentData.value.date,
   () => {
     appointmentData.value.startTime = null
     appointmentData.value.endTime = null
+    conflictError.value = null // Limpa erro ao trocar de data
+    errors.value.time = null
   },
 )
 
@@ -198,11 +269,13 @@ watch(
   (newStartTime) => {
     if (newStartTime) {
       const [hour, minute] = newStartTime.split(':').map(Number)
-      const startDate = new Date()
-      startDate.setHours(hour, minute)
-      startDate.setMinutes(startDate.getMinutes() + 30)
-      const endHour = String(startDate.getHours()).padStart(2, '0')
-      const endMinute = String(startDate.getMinutes()).padStart(2, '0')
+      // Usamos a data selecionada como base, não a data atual!
+      const baseDate = new Date(appointmentData.value.date)
+      baseDate.setHours(hour, minute, 0, 0) // Define hora e minuto na data selecionada
+      baseDate.setMinutes(baseDate.getMinutes() + 30) // Adiciona 30 minutos
+
+      const endHour = String(baseDate.getHours()).padStart(2, '0')
+      const endMinute = String(baseDate.getMinutes()).padStart(2, '0')
       const endTime = `${endHour}:${endMinute}`
 
       if (endTimeOptions.value.some((opt) => opt.value === endTime)) {
@@ -210,10 +283,32 @@ watch(
       } else {
         appointmentData.value.endTime = null
       }
+    } else {
+      appointmentData.value.endTime = null // Limpa o endTime se o startTime for limpo
     }
+    // A verificação de conflito será chamada pelo watcher de endTime
   },
 )
 
+// ✨ 6. Novo Watcher para acionar a verificação de conflito
+watch(
+  [
+    () => appointmentData.value.patient,
+    () => appointmentData.value.date,
+    () => appointmentData.value.endTime, // Aciona quando o endTime é definido
+  ],
+  () => {
+    // Limpa erros anteriores e inicia a verificação
+    conflictError.value = null
+    if (errors.value.time && (errors.value.time.includes('conflito') || errors.value.time.includes('existe'))) {
+      errors.value.time = null
+    }
+    checkAppointmentConflict()
+  },
+  { deep: true } // Necessário para a data
+)
+
+// ✨ 7. Função de validação atualizada
 function validateStep() {
   errors.value = {}
   if (currentStep.value === 1 && !appointmentData.value.patient) {
@@ -227,6 +322,17 @@ function validateStep() {
     errors.value.time = 'Selecione um horário de início e fim.'
     return false
   }
+
+  // ✨ Nova verificação de conflito e carregamento
+  if (isCheckingConflict.value) {
+    errors.value.time = 'Verificando disponibilidade...'
+    return false
+  }
+  if (conflictError.value) {
+    errors.value.time = conflictError.value
+    return false
+  }
+
   return true
 }
 
@@ -304,7 +410,7 @@ async function handleSubmit() {
           </button>
         </div>
 
-<div v-if="currentStep === 2" class="step-content">
+        <div v-if="currentStep === 2" class="step-content">
           <div class="form-group">
             <label class="form-label">Data do Atendimento</label>
             <Datepicker
@@ -325,7 +431,7 @@ async function handleSubmit() {
                 :options="timeOptions"
                 placeholder="Início"
                 class="time-select"
-                :error="!!errors.time"
+                :error="!!errors.time || !!conflictError"
               />
               <span>às</span>
               <StyledSelect
@@ -334,8 +440,9 @@ async function handleSubmit() {
                 placeholder="Fim"
                 :disabled="!appointmentData.startTime"
                 class="time-select"
-                :error="!!errors.time"
+                :error="!!errors.time || !!conflictError"
               />
+              <LoaderCircle v-if="isCheckingConflict" :size="18" class="spinner" />
             </div>
             <div v-else-if="noTimeSlotsAvailable" class="warning-message">
               <Info :size="16" /> Sem horários disponíveis para este dia após o horário atual.
@@ -343,11 +450,11 @@ async function handleSubmit() {
             <div v-else class="closed-message">
               <DoorClosed :size="16" /> Clínica fechada neste dia.
             </div>
-             <div v-if="isOutsideWorkingHours" class="warning-message">
+             <div v-if="isOutsideWorkingHours && !conflictError" class="warning-message">
               <Info :size="16" />
               Atenção: O horário selecionado está fora do expediente da clínica.
             </div>
-            <p v-if="errors.time" class="error-message">{{ errors.time }}</p>
+            <p v-if="errors.time || conflictError" class="error-message">{{ conflictError || errors.time }}</p>
           </div>
         </div>
 
@@ -396,6 +503,7 @@ async function handleSubmit() {
             @click="nextStep"
             type="button"
             class="btn-primary"
+            :disabled="isCheckingConflict"
           >
             Avançar
           </button>
@@ -528,6 +636,26 @@ async function handleSubmit() {
 .time-inputs .time-select {
   flex-grow: 1;
 }
+
+/* ✨ 10. Estilo para o spinner */
+.spinner {
+  color: var(--azul-principal);
+  animation: spin 1s linear infinite;
+  margin-left: 0.5rem; /* Espaçamento do spinner */
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ✨ 11. Estilo para o erro de conflito (a prop :error já faz isso) */
+/* Mas vamos garantir que o erro de conflito também aplique a borda vermelha */
+:deep(.time-select .select-button.has-error) {
+  border-color: #ef4444 !important;
+  background-color: #fef2f2;
+}
+
 
 .divider {
   text-align: center;
@@ -684,6 +812,10 @@ async function handleSubmit() {
 .btn-primary:hover {
   background: #1e40af;
 }
+.btn-primary:disabled {
+  background-color: #a5b4fc;
+  cursor: not-allowed;
+}
 .btn-secondary {
   background: var(--branco);
   border: 1px solid #d1d5db;
@@ -741,6 +873,7 @@ async function handleSubmit() {
     flex-grow: 1;
     justify-content: center;
   }
+
   .stepper-component :deep(.step-details),
   .stepper-component :deep(.step-line) {
     display: none;

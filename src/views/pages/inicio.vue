@@ -717,7 +717,7 @@ function handleReschedule(appointmentToEdit) {
   .calendar-header-display {
     font-size: 0.875rem;
     color: var(--preto);
-    font-weight: 600; /* Aumenta a visibilidade */
+    font-weight: 600;
     text-align: center;
     flex-grow: 1;
     min-width: 0;

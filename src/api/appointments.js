@@ -20,3 +20,17 @@ export const createAppointment = (appointmentData) => {
 export const updateAppointment = (appointmentId, data) => {
   return apiClient.put(`/appointments/${appointmentId}`, data);
 };
+
+/**
+ * ✨ NOVA FUNÇÃO ADICIONADA ✨
+ * Verifica se há conflito de horário para um paciente.
+ * @param {string} patientId - ID do paciente.
+ * @param {string} startTime - Data e hora de início (ISO String).
+ * @param {string} endTime - Data e hora de fim (ISO String).
+ * @returns {Promise}
+ */
+export const checkConflict = (patientId, startTime, endTime) => {
+  return apiClient.get('/appointments/check-conflict', {
+    params: { patientId, startTime, endTime }
+  });
+};
