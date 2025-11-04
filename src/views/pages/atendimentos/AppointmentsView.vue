@@ -147,7 +147,7 @@ function rebookAppointment() {
         </button>
       </div>
 
-      <div v-else>
+      <div velse>
         <div class="table-container">
           <table>
             <thead>
@@ -182,10 +182,10 @@ function rebookAppointment() {
                 <td>
                   <div class="status-wrapper">
                     <span
-                      :class="useStatusBadge(appt.status).badgeClass.value"
-                      :style="useStatusBadge(appt.status).badgeStyle.value"
+                      :class="useStatusBadge(appt.status).badgeClass"
+                      :style="useStatusBadge(appt.status).badgeStyle"
                     >
-                      {{ useStatusBadge(appt.status).displayText.value }}
+                      {{ useStatusBadge(appt.status).displayText }}
                     </span>
                   </div>
                 </td>
@@ -210,10 +210,10 @@ function rebookAppointment() {
                   <span class="patient-name">{{ appt.patient.name }}</span>
                 </div>
                 <span
-                  :class="useStatusBadge(appt.status).badgeClass.value"
-                  :style="useStatusBadge(appt.status).badgeStyle.value"
+                  :class="useStatusBadge(appt.status).badgeClass"
+                  :style="useStatusBadge(appt.status).badgeStyle"
                 >
-                  {{ useStatusBadge(appt.status).displayText.value }}
+                  {{ useStatusBadge(appt.status).displayText }}
                 </span>
               </div>
               <div class="card-bottom">
@@ -267,7 +267,7 @@ function rebookAppointment() {
     :click-event="activePopover.event"
     @close="closePopover"
     @start="goToAppointmentPage(activePopover.appointment)"
-    @view="goToAppointmentPage(activePopover.appointment)"
+    @view="goToAppointmentPage(activeSocket.appointment)"
   />
 
   <CreateAppointmentModal v-if="isModalOpen" @close="isModalOpen = false" />

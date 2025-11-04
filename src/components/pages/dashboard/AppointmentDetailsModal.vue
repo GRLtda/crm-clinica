@@ -29,9 +29,19 @@ const router = useRouter()
 
 const patient = computed(() => props.event.originalEvent.patient)
 
-const { badgeClass, badgeStyle, displayText } = useStatusBadge(
-  computed(() => props.event.originalEvent.status),
-)
+// ✨ ========= CORREÇÃO AQUI ========= ✨
+// Em vez de passar um 'computed' para o 'useStatusBadge',
+// nós criamos um 'computed' que CHAMA o 'useStatusBadge' com a string.
+const badgeInfo = computed(() => {
+  // Passamos a string reativa para a função helper
+  return useStatusBadge(props.event.originalEvent.status)
+})
+
+// Agora, criamos computed refs para cada valor que o template precisa
+const badgeClass = computed(() => badgeInfo.value.badgeClass)
+const badgeStyle = computed(() => badgeInfo.value.badgeStyle)
+const displayText = computed(() => badgeInfo.value.displayText)
+// ✨ ========= FIM DA CORREÇÃO ========= ✨
 
 function formatTime(dateString) {
   if (!dateString) return ''
