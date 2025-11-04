@@ -73,7 +73,6 @@ const lastAppointment = computed(() => {
   return null
 })
 
-// ✨ FUNÇÃO CENTRALIZADA: Lógica para carregar e resetar o estado visual
 async function loadPatientData(patientId) {
     if (!patientId) return
 
@@ -327,12 +326,15 @@ const missingInfo = computed(() => {
 
       <nav class="tabs-nav">
         <button @click="activeTab = 'details'" :class="{ active: activeTab === 'details' }">
+          <ClipboardList :size="16" />
           Detalhes
         </button>
         <button @click="activeTab = 'anamneses'" :class="{ active: activeTab === 'anamneses' }">
+          <FileText :size="16" />
           Anamneses
         </button>
         <button @click="activeTab = 'history'" :class="{ active: activeTab === 'history' }">
+          <History :size="16" />
           Histórico
         </button>
       </nav>
@@ -777,6 +779,9 @@ const missingInfo = computed(() => {
   margin-bottom: 2rem;
 }
 .tabs-nav button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.75rem 1rem;
   border: none;
   background: none;
@@ -1033,6 +1038,11 @@ const missingInfo = computed(() => {
   }
   .tabs-nav {
     justify-content: space-around;
+  }
+  .tabs-nav button {
+    /* Garante que o ícone e o texto permaneçam legíveis em mobile */
+    font-size: 0.9rem;
+    padding: 0.75rem 0.5rem;
   }
   .section-content.grid-2-cols {
     grid-template-columns: 1fr;
