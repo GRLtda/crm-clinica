@@ -980,11 +980,6 @@ async function handleSubmit() {
     flex-grow: 1;
     justify-content: center;
   }
-
-  .stepper-component :deep(.step-details),
-  .stepper-component :deep(.step-line) {
-    display: none;
-  }
   .stepper-component :deep(.stepper) {
     justify-content: center;
     padding: 0;
