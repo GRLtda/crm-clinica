@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useAnamnesisStore } from '@/stores/anamnesis'
 import { useToast } from 'vue-toastification'
-import { FilePlus2, Pencil, Trash2 } from 'lucide-vue-next'
+import { FilePlus2, Pencil, Trash2, Copy } from 'lucide-vue-next'
 import CreateAnamnesisModal from '../modals/CreateAnamnesisModal.vue'
 
 const anamnesisStore = useAnamnesisStore()
@@ -12,19 +12,40 @@ const templates = computed(() => anamnesisStore.templates)
 const isModalOpen = ref(false)
 const editingTemplateId = ref(null)
 const templateIdToDelete = ref(null)
+const templateToDuplicate = ref(null)
 
 onMounted(() => {
   anamnesisStore.fetchTemplates()
 })
 
+function closeModal() {
+  isModalOpen.value = false
+  editingTemplateId.value = null
+  templateToDuplicate.value = null
+}
+
 function openCreateModal() {
   editingTemplateId.value = null
+  templateToDuplicate.value = null
   isModalOpen.value = true
 }
 
 function openEditModal(templateId) {
   editingTemplateId.value = templateId
+  templateToDuplicate.value = null
   isModalOpen.value = true
+}
+
+async function openDuplicateModal(templateId) {
+  const templateData = await anamnesisStore.fetchTemplateById(templateId)
+
+  if (templateData) {
+    editingTemplateId.value = null
+    templateToDuplicate.value = templateData
+    isModalOpen.value = true
+  } else {
+    toast.error('Não foi possível carregar o modelo para duplicar.')
+  }
 }
 
 async function handleDelete(templateId) {
@@ -34,7 +55,7 @@ async function handleDelete(templateId) {
   } else {
     toast.error('Não foi possível excluir o modelo.')
   }
-  templateIdToDelete.value = null // Fecha o popover após a ação
+  templateIdToDelete.value = null
 }
 </script>
 
@@ -43,10 +64,11 @@ async function handleDelete(templateId) {
     <CreateAnamnesisModal
       v-if="isModalOpen"
       :template-id-to-edit="editingTemplateId"
-      @close="isModalOpen = false"
+      :template-to-duplicate="templateToDuplicate"
+      @close="closeModal"
     />
 
-    <div v-if="templates.length > 0" class="header-actions">
+    <div v-if="!anamnesisStore.isLoading && templates.length > 0" class="header-actions">
       <div>
         <h2>Modelos de Anamnese</h2>
         <p class="header-subtitle">Você tem {{ templates.length }} modelo(s) cadastrado(s).</p>
@@ -61,8 +83,22 @@ async function handleDelete(templateId) {
 
     <div v-else-if="templates.length > 0" class="templates-grid">
       <div v-for="template in templates" :key="template._id" class="template-card">
-        <span class="template-name">{{ template.name }}</span>
+        <div class="template-info">
+          <span class="template-name">{{ template.name }}</span>
+          <span class="template-questions">
+            {{ template.questionCount }}
+            {{ template.questionCount === 1 ? 'pergunta' : 'perguntas' }}
+          </span>
+        </div>
+
         <div class="template-actions" v-click-outside="() => (templateIdToDelete = null)">
+          <button
+            @click="openDuplicateModal(template._id)"
+            class="btn-icon"
+            title="Duplicar"
+          >
+            <Copy :size="16" />
+          </button>
           <button @click="openEditModal(template._id)" class="btn-icon" title="Editar">
             <Pencil :size="16" />
           </button>
@@ -93,12 +129,17 @@ async function handleDelete(templateId) {
     </div>
 
     <div v-else class="empty-state">
-      <div class="icon-wrapper"><FilePlus2 :size="48" /></div>
-      <h3 class="empty-title">Nenhum modelo de anamnese encontrado</h3>
+      <div class="icon-wrapper">
+        <FilePlus2 :size="48" />
+      </div>
+      <h3 class="empty-title">Nenhum modelo cadastrado</h3>
       <p class="empty-description">
-        Crie seu primeiro modelo para agilizar o preenchimento de prontuários.
+        Comece criando seu primeiro modelo de anamnese para agilizar seus atendimentos.
       </p>
-      <button @click="openCreateModal" class="create-button">Criar Anamnese</button>
+      <button @click="openCreateModal" class="create-button">
+        <FilePlus2 :size="16" />
+        Criar Novo Modelo
+      </button>
     </div>
   </div>
 </template>
@@ -134,32 +175,53 @@ async function handleDelete(templateId) {
 
 .templates-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
 }
+
 .template-card {
   display: flex;
+  flex-direction: column;
   justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
+  padding: 1.5rem;
   background-color: var(--branco);
   border: 1px solid #e5e7eb;
   border-radius: 0.75rem;
-  transition: box-shadow 0.2s ease;
+  min-height: 190px;
+  transition:
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
 }
 .template-card:hover {
-  box-shadow:
-    0 4px 6px -1px rgb(0 0 0 / 0.1),
-    0 2px 4px -2px rgb(0 0 0 / 0.1);
+  border-color: #d1d5db;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.template-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 .template-name {
   font-weight: 600;
+  font-size: 1.125rem;
+  color: var(--preto);
 }
+.template-questions {
+  font-size: 0.875rem;
+  color: var(--azul-principal);
+  font-weight: 500;
+}
+
 .template-actions {
   position: relative;
   display: flex;
   gap: 0.5rem;
+  justify-content: flex-end;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 1rem;
 }
+
 .delete-confirmation {
   position: absolute;
   right: 0;
@@ -210,6 +272,7 @@ async function handleDelete(templateId) {
   color: var(--branco);
   border-color: #ef4444;
 }
+
 .fade-enter-active,
 .fade-leave-active {
   transition:
@@ -221,6 +284,7 @@ async function handleDelete(templateId) {
   opacity: 0;
   transform: translateY(-5px);
 }
+
 .btn-icon {
   padding: 0.5rem;
   background: none;
@@ -240,6 +304,7 @@ async function handleDelete(templateId) {
   background-color: #fee2e2;
   color: #ef4444;
 }
+
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -268,6 +333,9 @@ async function handleDelete(templateId) {
   margin-bottom: 2rem;
 }
 .create-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.75rem 1.5rem;
   border-radius: 0.75rem;
   border: none;
@@ -282,7 +350,6 @@ async function handleDelete(templateId) {
   background-color: var(--azul-escuro);
 }
 
-/* ✨ INÍCIO DAS MUDANÇAS PARA O RESPONSIVO ✨ */
 @media (max-width: 768px) {
   .header-actions {
     flex-direction: column;
@@ -291,15 +358,6 @@ async function handleDelete(templateId) {
   }
   .btn-primary {
     justify-content: center;
-  }
-  .template-card {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-  .template-actions {
-    width: 100%;
-    justify-content: flex-end;
   }
 }
 </style>

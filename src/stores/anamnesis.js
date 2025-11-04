@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue';
+import { ref, computed } from 'vue'
 import {
   getAnamnesisTemplates as apiGetTemplates,
   createAnamnesisTemplate as apiCreateTemplate,
@@ -11,12 +11,17 @@ import {
   assignAnamnesis as apiAssignAnamnesis,
   getAnamnesisForPatient as apiGetForPatient
 } from '@/api/anamnesis'
+// IMPORT ADICIONADO
+import { useToast } from 'vue-toastification'
 
 export const useAnamnesisStore = defineStore('anamnesis', () => {
-  const templates = ref([]);
-  const publicTemplate = ref(null);
-  const isLoading = ref(false);
-  const patientAnamneses = ref([]);
+  // TOAST INSTANCIADO
+  const toast = useToast()
+
+  const templates = ref([])
+  const publicTemplate = ref(null)
+  const isLoading = ref(false)
+  const patientAnamneses = ref([])
 
   async function fetchTemplates() {
     isLoading.value = true
@@ -25,6 +30,9 @@ export const useAnamnesisStore = defineStore('anamnesis', () => {
       templates.value = response.data
     } catch (error) {
       console.error('Erro ao buscar modelos de anamnese:', error)
+      // TOAST ADICIONADO
+      const errorMessage = error.response?.data?.message || error.message || 'Erro desconhecido'
+      toast.error(`Erro ao buscar modelos: ${errorMessage}`)
       templates.value = []
     } finally {
       isLoading.value = false
@@ -40,6 +48,9 @@ export const useAnamnesisStore = defineStore('anamnesis', () => {
       return { success: true }
     } catch (error) {
       console.error('Erro ao criar modelo:', error)
+      // TOAST ADICIONADO
+      const errorMessage = error.response?.data?.message || error.message || 'Erro desconhecido'
+      toast.error(`Erro ao criar modelo: ${errorMessage}`)
       return { success: false, error }
     } finally {
       isLoading.value = false
@@ -54,6 +65,9 @@ export const useAnamnesisStore = defineStore('anamnesis', () => {
       return { success: true }
     } catch (error) {
       console.error('Erro ao deletar modelo:', error)
+      // TOAST ADICIONADO
+      const errorMessage = error.response?.data?.message || error.message || 'Erro desconhecido'
+      toast.error(`Erro ao deletar modelo: ${errorMessage}`)
       return { success: false, error }
     } finally {
       isLoading.value = false
@@ -67,6 +81,9 @@ export const useAnamnesisStore = defineStore('anamnesis', () => {
       return response.data // Retorna os dados do modelo específico
     } catch (error) {
       console.error('Erro ao buscar modelo por ID:', error)
+      // TOAST ADICIONADO
+      const errorMessage = error.response?.data?.message || error.message || 'Erro desconhecido'
+      toast.error(`Erro ao buscar modelo: ${errorMessage}`)
     } finally {
       isLoading.value = false
     }
@@ -81,77 +98,94 @@ export const useAnamnesisStore = defineStore('anamnesis', () => {
       return { success: true }
     } catch (error) {
       console.error('Erro ao atualizar modelo:', error)
+      // TOAST ADICIONADO
+      const errorMessage = error.response?.data?.message || error.message || 'Erro desconhecido'
+      toast.error(`Erro ao atualizar modelo: ${errorMessage}`)
       return { success: false, error }
     } finally {
       isLoading.value = false
     }
   }
 
-    async function assignAnamnesis(patientId, templateId) {
+  async function assignAnamnesis(patientId, templateId) {
     try {
-      const response = await apiAssignAnamnesis(patientId, templateId);
+      const response = await apiAssignAnamnesis(patientId, templateId)
       await fetchAnamnesisForPatient(patientId)
       // O backend retorna o documento completo, incluindo o patientAccessToken
-      return { success: true, data: response.data };
+      return { success: true, data: response.data }
     } catch (error) {
-      console.error("Erro ao atribuir anamnese:", error);
-      return { success: false, error };
+      console.error('Erro ao atribuir anamnese:', error)
+      // TOAST ADICIONADO
+      const errorMessage = error.response?.data?.message || error.message || 'Erro desconhecido'
+      toast.error(`Erro ao atribuir anamnese: ${errorMessage}`)
+      return { success: false, error }
     }
   }
 
   // Nova ação para buscar o formulário público
   async function fetchPublicTemplate(token) {
-    isLoading.value = true;
+    isLoading.value = true
     try {
-      const response = await apiGetPublic(token);
-      publicTemplate.value = response.data;
-      return { success: true };
+      const response = await apiGetPublic(token)
+      publicTemplate.value = response.data
+      return { success: true }
     } catch (error) {
-      console.error("Erro ao buscar formulário público:", error);
-      publicTemplate.value = null;
-      return { success: false, error };
+      console.error('Erro ao buscar formulário público:', error)
+      // TOAST ADICIONADO
+      const errorMessage = error.response?.data?.message || error.message || 'Erro desconhecido'
+      toast.error(`Erro ao buscar formulário: ${errorMessage}`)
+      publicTemplate.value = null
+      return { success: false, error }
     } finally {
-      isLoading.value = false;
+      isLoading.value = false
     }
   }
 
   // Nova ação para enviar as respostas do paciente
   async function submitPatientAnswers(token, answers) {
     try {
-      await apiSubmitPublic(token, answers);
-      return { success: true };
+      await apiSubmitPublic(token, answers)
+      return { success: true }
     } catch (error) {
-      console.error("Erro ao enviar respostas:", error);
-      return { success: false, error };
+      console.error('Erro ao enviar respostas:', error)
+      // TOAST ADICIONADO
+      const errorMessage = error.response?.data?.message || error.message || 'Erro desconhecido'
+      toast.error(`Erro ao enviar respostas: ${errorMessage}`)
+      return { success: false, error }
     }
   }
 
   const answeredAnamneses = computed(() =>
-    patientAnamneses.value.filter(a => a.status === 'Preenchido')
-  );
+    patientAnamneses.value.filter((a) => a.status === 'Preenchido')
+  )
   const pendingAnamneses = computed(() =>
-    patientAnamneses.value.filter(a => a.status === 'Pendente')
-  );
+    patientAnamneses.value.filter((a) => a.status === 'Pendente')
+  )
 
   // Nova ação para buscar as anamneses de um paciente
   async function fetchAnamnesisForPatient(patientId) {
-    isLoading.value = true;
+    isLoading.value = true
     try {
-      const response = await apiGetForPatient(patientId);
+      const response = await apiGetForPatient(patientId)
       if (response.data && Array.isArray(response.data.data)) {
-        patientAnamneses.value = response.data.data;
+        patientAnamneses.value = response.data.data
       } else {
-        console.warn("A resposta da API para anamneses do paciente não continha um array 'data'.", response.data);
-        patientAnamneses.value = [];
+        console.warn(
+          "A resposta da API para anamneses do paciente não continha um array 'data'.",
+          response.data
+        )
+        patientAnamneses.value = []
       }
     } catch (error) {
-      console.error("Erro ao buscar anamneses do paciente:", error);
-      patientAnamneses.value = [];
+      console.error('Erro ao buscar anamneses do paciente:', error)
+      // TOAST ADICIONADO
+      const errorMessage = error.response?.data?.message || error.message || 'Erro desconhecido'
+      toast.error(`Erro ao buscar anamneses do paciente: ${errorMessage}`)
+      patientAnamneses.value = []
     } finally {
-      isLoading.value = false;
+      isLoading.value = false
     }
   }
-
 
   return {
     templates,
@@ -169,5 +203,5 @@ export const useAnamnesisStore = defineStore('anamnesis', () => {
     answeredAnamneses,
     pendingAnamneses,
     fetchAnamnesisForPatient
-  };
-});
+  }
+})

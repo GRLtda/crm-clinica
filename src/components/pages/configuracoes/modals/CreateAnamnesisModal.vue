@@ -8,6 +8,7 @@ import { useToast } from 'vue-toastification'
 
 const props = defineProps({
   templateIdToEdit: { type: String, default: null },
+  templateToDuplicate: { type: Object, default: null },
 })
 const emit = defineEmits(['close'])
 const anamnesisStore = useAnamnesisStore()
@@ -16,7 +17,7 @@ const toast = useToast()
 const templateName = ref('')
 const questions = ref([])
 
-const isEditMode = computed(() => !!props.templateIdToEdit)
+const isEditMode = computed(() => !!props.templateIdToEdit && !props.templateToDuplicate)
 
 const questionTypes = [
   { value: 'text', label: 'Texto Curto' },
@@ -26,14 +27,56 @@ const questionTypes = [
   { value: 'multiple_choice', label: 'Múltipla Escolha (várias respostas)' },
 ]
 
+// ✨ onMounted ATUALIZADO (Adicionando _tempId) ✨
 onMounted(async () => {
-  if (isEditMode.value) {
-    const templateData = await anamnesisStore.fetchTemplateById(props.templateIdToEdit)
-    if (templateData) {
-      templateName.value = templateData.name
-      // Garante que a reatividade seja mantida
-      questions.value = JSON.parse(JSON.stringify(templateData.questions))
+  console.log('Modal Montado.')
+
+  try {
+    if (props.templateToDuplicate) {
+      // 1. MODO DUPLICAR
+      console.log('Entrando em MODO DUPLICAR')
+      templateName.value = `Cópia de ${props.templateToDuplicate.name}`
+
+      if (Array.isArray(props.templateToDuplicate.questions)) {
+        // Copia e adiciona um ID temporário para forçar a reatividade do :key
+        let counter = 0
+        questions.value = JSON.parse(JSON.stringify(props.templateToDuplicate.questions)).map(
+          (q) => ({
+            ...q,
+            _tempId: counter++, // Adiciona um ID único
+          }),
+        )
+
+        console.log('Perguntas copiadas (com _tempId):', questions.value)
+      } else {
+        questions.value = []
+      }
+    } else if (isEditMode.value) {
+      // 2. MODO EDIÇÃO
+      console.log('Entrando em MODO EDIÇÃO')
+      const templateData = await anamnesisStore.fetchTemplateById(props.templateIdToEdit)
+      if (templateData) {
+        templateName.value = templateData.name
+
+        if (Array.isArray(templateData.questions)) {
+          let counter = 0
+          // Adiciona ID temporário aqui também, por segurança
+          questions.value = JSON.parse(JSON.stringify(templateData.questions)).map((q) => ({
+            ...q,
+            _tempId: counter++,
+          }))
+          console.log('Perguntas carregadas (edição):', questions.value)
+        } else {
+          questions.value = []
+        }
+      }
+    } else {
+      // 3. MODO CRIAÇÃO
+      console.log('Entrando em MODO CRIAÇÃO (Novo)')
     }
+  } catch (error) {
+    console.error('Erro no onMounted do CreateAnamnesisModal:', error)
+    toast.error('Erro ao carregar dados no modal.')
   }
 })
 
@@ -42,6 +85,7 @@ function addQuestion() {
     title: '',
     questionType: 'text',
     options: [],
+    _tempId: new Date().getTime(), // Garante um ID único ao adicionar nova pergunta
   })
 }
 
@@ -50,7 +94,6 @@ function removeQuestion(index) {
 }
 
 function addOption(question) {
-  // Garante que a propriedade options exista
   if (!question.options) {
     question.options = []
   }
@@ -62,6 +105,7 @@ function removeOption(question, optIndex) {
 }
 
 async function saveTemplate() {
+  // O backend não se importa com o _tempId, então podemos enviá-lo
   const templateData = {
     name: templateName.value,
     questions: questions.value,
@@ -79,8 +123,6 @@ async function saveTemplate() {
       isEditMode.value ? 'Modelo atualizado com sucesso!' : 'Modelo criado com sucesso!',
     )
     emit('close')
-  } else {
-    toast.error('Ocorreu um erro ao salvar o modelo.')
   }
 }
 </script>
@@ -100,7 +142,11 @@ async function saveTemplate() {
           placeholder="Ex: Anamnese Pediátrica"
         />
 
-        <div v-for="(question, index) in questions" :key="index" class="question-card">
+        <div
+          v-for="(question, index) in questions"
+          :key="question._tempId || index"
+          class="question-card"
+        >
           <FormInput
             v-model="question.title"
             :label="`Pergunta ${index + 1}`"
@@ -298,5 +344,16 @@ p {
   border-radius: 0.5rem;
   cursor: pointer;
   font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .modal-content {
+    padding-bottom: 20px;
+    border: none;
+    border-radius: 0;
+    margin: 0;
+    width: 100%;
+    height: 100%;
+  }
 }
 </style>
