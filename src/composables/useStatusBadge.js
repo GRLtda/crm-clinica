@@ -2,7 +2,8 @@ import { computed } from 'vue'
 
 export function useStatusBadge(status) {
   const statusConfig = computed(() => {
-    const normalizedStatus = status?.toLowerCase().replace(/\s+/g, '-')
+    // ✨ CORREÇÃO AQUI: Acessar 'status.value' para obter a string reativa
+    const normalizedStatus = status.value?.toLowerCase().replace(/\s+/g, '-')
 
     const configs = {
       realizado: {
@@ -55,7 +56,8 @@ export function useStatusBadge(status) {
 
   const badgeClass = computed(() => `status-badge ${statusConfig.value.class}`)
   const badgeStyle = computed(() => statusConfig.value.style)
-  const displayText = computed(() => status || '')
+  // ✨ CORREÇÃO AQUI: Acessar 'status.value' para exibir o texto
+  const displayText = computed(() => status.value || '')
 
   return {
     badgeClass,

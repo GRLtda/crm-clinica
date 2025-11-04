@@ -40,6 +40,9 @@ const conflictError = ref(null)
 const isCheckingConflict = ref(false)
 let conflictCheckDebounce = null
 
+// 💡 NOVO ESTADO: Armazena os horários sugeridos
+const suggestedTimes = ref([])
+
 const clinicWorkingHours = computed(() => {
   if (!clinicStore.currentClinic?.workingHours) {
     return {}
@@ -203,6 +206,51 @@ function getISOString(date, timeString) {
   return new Date(year, month, day, hour, minute).toISOString()
 }
 
+// 💡 NOVA FUNÇÃO: Encontra os próximos horários disponíveis
+function findNextAvailableTimes(conflictingTime) {
+  const allTimes = timeOptions.value;
+  const conflictIndex = allTimes.findIndex(t => t.value === conflictingTime);
+
+  if (conflictIndex === -1) {
+    suggestedTimes.value = [];
+    return;
+  }
+
+  // Sugere os próximos 3 horários após o horário conflitante
+  suggestedTimes.value = allTimes.slice(conflictIndex + 1, conflictIndex + 4);
+}
+
+// 💡 NOVA FUNÇÃO: Define o horário ao clicar na sugestão
+function handleSuggestionClick(timeValue) {
+  // Define o novo horário de início
+  appointmentData.value.startTime = timeValue;
+
+  // Limpa as sugestões e o erro de conflito
+  suggestedTimes.value = [];
+  conflictError.value = null;
+  if (errors.value.time) errors.value.time = null;
+
+  // Recalcula o horário de término (baseado na lógica existente no watcher)
+  const [hour, minute] = timeValue.split(':').map(Number);
+  const baseDate = new Date(appointmentData.value.date);
+  baseDate.setHours(hour, minute, 0, 0);
+  baseDate.setMinutes(baseDate.getMinutes() + 30); // Adiciona 30 minutos
+
+  const endHour = String(baseDate.getHours()).padStart(2, '0');
+  const endMinute = String(baseDate.getMinutes()).padStart(2, '0');
+  const endTime = `${endHour}:${endMinute}`;
+
+  // Define o horário de término
+  if (endTimeOptions.value.some((opt) => opt.value === endTime)) {
+    appointmentData.value.endTime = endTime;
+  } else {
+    appointmentData.value.endTime = null;
+  }
+
+  // O watcher do 'endTime' será acionado automaticamente e chamará a verificação de conflito
+}
+
+
 // ✨ 4. Nova função para checar conflitos
 async function checkAppointmentConflict() {
   // Só executa se todos os dados estiverem presentes
@@ -217,6 +265,7 @@ async function checkAppointmentConflict() {
 
   isCheckingConflict.value = true
   conflictError.value = null
+  suggestedTimes.value = [] // 💡 Limpa sugestões antigas
   // Limpa erro de "horário inválido" para dar lugar à verificação
   if (errors.value.time) errors.value.time = null
 
@@ -236,8 +285,10 @@ async function checkAppointmentConflict() {
       if (response.data.conflict) {
         conflictError.value = response.data.message
         errors.value.time = response.data.message // Para destacar os campos
+        findNextAvailableTimes(appointmentData.value.startTime) // 💡 Chama as sugestões
       } else {
         conflictError.value = null
+        suggestedTimes.value = [] // 💡 Limpa sugestões se não houver conflito
         // Limpa o erro SÓ SE for um erro de conflito
         if (errors.value.time && (errors.value.time.includes('conflito') || errors.value.time.includes('existe'))) {
           errors.value.time = null
@@ -261,12 +312,14 @@ watch(
     appointmentData.value.endTime = null
     conflictError.value = null // Limpa erro ao trocar de data
     errors.value.time = null
+    suggestedTimes.value = [] // 💡 Limpa sugestões
   },
 )
 
 watch(
   () => appointmentData.value.startTime,
   (newStartTime) => {
+    suggestedTimes.value = [] // 💡 Limpa sugestões ao trocar o início
     if (newStartTime) {
       const [hour, minute] = newStartTime.split(':').map(Number)
       // Usamos a data selecionada como base, não a data atual!
@@ -455,6 +508,22 @@ async function handleSubmit() {
               Atenção: O horário selecionado está fora do expediente da clínica.
             </div>
             <p v-if="errors.time || conflictError" class="error-message">{{ conflictError || errors.time }}</p>
+
+            <div v-if="suggestedTimes.length > 0" class="suggestions-wrapper">
+              <p class="suggestions-title">Horários alternativos sugeridos:</p>
+              <div class="suggestions-list">
+                <button
+                  v-for="time in suggestedTimes"
+                  :key="time.value"
+                  @click="handleSuggestionClick(time.value)"
+                  type="button"
+                  class="suggestion-chip"
+                >
+                  {{ time.label }}
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -523,6 +592,44 @@ async function handleSubmit() {
 </template>
 
 <style scoped>
+/* 💡 Estilos para as Sugestões 💡 */
+.suggestions-wrapper {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background-color: #f9fafb;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+}
+.suggestions-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin: 0 0 0.75rem 0;
+  text-align: left;
+}
+.suggestions-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.suggestion-chip {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background-color: var(--branco);
+  border: 1px solid #d1d5db;
+  border-radius: 99px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.suggestion-chip:hover {
+  background-color: #eef2ff;
+  border-color: var(--azul-principal);
+  color: var(--azul-principal);
+}
+
+
+/* --- Estilos Anteriores --- */
 .warning-message {
   display: flex;
   align-items: center;

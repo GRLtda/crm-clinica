@@ -3,7 +3,19 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppointmentsStore } from '@/stores/appointments'
 import { useToast } from 'vue-toastification'
-import { X, Calendar, Clock, User, Phone, Trash2, CalendarOff, CalendarPlus } from 'lucide-vue-next'
+import {
+  X,
+  Calendar,
+  Clock,
+  User,
+  Phone,
+  Trash2,
+  CalendarOff,
+  CalendarPlus,
+  CheckCircle,
+} from 'lucide-vue-next'
+import { useStatusBadge } from '@/composables/useStatusBadge.js'
+import { formatPhone } from '@/directives/phone-mask.js'
 
 const props = defineProps({
   event: { type: Object, required: true },
@@ -17,6 +29,10 @@ const router = useRouter()
 
 const patient = computed(() => props.event.originalEvent.patient)
 
+const { badgeClass, badgeStyle, displayText } = useStatusBadge(
+  computed(() => props.event.originalEvent.status),
+)
+
 function formatTime(dateString) {
   if (!dateString) return ''
   return new Date(dateString).toLocaleTimeString('pt-BR', {
@@ -28,7 +44,7 @@ function formatTime(dateString) {
 async function updateStatus(status) {
   const { success } = await appointmentsStore.updateAppointmentStatus(
     props.event.originalEvent._id,
-    status
+    status,
   )
   if (success) {
     toast.success(`Agendamento marcado como "${status}"!`)
@@ -39,12 +55,9 @@ async function updateStatus(status) {
 }
 
 function handleReschedule() {
-  // For now, let's emit an event to be handled by the parent,
-  // which can open the CreateAppointmentModal in "edit mode"
   emit('edit', props.event.originalEvent)
   emit('close')
 }
-
 </script>
 
 <template>
@@ -56,7 +69,7 @@ function handleReschedule() {
           <p>Detalhes do atendimento agendado.</p>
         </div>
         <button @click="$emit('close')" class="btn-icon">
-            <X :size="24" />
+          <X :size="24" />
         </button>
       </header>
 
@@ -64,23 +77,26 @@ function handleReschedule() {
         <div class="patient-summary">
           <div class="patient-avatar">{{ patient.name.charAt(0) }}</div>
           <div class="patient-details">
-            <h3 class="patient-name">{{ patient.name }}</h3>
+            <div class="name-with-status">
+              <h3 class="patient-name">{{ patient.name }}</h3>
+              <span :class="badgeClass" :style="badgeStyle">{{ displayText }}</span>
+            </div>
             <div class="patient-contact">
               <Phone :size="14" />
-              <span v-phone-mask>{{ patient.phone }}</span>
+              <span>{{ formatPhone(patient.phone) }}</span>
             </div>
           </div>
         </div>
 
         <div class="appointment-details">
-            <div class="detail-item">
-                <Calendar :size="16" />
-                <span>{{ new Date(event.start).toLocaleDateString('pt-BR') }}</span>
-            </div>
-            <div class="detail-item">
-                <Clock :size="16" />
-                <span>{{ formatTime(event.start) }} - {{ formatTime(event.end) }}</span>
-            </div>
+          <div class="detail-item">
+            <Calendar :size="16" />
+            <span>{{ new Date(event.start).toLocaleDateString('pt-BR') }}</span>
+          </div>
+          <div class="detail-item">
+            <Clock :size="16" />
+            <span>{{ formatTime(event.start) }} - {{ formatTime(event.end) }}</span>
+          </div>
         </div>
       </div>
 
@@ -90,14 +106,18 @@ function handleReschedule() {
           Reagendar
         </button>
         <div class="status-actions">
-            <button @click="updateStatus('Não Compareceu')" class="btn-outline-danger">
-              <CalendarOff :size="16" />
-              Não Compareceu
-            </button>
-            <button @click="updateStatus('Cancelado')" class="btn-danger">
-              <Trash2 :size="16" />
-              Cancelar
-            </button>
+          <button @click="updateStatus('Confirmado')" class="btn-success">
+            <CheckCircle :size="16" />
+            Confirmar Chegada
+          </button>
+          <button @click="updateStatus('Não Compareceu')" class="btn-outline-danger">
+            <CalendarOff :size="16" />
+            Não Compareceu
+          </button>
+          <button @click="updateStatus('Cancelado')" class="btn-danger">
+            <Trash2 :size="16" />
+            Cancelar
+          </button>
         </div>
       </footer>
     </div>
@@ -123,8 +143,9 @@ function handleReschedule() {
 .modal-content {
   background: var(--branco);
   width: 100%;
-  max-width: 800px; /* Ajustado para um valor mais consistente */
+  max-width: 900px;
   height: auto;
+  min-height: 300px;
   border-radius: 1rem;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   border: 1px solid #e5e7eb;
@@ -160,76 +181,94 @@ function handleReschedule() {
   margin: 0;
 }
 .btn-icon {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 50%;
-    color: var(--cinza-texto);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  color: var(--cinza-texto);
 }
 .btn-icon:hover {
-    background-color: #f3f4f6;
+  background-color: #f3f4f6;
 }
 
 .modal-body {
-  padding: 2rem;
+  padding: 2.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 2rem;
+  flex-grow: 1;
 }
 
 .patient-summary {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .patient-avatar {
-    width: 64px;
-    height: 64px;
-    flex-shrink: 0;
-    border-radius: 50%;
-    background-color: #eef2ff;
-    color: var(--azul-principal);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2rem;
-    font-weight: 600;
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: #eef2ff;
+  color: var(--azul-principal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+.name-with-status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
 }
 
 .patient-details .patient-name {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: 0.25rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0;
+}
+
+.status-badge {
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: 99px;
+  font-size: 0.8rem;
+  text-transform: capitalize;
+  white-space: nowrap;
+  height: fit-content;
 }
 
 .patient-contact {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--cinza-texto);
-    font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--cinza-texto);
+  font-size: 0.875rem;
 }
 
 .appointment-details {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    padding-left: 1rem;
-    border-left: 2px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-left: 1rem;
+  border-left: 2px solid #e5e7eb;
 }
 
 .detail-item {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    color: #374151;
-    font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #374151;
+  font-weight: 500;
 }
 
 .detail-item svg {
-    color: var(--cinza-texto);
+  color: var(--cinza-texto);
 }
 
 .modal-footer {
@@ -240,11 +279,12 @@ function handleReschedule() {
   align-items: center;
   gap: 1rem;
   background-color: #f9fafb;
+  flex-shrink: 0;
 }
 
 .status-actions {
-    display: flex;
-    gap: 0.75rem;
+  display: flex;
+  gap: 0.75rem;
 }
 
 .btn-secondary {
@@ -298,33 +338,56 @@ function handleReschedule() {
   background-color: #fef2f2;
 }
 
+.btn-success {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+.btn-success:hover {
+  background: #bbf7d0;
+}
 
 /* ===== INÍCIO DAS MELHORIAS PARA MOBILE ===== */
 
 @media (max-width: 768px) {
   .modal-overlay {
     padding: 0;
-    background: var(--branco); /* Fundo sólido para parecer uma página */
+    background: var(--branco);
     backdrop-filter: none;
-    align-items: stretch; /* Força o conteúdo a esticar verticalmente */
+    align-items: stretch;
   }
 
   .modal-content {
     width: 100%;
     height: 100%;
     max-width: 100%;
+    min-height: auto;
     border-radius: 0;
     box-shadow: none;
     border: none;
   }
 
   .modal-body {
-    flex-grow: 1; /* Faz o corpo do modal crescer e empurrar o rodapé para baixo */
+    flex-grow: 1;
     padding: 1.5rem;
+    gap: 1.5rem;
+  }
+
+  .name-with-status {
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
   }
 
   .modal-footer {
-    flex-direction: column; /* Empilha os botões verticalmente */
+    flex-direction: column;
     gap: 0.75rem;
     background-color: var(--branco);
     padding: 1.5rem;
@@ -332,17 +395,17 @@ function handleReschedule() {
   }
 
   .status-actions {
-    flex-direction: column; /* Empilha os botões de status também */
+    flex-direction: column;
     gap: 0.75rem;
     width: 100%;
   }
 
-  /* Faz todos os botões no rodapé ocuparem a largura total */
   .modal-footer .btn-secondary,
   .modal-footer .btn-danger,
-  .modal-footer .btn-outline-danger {
+  .modal-footer .btn-outline-danger,
+  .modal-footer .btn-success {
     width: 100%;
-    justify-content: center; /* Centraliza o conteúdo (ícone e texto) */
+    justify-content: center;
     padding: 1rem;
   }
 }
