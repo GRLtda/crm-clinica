@@ -26,8 +26,7 @@ const registrationSuccess = ref(false)
 const isInvitation = ref(false)
 const invitationToken = ref(null)
 
-const imageUrl =
-  'https://images.unsplash.com/photo-1629909613654-28e377c37b09?q=80&w=1168&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'
+const imageUrl = new URL('@/assets/clinic2.webp', import.meta.url).href
 
 // Busca os dados do convite ao carregar a página
 onMounted(async () => {
