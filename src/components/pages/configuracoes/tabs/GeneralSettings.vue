@@ -226,7 +226,6 @@ onBeforeRouteLeave((to, from, next) => {
     </div>
   </div>
 </template>
-
 <style scoped>
 /* CORES */
 :root {
@@ -465,7 +464,7 @@ onBeforeRouteLeave((to, from, next) => {
 }
 
 @media (max-width: 600px) {
-    /* Mobile: Tudo em coluna única */
+    /* 📱 Mobile: Tudo em coluna única */
     .logo-col-wrapper {
         flex-direction: column;
         text-align: center;
@@ -478,11 +477,25 @@ onBeforeRouteLeave((to, from, next) => {
     }
     .logo-uploader p { text-align: center; }
 
-    .grid-address { grid-template-columns: 1fr; }
-    .span-2-uniform, .col-small-uniform { grid-column: span 1; }
+    /* Endereço em 1 coluna */
+    .grid-address {
+        grid-template-columns: 1fr;
+        gap: 0.75rem; /* Ajuste o espaçamento */
+    }
 
-    /* Remove a largura máxima fixa para o mobile */
-    :deep(.form-group) { max-width: 100%; }
+    /* 🧱 ALTERAÇÃO CRÍTICA AQUI: Removendo o max-width fixo e forçando span 1 */
+    .span-2-uniform, .col-small-uniform {
+        grid-column: span 1;
+        max-width: 100%; /* Isso garante que a largura fixa seja sobrescrita */
+    }
+
+    /* Garante que os form-groups internos também ocupem a largura total */
+    :deep(.form-group.col-small-uniform),
+    :deep(.form-group.span-2-uniform),
+    :deep(.form-group) {
+        max-width: 100%;
+    }
+
     .footer-actions {
         flex-direction: column-reverse;
         align-items: stretch;
