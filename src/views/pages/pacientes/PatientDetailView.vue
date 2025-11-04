@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, onBeforeRouteUpdate } from 'vue-router'
 import { usePatientsStore } from '@/stores/patients'
 import { useAnamnesisStore } from '@/stores/anamnesis'
 import { useAppointmentsStore } from '@/stores/appointments'
@@ -73,15 +73,39 @@ const lastAppointment = computed(() => {
   return null
 })
 
+// ✨ FUNÇÃO CENTRALIZADA: Lógica para carregar e resetar o estado visual
+async function loadPatientData(patientId) {
+    if (!patientId) return
+
+    // 1. FORÇA O RESET VISUAL: Limpa o paciente atual *antes* de buscar o novo.
+    // Isso garante que v-else-if="patient" falhe e v-if="patientsStore.isLoading && !patient" seja ativado.
+    patientsStore.selectedPatient = null
+
+    // Reseta estados visuais/de edição
+    isEditing.value = false
+    activeTab.value = 'details'
+
+    // 2. Busca os dados do novo paciente
+    await patientsStore.fetchPatientById(patientId)
+    await anamnesisStore.fetchAnamnesisForPatient(patientId)
+    await appointmentsStore.fetchAppointmentsByPatient(patientId)
+}
+
+// HOOK: Chama a função de carregamento quando o componente é montado
 onMounted(() => {
-  const patientId = route.params.id
-  patientsStore.fetchPatientById(patientId)
-  anamnesisStore.fetchAnamnesisForPatient(patientId)
-  appointmentsStore.fetchAppointmentsByPatient(patientId)
-  if (route.query.edit === 'true') {
-    isEditing.value = true
-  }
+    loadPatientData(route.params.id)
+    if (route.query.edit === 'true') {
+        isEditing.value = true
+    }
 })
+
+// HOOK CRÍTICO: Chama a função de carregamento quando a ROTA MUDA
+onBeforeRouteUpdate(async (to, from) => {
+    if (to.params.id !== from.params.id) {
+        await loadPatientData(to.params.id)
+    }
+})
+
 
 // CORREÇÃO: Formata a data para YYYY-MM-DD no modo edição
 watch(patient, (newVal) => {
@@ -566,7 +590,7 @@ const missingInfo = computed(() => {
                       <span class="history-date">{{ formatSimpleDate(item.startTime) }}</span>
                       <span
                         :class="useStatusBadge(item.status).badgeClass.value"
-                        :style="useStatusBadge(item.status).badgeStyle.value"
+                          :style="useStatusBadge(item.status).badgeStyle.value"
                         >{{ useStatusBadge(item.status).displayText.value }}</span
                       >
                     </div>
@@ -632,7 +656,7 @@ const missingInfo = computed(() => {
   visibility: hidden;
   opacity: 0;
   width: 250px;
-  /* ✨ ALTERAÇÕES PARA FUNDO CLARO (ESTILO DROPDOWN) */
+  /* ALTERAÇÕES PARA FUNDO CLARO (ESTILO DROPDOWN) */
   background-color: var(--branco, #ffffff);
   color: #374151; /* Texto escuro */
   border: 1px solid #e5e7eb; /* Borda leve */
@@ -679,6 +703,7 @@ const missingInfo = computed(() => {
     color: #1f2937; /* Cor do título mais escura */
 }
 .tooltip-list {
+    /* Corrigido de ul para .tooltip-list */
     list-style: disc;
     padding-left: 1.25rem;
     margin: 0;
@@ -688,6 +713,16 @@ const missingInfo = computed(() => {
     line-height: 1.2;
 }
 
+/* ESTILO DO LOADING STATE */
+.loading-state {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 300px;
+    font-size: 1.2rem;
+    color: var(--cinza-texto, #6b7280);
+    /* Se quiser um esqueleto, adicione aqui o HTML/CSS. Por enquanto, é texto. */
+}
 
 /* Estilos existentes */
 .patient-header {
