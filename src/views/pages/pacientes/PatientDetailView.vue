@@ -26,6 +26,7 @@ import {
   ClipboardCheck,
   ClipboardPlus,
   CalendarPlus,
+  AlertTriangle,
 } from 'lucide-vue-next'
 import FormInput from '@/components/global/FormInput.vue'
 import StyledSelect from '@/components/global/StyledSelect.vue'
@@ -82,9 +83,28 @@ onMounted(() => {
   }
 })
 
+// CORREÇÃO: Formata a data para YYYY-MM-DD no modo edição
 watch(patient, (newVal) => {
   if (newVal) {
-    editablePatient.value = JSON.parse(JSON.stringify({ ...newVal, address: newVal.address || {} }))
+    let formattedBirthDate = newVal.birthDate;
+
+    if (newVal.birthDate) {
+      const date = new Date(newVal.birthDate);
+
+      // Usamos métodos UTC para formatar corretamente no formato ISO (YYYY-MM-DD)
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(date.getUTCDate()).padStart(2, '0');
+
+      formattedBirthDate = `${year}-${month}-${day}`;
+    }
+
+    editablePatient.value = JSON.parse(JSON.stringify({
+      ...newVal,
+      address: newVal.address || {},
+      // Aplica a data formatada para o <input type="date">
+      birthDate: formattedBirthDate || '',
+    }))
   }
 })
 
@@ -102,6 +122,8 @@ watch(
             district: address.neighborhood,
             city: address.city,
             state: address.state,
+            // Garante que o complemento existente seja mantido
+            complement: editablePatient.value.address.complement || '',
           }
         }
       }
@@ -111,11 +133,16 @@ watch(
 
 function cancelEditing() {
   isEditing.value = false
+  // Reverte para o estado original
   editablePatient.value = JSON.parse(JSON.stringify(patient.value))
 }
 
 async function handleSaveChanges() {
-  const { success } = await patientsStore.updatePatient(patient.value._id, editablePatient.value)
+  const payload = JSON.parse(JSON.stringify(editablePatient.value))
+
+  // Lógica de salvamento aqui...
+
+  const { success } = await patientsStore.updatePatient(patient.value._id, payload)
   if (success) {
     toast.success('Paciente atualizado com sucesso!')
     isEditing.value = false
@@ -174,6 +201,40 @@ async function handleGeneratePdf(anamnesis) {
   toast.dismiss(loadingToast)
   pdfPreview.value = { url: pdfDataUri, name: fileName }
 }
+
+// FUNÇÃO AUXILIAR PARA TRATAR VALORES VAZIOS
+function displayValue(value) {
+  return value && String(value).trim() !== '' ? value : 'Não informado'
+}
+
+// COMPUTED PROPERTY: Verifica quais informações opcionais estão faltando
+const missingInfo = computed(() => {
+  if (!patient.value) return []
+
+  const missing = []
+  const p = patient.value
+  const address = p.address || {}
+
+  // Dados Pessoais Opcionais
+  if (!p.cpf || p.cpf.replace(/\D/g, '').length < 11) {
+    missing.push('CPF')
+  }
+  if (!p.email || p.email.trim() === '') {
+    missing.push('E-mail')
+  }
+
+  // Endereço (Consideramos incompleto se não tiver rua)
+  if (!address.street || address.street.trim() === '') {
+    missing.push('Endereço (Rua, Número, CEP)')
+  } else {
+    // Se a rua existe, verificamos o complemento separadamente
+    if (!address.complement || address.complement.trim() === '') {
+      missing.push('Complemento do Endereço')
+    }
+  }
+
+  return missing
+})
 </script>
 
 <template>
@@ -210,7 +271,18 @@ async function handleGeneratePdf(anamnesis) {
             {{ patient.name.charAt(0) }}
           </div>
           <div>
-            <h1 class="patient-name">{{ patient.name }}</h1>
+            <div class="name-and-status">
+              <h1 class="patient-name">{{ patient.name }}</h1>
+              <div v-if="missingInfo.length > 0" class="missing-info-badge" :title="`Faltam: ${missingInfo.join(', ')}`">
+                  <AlertTriangle :size="20" />
+                  <div class="missing-info-tooltip">
+                      <span class="tooltip-title">Faltam informações:</span>
+                      <ul class="tooltip-list">
+                          <li v-for="item in missingInfo" :key="item">{{ item }}</li>
+                      </ul>
+                  </div>
+              </div>
+            </div>
             <div class="patient-meta">
               <span>ID: #{{ patient._id.slice(-6).toUpperCase() }}</span>
               <span>{{ patient.phone }}</span>
@@ -275,6 +347,12 @@ async function handleGeneratePdf(anamnesis) {
                         required
                         phone-mask
                       />
+                      <FormInput
+                        v-model="editablePatient.email"
+                        label="E-mail"
+                        placeholder="email@exemplo.com"
+                        type="email"
+                      />
                       <StyledSelect
                         v-model="editablePatient.gender"
                         label="Gênero"
@@ -294,6 +372,10 @@ async function handleGeneratePdf(anamnesis) {
                         label="Rua / Logradouro"
                       />
                       <FormInput v-model="editablePatient.address.number" label="Número" />
+                      <FormInput
+                        v-model="editablePatient.address.complement"
+                        label="Complemento (Opcional)"
+                      />
                       <FormInput v-model="editablePatient.address.district" label="Bairro" />
                       <FormInput v-model="editablePatient.address.city" label="Cidade" />
                       <FormInput v-model="editablePatient.address.state" label="Estado" />
@@ -314,19 +396,25 @@ async function handleGeneratePdf(anamnesis) {
                   <div class="section-content grid-2-cols">
                     <div class="detail-item">
                       <span class="label">Data de Nasc.</span>
-                      <strong class="value">{{ formattedBirthDate }}</strong>
+                      <strong class="value">{{ formattedBirthDate || 'Não informado' }}</strong>
                     </div>
                     <div class="detail-item">
                       <span class="label">Gênero</span>
-                      <strong class="value">{{ patient.gender }}</strong>
+                      <strong class="value">{{ patient.gender || 'Não informado' }}</strong>
                     </div>
                     <div class="detail-item">
                       <span class="label">CPF</span>
-                      <strong class="value">{{ formatCPF(patient.cpf) }}</strong>
+                      <strong class="value">{{ displayValue(formatCPF(patient.cpf)) }}</strong
+                      >
                     </div>
                     <div class="detail-item">
                       <span class="label">Telefone</span>
                       <strong class="value">{{ formatPhone(patient.phone) }}</strong>
+                    </div>
+                    <div class="detail-item">
+                      <span class="label">E-mail</span>
+                      <strong class="value">{{ displayValue(patient.email) }}</strong
+                      >
                     </div>
                   </div>
                 </section>
@@ -342,22 +430,29 @@ async function handleGeneratePdf(anamnesis) {
                     <div class="detail-item">
                       <span class="label">Logradouro</span>
                       <strong class="value"
-                        >{{ patient.address.street }}, {{ patient.address.number }}</strong
+                        >{{ patient.address.street || 'Não informado' }}, {{ patient.address.number || 'S/N' }}</strong
+                      >
+                    </div>
+                    <div class="detail-item">
+                      <span class="label">Complemento</span>
+                      <strong class="value">{{ displayValue(patient.address.complement) }}</strong
                       >
                     </div>
                     <div class="detail-item">
                       <span class="label">Bairro</span>
-                      <strong class="value">{{ patient.address.district }}</strong>
+                      <strong class="value">{{ displayValue(patient.address.district) }}</strong
+                      >
                     </div>
                     <div class="detail-item">
                       <span class="label">Cidade / Estado</span>
                       <strong class="value"
-                        >{{ patient.address.city }} - {{ patient.address.state }}</strong
+                        >{{ patient.address.city || 'Não informado' }} - {{ patient.address.state || 'UF' }}</strong
                       >
                     </div>
                     <div class="detail-item">
                       <span class="label">CEP</span>
-                      <strong class="value">{{ patient.address.cep }}</strong>
+                      <strong class="value">{{ displayValue(patient.address.cep) }}</strong
+                      >
                     </div>
                   </div>
                   <div v-else>
@@ -509,6 +604,92 @@ async function handleGeneratePdf(anamnesis) {
 </template>
 
 <style scoped>
+/*
+  Cores Laranja (Aviso):
+  - #f59e0b (Amber-500) para o ícone.
+  - #fffbe6 (Amber-50) para o background.
+*/
+
+/* ESTILO DO TOOLTIP/AVISO */
+.name-and-status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.missing-info-badge {
+  position: relative;
+  cursor: help;
+  color: #f59e0b; /* Laranja Icone */
+  background-color: #fffbe6; /* Laranja Background Claro */
+  padding: 0.25rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.missing-info-tooltip {
+  visibility: hidden;
+  opacity: 0;
+  width: 250px;
+  /* ✨ ALTERAÇÕES PARA FUNDO CLARO (ESTILO DROPDOWN) */
+  background-color: var(--branco, #ffffff);
+  color: #374151; /* Texto escuro */
+  border: 1px solid #e5e7eb; /* Borda leve */
+
+  text-align: left;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  position: absolute;
+  z-index: 10;
+
+  /* POSICIONAMENTO PARA ABRIR PARA BAIXO */
+  top: 100%;
+  left: 0;
+  right: auto;
+  transform: translateY(10px);
+
+  transition: opacity 0.3s, visibility 0.3s, transform 0.3s;
+  font-size: 0.875rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Sombra mais suave */
+
+  max-width: calc(100vw - 40px);
+}
+
+.missing-info-tooltip::after {
+  /* Triângulo para o topo, apontando para cima (corrigido para fundo claro) */
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 5px;
+  right: auto;
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent transparent var(--branco, #ffffff) transparent; /* Cor do triângulo branca */
+}
+.missing-info-badge:hover .missing-info-tooltip {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+}
+.tooltip-title {
+    font-weight: 700;
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #1f2937; /* Cor do título mais escura */
+}
+.tooltip-list {
+    list-style: disc;
+    padding-left: 1.25rem;
+    margin: 0;
+}
+.tooltip-list li {
+    margin-bottom: 0.25rem;
+    line-height: 1.2;
+}
+
+
+/* Estilos existentes */
 .patient-header {
   display: flex;
   justify-content: space-between;
@@ -649,7 +830,7 @@ async function handleGeneratePdf(anamnesis) {
   border: 1px solid #e5e7eb;
 }
 
-/* ✨ ESTILO ADICIONADO PARA MENSAGENS DE LISTA VAZIA ✨ */
+/* ESTILO ADICIONADO PARA MENSAGENS DE LISTA VAZIA */
 .empty-list-message {
   color: var(--cinza-texto);
   font-size: 0.875rem;
@@ -812,13 +993,6 @@ async function handleGeneratePdf(anamnesis) {
     padding: 0.75rem 1rem;
     flex-grow: 1;
   }
-  .btn-edit {
-    flex-grow: 0;
-    min-width: 44px;
-  }
-  .btn-text {
-    display: block;
-  }
   .btn-edit .btn-text {
     display: none;
   }
@@ -841,6 +1015,15 @@ async function handleGeneratePdf(anamnesis) {
   .history-list .btn-secondary {
     width: 100%;
     justify-content: center;
+  }
+  /* Estilos específicos para o tooltip em telas pequenas para evitar corte */
+  .missing-info-tooltip {
+    right: 0;
+    left: auto;
+  }
+  .missing-info-tooltip::after {
+    left: auto;
+    right: 15px;
   }
 }
 </style>

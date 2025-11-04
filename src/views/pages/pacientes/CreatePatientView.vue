@@ -26,6 +26,7 @@ const patientData = ref({
   cpf: '',
   phone: '',
   gender: 'Feminino',
+  email: '',
   address: {
     cep: '',
     street: '',
@@ -33,6 +34,7 @@ const patientData = ref({
     district: '',
     city: '',
     state: '',
+    complement: '',
   },
 })
 
@@ -60,8 +62,6 @@ async function submitForm() {
     payload.phone = payload.phone.replace(/\D/g, '')
   }
 
-  // 👇 AQUI ESTÁ A CORREÇÃO PRINCIPAL
-  // Agora desestruturamos o 'error' que vem da store em caso de falha.
   const { success, error } = await patientsStore.createPatient(payload)
 
   if (success) {

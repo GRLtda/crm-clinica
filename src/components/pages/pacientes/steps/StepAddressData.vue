@@ -1,86 +1,59 @@
 <script setup>
-import { watch } from 'vue'
 import FormInput from '@/components/global/FormInput.vue'
-import { fetchAddressByCEP } from '@/api/external'
+// Assumimos que a lógica de busca de CEP e preenchimento está no componente pai (CreatePatientView)
+// ou que o v-model (que é reativo) é suficiente.
 
-const props = defineProps({
-  modelValue: { type: Object, required: true },
-})
-const emit = defineEmits(['update:modelValue'])
-
-function updateField(field, value) {
-  const newAddress = { ...props.modelValue, [field]: value }
-  emit('update:modelValue', newAddress)
-}
-
-watch(
-  () => props.modelValue.cep,
-  async (newCep) => {
-    const numericCep = newCep.replace(/\D/g, '')
-    if (numericCep.length === 8) {
-      const address = await fetchAddressByCEP(numericCep)
-      if (address) {
-        emit('update:modelValue', {
-          ...props.modelValue,
-          street: address.street,
-          district: address.neighborhood,
-          city: address.city,
-          state: address.state,
-        })
-      }
-    }
-  },
-)
+// Define a interface do v-model para o objeto address
+const addressData = defineModel()
 </script>
 
 <template>
-  <div class="form-section">
-    <h2 class="section-title">Endereço</h2>
-    <div class="form-grid">
-      <FormInput
-        :modelValue="modelValue.cep"
-        @update:modelValue="updateField('cep', $event)"
-        label="CEP"
-        :mask="'#####-###'"
-      />
-      <FormInput
-        :modelValue="modelValue.street"
-        @update:modelValue="updateField('street', $event)"
-        label="Rua / Logradouro"
-      />
-      <FormInput
-        :modelValue="modelValue.number"
-        @update:modelValue="updateField('number', $event)"
-        label="Número"
-      />
-      <FormInput
-        :modelValue="modelValue.district"
-        @update:modelValue="updateField('district', $event)"
-        label="Bairro"
-      />
-      <FormInput
-        :modelValue="modelValue.city"
-        @update:modelValue="updateField('city', $event)"
-        label="Cidade"
-      />
-      <FormInput
-        :modelValue="modelValue.state"
-        @update:modelValue="updateField('state', $event)"
-        label="Estado"
-      />
-    </div>
+  <div class="step-content grid-2-cols">
+    <FormInput v-model="addressData.cep" label="CEP" placeholder="00000-000" />
+    <FormInput
+      v-model="addressData.street"
+      label="Rua / Logradouro"
+      placeholder="Ex: Rua das Flores"
+    />
+    <FormInput
+      v-model="addressData.number"
+      label="Número"
+      placeholder="Ex: 123 ou S/N"
+    />
+    <FormInput
+      v-model="addressData.complement"
+      label="Complemento"
+      placeholder="Ex: Apt 101, Fundos"
+    />
+    <FormInput
+      v-model="addressData.district"
+      label="Bairro"
+      placeholder="Ex: Centro"
+    />
+    <FormInput
+      v-model="addressData.city"
+      label="Cidade"
+      placeholder="Ex: São Paulo"
+    />
+    <FormInput
+      v-model="addressData.state"
+      label="Estado"
+      placeholder="Ex: SP"
+    />
   </div>
 </template>
 
 <style scoped>
-.section-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
-}
-.form-grid {
+.step-content {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem 2rem;
+  padding-bottom: 1.25rem;
+}
+@media (max-width: 768px) {
+  .step-content {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
 }
 </style>
