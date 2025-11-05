@@ -35,31 +35,25 @@ const questionTypes = [
   { value: 'multiple_choice', label: 'Múltipla Escolha (várias respostas)' },
 ]
 
-// ✨ NOVO: Helper para gerar o qId
 function generateQId() {
-  // Gera um ID aleatório simples (Ex: "q_a98b2c1")
   return 'q_' + Math.random().toString(36).substring(2, 9)
 }
 
-// ✨ NOVO: Helper recursivo para validar perguntas
 function validateQuestions(questionArray) {
   let isValid = true
   if (!questionArray) return true
 
   for (const q of questionArray) {
-    // 1. Valida o título da pergunta
     if (!q.title || !q.title.trim()) {
       validationErrors.value.add(q._tempId)
       isValid = false
     }
 
-    // 2. Valida recursivamente as sub-perguntas
     if (q.conditionalQuestions && q.conditionalQuestions.length > 0) {
       for (const group of q.conditionalQuestions) {
         if (group.questions && group.questions.length > 0) {
           if (!validateQuestions(group.questions)) {
-            // Chama recursivamente
-            isValid = false // Propaga o erro para cima
+            isValid = false
           }
         }
       }
@@ -74,33 +68,26 @@ function processLoadedQuestions(questionArray) {
   }
 
   return questionArray.map((q) => {
-    // Garante um qId (seja do backend ou um novo para duplicação)
     const newQId = props.templateToDuplicate ? generateQId() : q.qId || generateQId()
 
-    // Processa recursivamente as sub-perguntas
     const processedConditionalQuestions = (q.conditionalQuestions || []).map(
       (group) => {
-        // ✨ CORREÇÃO AQUI ✨
-        // Garante que o valor da condição (showWhenAnswerIs) seja sempre
-        // uma string para compatibilidade com o StyledSelect.
         let processedShowWhenAnswerIs = group.showWhenAnswerIs
 
         if (typeof processedShowWhenAnswerIs === 'boolean') {
-          // Converte true -> 'true' e false -> 'false'
           processedShowWhenAnswerIs = String(processedShowWhenAnswerIs)
         } else if (
           processedShowWhenAnswerIs === null ||
           processedShowWhenAnswerIs === undefined
         ) {
-          // Garante que não seja nulo se vier assim do DB
           processedShowWhenAnswerIs = ''
         }
 
         return {
           ...group,
-          showWhenAnswerIs: processedShowWhenAnswerIs, // <-- Usa o valor processado
-          _tempId: Date.now() + Math.random(), // ID temporário para UI
-          questions: processLoadedQuestions(group.questions || []), // Recursão
+          showWhenAnswerIs: processedShowWhenAnswerIs,
+          _tempId: Date.now() + Math.random(),
+          questions: processLoadedQuestions(group.questions || []),
         }
       }
     )
@@ -108,42 +95,35 @@ function processLoadedQuestions(questionArray) {
     return {
       ...q,
       qId: newQId,
-      _tempId: q._id || newQId, // ID temporário para o v-for
+      _tempId: q._id || newQId,
       options: q.options || [],
       conditionalQuestions: processedConditionalQuestions,
     }
   })
 }
 
-// ✨ onMounted ATUALIZADO (Usando os novos helpers) ✨
 onMounted(async () => {
   console.log('Modal Montado.')
 
   try {
     if (props.templateToDuplicate) {
-      // 1. MODO DUPLICAR
       console.log('Entrou em MODO DUPLICAR')
       templateName.value = `${props.templateToDuplicate.name} (Cópia)`
-      // Processa as perguntas recursivamente para gerar novos qIds
       questions.value = processLoadedQuestions(props.templateToDuplicate.questions)
     } else if (isEditMode.value) {
-      // 2. MODO EDIÇÃO
       console.log('Entrou em MODO EDIÇÃO', props.templateIdToEdit)
       const templateData = await anamnesisStore.fetchTemplateById(
         props.templateIdToEdit
       )
       if (templateData) {
         templateName.value = templateData.name
-        // Processa as perguntas para garantir a estrutura local
         questions.value = processLoadedQuestions(templateData.questions)
       } else {
         toast.error('Não foi possível carregar o modelo para edição.')
         emit('close')
       }
     } else {
-      // 3. MODO CRIAÇÃO
       console.log('Entrou em MODO CRIAÇÃO')
-      // Adiciona uma primeira pergunta vazia
       addNewQuestion()
     }
   } catch (error) {
@@ -158,12 +138,12 @@ onMounted(async () => {
 
 function addNewQuestion() {
   questions.value.push({
-    _tempId: Date.now(), // ID temporário para a UI (v-for key)
-    qId: generateQId(), // ✨ NOVO: ID Único da Pergunta
+    _tempId: Date.now(),
+    qId: generateQId(),
     title: '',
     questionType: 'text',
     options: [],
-    conditionalQuestions: [], // ✨ NOVO: Array para perguntas condicionais
+    conditionalQuestions: [],
   })
 }
 
@@ -179,34 +159,29 @@ function removeOption(questionIndex, optionIndex) {
   questions.value[questionIndex].options.splice(optionIndex, 1)
 }
 
-// --- ✨ NOVAS FUNÇÕES PARA PERGUNTAS CONDICIONAIS ---
-
 function addConditionalQuestionGroup(questionIndex) {
   const question = questions.value[questionIndex]
   if (!question.conditionalQuestions) {
     question.conditionalQuestions = []
   }
 
-  // Define a primeira resposta possível como padrão
   let defaultCondition = ''
   if (question.questionType === 'yes_no') {
-    defaultCondition = 'true' // ✨ CORREÇÃO: Alterado de (boolean) true para (string) 'true'
+    defaultCondition = 'true'
   } else if (question.questionType === 'single_choice' && question.options.length > 0) {
     defaultCondition = question.options[0]
   }
 
   const newGroup = {
-    _tempId: Date.now(), // ID temporário para UI
+    _tempId: Date.now(),
     showWhenAnswerIs: defaultCondition,
     questions: [],
   }
 
   question.conditionalQuestions.push(newGroup)
 
-  // Adiciona a primeira sub-pergunta automaticamente
   addConditionalQuestion(questionIndex, question.conditionalQuestions.length - 1)
 
-  // Abre o toggle da UI
   toggleConditionalGroup(question._tempId)
 }
 
@@ -221,11 +196,10 @@ function addConditionalQuestion(questionIndex, groupIndex) {
   }
   group.questions.push({
     _tempId: Date.now(),
-    qId: generateQId(), // ✨ NOVO: qId para sub-pergunta
+    qId: generateQId(),
     title: '',
     questionType: 'text',
     options: [],
-    // Sub-perguntas (nível 2) não podem ter condicionais (por enquanto)
     conditionalQuestions: [],
   })
 }
@@ -237,7 +211,6 @@ function removeConditionalQuestion(questionIndex, groupIndex, subQuestionIndex) 
   )
 }
 
-// ✨ NOVA FUNÇÃO (Adicionar Opção na Sub-Pergunta)
 function addSubQuestionOption(questionIndex, groupIndex, subQuestionIndex) {
   const subQuestion =
     questions.value[questionIndex].conditionalQuestions[groupIndex].questions[
@@ -249,7 +222,6 @@ function addSubQuestionOption(questionIndex, groupIndex, subQuestionIndex) {
   subQuestion.options.push('')
 }
 
-// ✨ NOVA FUNÇÃO (Remover Opção na Sub-Pergunta)
 function removeSubQuestionOption(
   questionIndex,
   groupIndex,
@@ -261,14 +233,11 @@ function removeSubQuestionOption(
   ].options.splice(optionIndex, 1)
 }
 
-// Controla a UI para abrir/fechar o <details> de um grupo condicional
 function toggleConditionalGroup(questionTempId) {
   openConditionalGroups.value[questionTempId] =
     !openConditionalGroups.value[questionTempId]
 }
 
-// Retorna as opções de resposta que podem disparar uma condição
-// Retorna as opções de resposta que podem disparar uma condição
 function getConditionOptions(question) {
   if (question.questionType === 'yes_no') {
     return [
@@ -282,23 +251,18 @@ function getConditionOptions(question) {
   return []
 }
 
-// --- FIM DAS NOVAS FUNÇÕES ---
-
-// ✨ NOVO: Helper recursivo para limpar o payload antes de enviar
 function cleanPayload(questionArray) {
   if (!questionArray) return []
   return questionArray.map((q) => {
-    // Remove o _tempId e outras chaves temporárias da UI
     const { _tempId, ...questionData } = q
 
-    // Limpa recursivamente as sub-perguntas
     const cleanedConditionalQuestions = (
       questionData.conditionalQuestions || []
     ).map((group) => {
       const { _tempId: groupTempId, ...groupData } = group
       return {
         ...groupData,
-        questions: cleanPayload(groupData.questions || []), // Recursão
+        questions: cleanPayload(groupData.questions || []),
       }
     })
 
@@ -310,17 +274,15 @@ function cleanPayload(questionArray) {
 }
 
 async function handleSubmit() {
-  // ✨ ATUALIZADO: Limpa erros anteriores e valida
   validationErrors.value.clear()
   let isFormValid = true
 
   if (!templateName.value) {
     toast.error('Por favor, dê um nome ao modelo.')
-    validationErrors.value.add('templateName') // Rastreia o erro
+    validationErrors.value.add('templateName')
     isFormValid = false
   }
 
-  // Valida as perguntas principais e sub-perguntas
   if (!validateQuestions(questions.value)) {
     isFormValid = false
   }
@@ -331,9 +293,7 @@ async function handleSubmit() {
     )
     return
   }
-  // --- Fim da validação ---
 
-  // Se chegou aqui, é válido. Continua o processo:
   const preparedQuestions = cleanPayload(questions.value)
 
   const payload = {
@@ -346,14 +306,12 @@ async function handleSubmit() {
   try {
     let response
     if (isEditMode.value) {
-      // MODO EDIÇÃO
       response = await anamnesisStore.updateTemplate(
         props.templateIdToEdit,
         payload
       )
       toast.success(response.message || 'Modelo atualizado com sucesso!')
     } else {
-      // MODO CRIAÇÃO (ou DUPLICAÇÃO)
       response = await anamnesisStore.createTemplate(payload)
       toast.success(response.message || 'Modelo criado com sucesso!')
     }
@@ -456,9 +414,7 @@ async function handleSubmit() {
             <div
               class="conditional-section"
               v-if="
-                question.questionType === 'yes_no' ||
-                question.questionType === 'single_choice'
-              "
+                question.questionType === 'yes_no'"
             >
               <button
                 class="btn-toggle-conditional"
@@ -721,7 +677,7 @@ async function handleSubmit() {
   font-size: 1.125rem;
   font-weight: 600;
   color: var(--azul-principal);
-  padding-top: 0.75rem; /* Alinha com o input */
+  padding-top: 0.75rem;
 }
 
 .form-group-inline {
@@ -736,6 +692,7 @@ async function handleSubmit() {
 .question-type-select {
   width: 220px;
   flex-shrink: 0;
+  margin-bottom: 1.25em
 }
 
 .btn-icon {
@@ -748,7 +705,7 @@ async function handleSubmit() {
   transition:
     background-color 0.2s ease,
     color 0.2s ease;
-  margin-top: 1.75rem; /* Alinha com botões */
+  margin-top: 1.75rem;
 }
 .btn-icon:hover {
   background-color: #f3f4f6;
@@ -834,11 +791,6 @@ async function handleSubmit() {
   background-color: #f9fafb;
 }
 
-/* --- ✨ NOVOS ESTILOS CONDICIONAIS --- */
-.conditional-section {
-  padding-left: 2.5rem;
-  margin-top: 1rem;
-}
 
 .btn-toggle-conditional {
   display: flex;
@@ -923,7 +875,6 @@ async function handleSubmit() {
   margin-top: 0.5rem;
 }
 
-/* --- ✨ NOVOS ESTILOS PARA CORREÇÃO (OPÇÕES EM SUB-PERGUNTAS) --- */
 .sub-question-content-wrapper {
   flex-grow: 1;
   display: flex;
@@ -931,13 +882,11 @@ async function handleSubmit() {
 }
 
 .sub-options-wrapper {
-  /* Remove o padding-left e margin-top excessivo do .options-wrapper principal */
   padding-left: 0;
   margin-top: 0.75rem;
   border-top: 1px solid #f3f4f6;
   padding-top: 0.75rem;
 }
-/* --- FIM DOS NOVOS ESTILOS --- */
 
 
 .add-sub-question {
@@ -945,19 +894,17 @@ async function handleSubmit() {
   padding-left: 0.5rem;
 }
 
-/* --- ✨ NOVO ESTILO DE VALIDAÇÃO ✨ --- */
 .has-error :deep(input),
 .has-error :deep(textarea) {
-  border-color: #ef4444 !important; /* Vermelho erro */
-  background-color: #fee2e2 !important; /* Fundo vermelho bem claro */
+  border-color: #ef4444 !important;
+  background-color: #fee2e2 !important;
 }
 
 .has-error :deep(input:focus),
 .has-error :deep(textarea:focus) {
   border-color: #ef4444 !important;
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important; /* Sombra vermelha no foco */
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
 }
-/* --- FIM DO NOVO ESTILO --- */
 
 .add-group-btn {
   background: none;
