@@ -103,15 +103,11 @@ function processLoadedQuestions(questionArray) {
 }
 
 onMounted(async () => {
-  console.log('Modal Montado.')
-
   try {
     if (props.templateToDuplicate) {
-      console.log('Entrou em MODO DUPLICAR')
       templateName.value = `${props.templateToDuplicate.name} (Cópia)`
       questions.value = processLoadedQuestions(props.templateToDuplicate.questions)
     } else if (isEditMode.value) {
-      console.log('Entrou em MODO EDIÇÃO', props.templateIdToEdit)
       const templateData = await anamnesisStore.fetchTemplateById(
         props.templateIdToEdit
       )
@@ -123,7 +119,6 @@ onMounted(async () => {
         emit('close')
       }
     } else {
-      console.log('Entrou em MODO CRIAÇÃO')
       addNewQuestion()
     }
   } catch (error) {
@@ -301,8 +296,6 @@ async function handleSubmit() {
     questions: preparedQuestions,
   }
 
-  console.log('Payload final (limpo):', JSON.stringify(payload, null, 2))
-
   try {
     let response
     if (isEditMode.value) {
@@ -326,10 +319,13 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <div class="modal-backdrop" @click.self="emit('close')">
+<div class="modal-backdrop" @click.self="emit('close')">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 v-if="isEditMode" class="modal-title">Editar Modelo de Anamnese</h3>
+        <div v-if="isEditMode">
+          <h3 class="modal-title">Editar Modelo de Anamnese</h3>
+          <span class="beta-badge">Beta</span>
+        </div>
         <h3 v-else-if="props.templateToDuplicate" class="modal-title">
           Duplicar Modelo de Anamnese
         </h3>
@@ -638,6 +634,18 @@ async function handleSubmit() {
 .modal-close-btn:hover {
   color: var(--preto);
   transform: scale(1.1);
+}
+
+.beta-badge {
+  display: inline-block;
+  margin-top: 4px; /* Joga para baixo do título */
+  padding: 2px 8px;
+  border-radius: 12px;
+  background-color: #eff6ff; /* Azul claro */
+  color: #2563eb; /* Azul */
+  font-size: 0.75rem; /* 12px */
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .modal-body {

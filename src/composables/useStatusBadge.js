@@ -41,6 +41,15 @@ export function useStatusBadge(status) {
         color: '#64748b',
       },
     },
+    // V-- Alteração aqui --V
+    beta: {
+      class: 'beta',
+      style: {
+        backgroundColor: '#eff6ff', // Azul claro (estilo "info")
+        color: '#2563eb', // Azul (estilo "info")
+      },
+    },
+    // ^-- Fim da alteração --^
   }
 
   // Não é mais 'computed'
