@@ -177,7 +177,6 @@ function addConditionalQuestionGroup(questionIndex) {
 
   addConditionalQuestion(questionIndex, question.conditionalQuestions.length - 1)
 
-  toggleConditionalGroup(question._tempId)
 }
 
 function removeConditionalQuestionGroup(questionIndex, groupIndex) {
