@@ -4,13 +4,14 @@ import { useRoute } from 'vue-router'
 import { useAnamnesisStore } from '@/stores/anamnesis'
 import { useToast } from 'vue-toastification'
 import confetti from 'canvas-confetti'
+import Cookies from 'js-cookie'
 import {
   CheckCircle2,
   AlertTriangle,
   Building,
   CornerDownRight,
 } from 'lucide-vue-next'
-import AnamnesisQuestionInputs from '../public/AnamnesisQuestionInputs.vue' // (Ajuste o caminho se necessário)
+import AnamnesisQuestionInputs from '../public/AnamnesisQuestionInputs.vue'
 
 const route = useRoute()
 const anamnesisStore = useAnamnesisStore()
@@ -50,9 +51,8 @@ function initializeAnswers(questionsArray) {
   }
 }
 
-// ✨ NOVO: Helper para converter índice em letra (0=A, 1=B, etc.)
 function getSubQuestionLetter(index) {
-  return String.fromCharCode(65 + index) // 65 é o char code para 'A'
+  return String.fromCharCode(65 + index)
 }
 
 onMounted(async () => {
@@ -65,7 +65,8 @@ onMounted(async () => {
     if (Array.isArray(questions)) {
       initializeAnswers(questions)
 
-      const savedAnswersRaw = localStorage.getItem(storageKey)
+      const savedAnswersRaw = Cookies.get(storageKey)
+
       if (savedAnswersRaw) {
         try {
           const savedAnswers = JSON.parse(savedAnswersRaw)
@@ -78,8 +79,9 @@ onMounted(async () => {
             toast.info('Seu progresso anterior foi restaurado!')
           }
         } catch (e) {
-          console.error('Falha ao carregar respostas do localStorage:', e)
-          localStorage.removeItem(storageKey)
+          console.error('Falha ao carregar respostas do cookie:', e)
+          // ✨ ALTERADO: Remove o cookie em caso de erro
+          Cookies.remove(storageKey, { path: '/' })
         }
       }
     } else {
@@ -96,7 +98,12 @@ watch(
   answers,
   (newAnswers) => {
     if (responseData.value && submissionStatus.value === 'pending') {
-      localStorage.setItem(storageKey, JSON.stringify(newAnswers))
+      // ✨ ALTERADO: Salva no cookie com expiração de 7 dias
+      Cookies.set(storageKey, JSON.stringify(newAnswers), {
+        expires: 7,
+        path: '/',
+        sameSite: 'Lax',
+      })
 
       Object.keys(newAnswers).forEach((qId) => {
         const answer = newAnswers[qId].answer
@@ -203,7 +210,7 @@ async function handleSubmit() {
   const { success } = await anamnesisStore.submitPublicAnamnesis(token, payload)
 
   if (success) {
-    localStorage.removeItem(storageKey)
+    Cookies.remove(storageKey, { path: '/' })
     submissionStatus.value = 'success'
   }
 }
