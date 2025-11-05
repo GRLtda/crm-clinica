@@ -260,7 +260,9 @@ async function handleSubmit() {
                 <span>{{ responseData.patientInfo.gender }}</span>
                 <span v-if="responseData.patientInfo.cpf"
                   >CPF:
-                  {{ responseData.patientInfo.cpf.substring(0, 3) }}.***.***-**</span
+                  {{
+                    responseData.patientInfo.cpf.substring(0, 3)
+                  }}.***.***-**</span
                 >
               </div>
             </div>
@@ -305,7 +307,8 @@ async function handleSubmit() {
                     class="sub-question-wrapper"
                     v-if="
                       answers[question.qId] &&
-                      answers[question.qId].answer === group.showWhenAnswerIs
+                      String(answers[question.qId].answer) ===
+                        group.showWhenAnswerIs
                     "
                   >
                     <div
@@ -339,7 +342,7 @@ async function handleSubmit() {
                   </div>
                 </Transition>
               </div>
-              </div>
+            </div>
             <button type="submit" class="submit-button">Enviar Respostas</button>
           </form>
         </div>
