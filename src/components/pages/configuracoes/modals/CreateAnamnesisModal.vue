@@ -633,6 +633,11 @@ async function handleSubmit() {
   color: #9ca3af;
   cursor: pointer;
   line-height: 1;
+  transition: all 0.2s ease;
+}
+.modal-close-btn:hover {
+  color: var(--preto);
+  transform: scale(1.1);
 }
 
 .modal-body {
@@ -692,7 +697,7 @@ async function handleSubmit() {
 .question-type-select {
   width: 220px;
   flex-shrink: 0;
-  margin-bottom: 1.25em
+  margin-bottom: 1.25em;
 }
 
 .btn-icon {
@@ -704,16 +709,19 @@ async function handleSubmit() {
   color: var(--cinza-texto);
   transition:
     background-color 0.2s ease,
-    color 0.2s ease;
+    color 0.2s ease,
+    transform 0.2s ease;
   margin-top: 1.75rem;
 }
 .btn-icon:hover {
   background-color: #f3f4f6;
   color: var(--preto);
+  transform: scale(1.05);
 }
 .btn-icon.btn-delete:hover {
   background-color: #fee2e2;
   color: #ef4444;
+  transform: scale(1.05);
 }
 .btn-icon.btn-delete-option {
   color: #9ca3af;
@@ -723,6 +731,7 @@ async function handleSubmit() {
 .btn-icon.btn-delete-option:hover {
   background-color: #fee2e2;
   color: #ef4444;
+  transform: scale(1.05);
 }
 
 .options-wrapper {
@@ -759,7 +768,12 @@ async function handleSubmit() {
   gap: 0.25rem;
   margin-top: 0.5rem;
   font-size: 0.9rem;
-  padding: 0.25rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.375rem;
+  transition: background-color 0.2s ease;
+}
+.add-option-btn:hover {
+  background-color: #eef2ff;
 }
 
 .add-question-btn {
@@ -776,10 +790,12 @@ async function handleSubmit() {
   gap: 0.5rem;
   font-weight: 600;
   color: #374151;
+  transition: all 0.2s ease;
 }
 .add-question-btn:hover {
   background: #f3f4f6;
-  border-color: #9ca3af;
+  border-color: var(--azul-principal);
+  color: var(--azul-principal);
 }
 
 .modal-footer {
@@ -791,6 +807,44 @@ async function handleSubmit() {
   background-color: #f9fafb;
 }
 
+/* --- ESTILOS DE BOTÃO ADICIONADOS --- */
+.btn {
+  font-family: var(--fonte-principal, 'Inter', sans-serif);
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0.65rem 1.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  line-height: 1.2;
+}
+
+.btn-primary {
+  background-color: var(--azul-principal);
+  color: #ffffff;
+  border-color: var(--azul-principal);
+}
+.btn-primary:hover {
+  background-color: var(--azul-principal-escuro);
+  border-color: var(--azul-principal-escuro);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.btn-secondary {
+  background-color: #ffffff;
+  color: #374151;
+  border-color: #d1d5db;
+}
+.btn-secondary:hover {
+  background-color: #f9fafb;
+  border-color: #9ca3af;
+}
+/* --- FIM DOS ESTILOS DE BOTÃO ADICIONADOS --- */
 
 .btn-toggle-conditional {
   display: flex;
@@ -804,6 +858,9 @@ async function handleSubmit() {
   font-size: 0.9rem;
   padding: 0.25rem 0.5rem;
   border-radius: 0.25rem;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 .btn-toggle-conditional:hover {
   background-color: #f3f4f6;
@@ -888,7 +945,6 @@ async function handleSubmit() {
   padding-top: 0.75rem;
 }
 
-
 .add-sub-question {
   margin-top: 1rem;
   padding-left: 0.5rem;
@@ -920,9 +976,148 @@ async function handleSubmit() {
   padding: 0.5rem 0.75rem;
   border-radius: 0.375rem;
   align-self: flex-start;
+  transition: all 0.2s ease;
 }
 .add-group-btn:hover {
   background: #f3f4f6;
-  border-color: #9ca3af;
+  border-color: var(--azul-principal);
+  color: var(--azul-principal);
+}
+
+@media (max-width: 768px) {
+  .modal-backdrop {
+    /* Permite que o modal encoste nas bordas */
+    padding: 0;
+  }
+
+  .modal-content {
+    /* O modal ocupa a tela inteira em celulares */
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .modal-header {
+    padding: 1rem 1.5rem;
+  }
+
+  .modal-body {
+    /* Reduz o padding lateral em telas menores */
+    padding: 1.5rem 1rem;
+  }
+
+  .question-card {
+    padding: 1rem;
+  }
+
+  .question-header {
+    gap: 0.5rem;
+  }
+
+  .question-number {
+    /* Alinha o número com o topo do primeiro input empilhado */
+    padding-top: 0.5rem;
+  }
+
+  .form-group-inline {
+    /* Empilha o input de Pergunta e o select de Tipo */
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+
+  .question-type-select {
+    /* O select agora ocupa 100% da largura */
+    width: 100%;
+    margin-bottom: 0; /* Reseta a margem que alinhava embaixo */
+  }
+
+  .btn-icon {
+    /* Alinha o botão de deletar com o topo do primeiro input empilhado */
+    margin-top: 0.5rem;
+  }
+
+  .options-wrapper {
+    /* Reduz o recuo das opções */
+    padding-left: 1rem;
+    margin-top: 1rem;
+  }
+
+  .option-input-wrapper {
+    gap: 0.25rem;
+  }
+  .option-input-wrapper .form-group {
+    margin-bottom: 0.75rem;
+  }
+
+  .conditional-group {
+    padding: 0.75rem;
+  }
+
+  .group-header {
+    /* Empilha os controles do grupo condicional */
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .condition-select {
+    width: 100%;
+  }
+
+  .group-header .btn-icon {
+    /* Move o botão de deletar grupo para a direita da coluna */
+    margin-left: 0;
+    align-self: flex-end;
+  }
+
+  .sub-q-icon {
+    /* Alinha o ícone com o topo do input empilhado */
+    margin-top: 0.5rem;
+  }
+
+  .sub-question-card .btn-icon {
+    margin-top: 0.5rem;
+  }
+
+  .sub-options-wrapper {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+  }
+
+  .modal-footer {
+    padding: 1rem 1.5rem;
+    /* Empilha os botões do rodapé */
+    flex-direction: column-reverse; /* Botão primário fica por último (embaixo) */
+    gap: 0.75rem;
+  }
+
+  .modal-footer .btn {
+    /* Botões ocupam 100% da largura */
+    width: 100%;
+    margin: 0; /* Remove margens laterais se houver */
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-body {
+    padding: 1rem;
+  }
+  .modal-header,
+  .modal-footer {
+    padding: 1rem;
+  }
+  .question-number {
+    font-size: 1rem;
+    padding-top: 0.6rem;
+  }
+  .sub-q-icon {
+    margin-top: 0.6rem;
+  }
 }
 </style>
