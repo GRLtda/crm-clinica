@@ -169,6 +169,33 @@ export const useAnamnesisStore = defineStore('anamnesis', () => {
     }
   }
 
+  async function assignAnamnesis(patientId, templateId) {
+    isLoading.value = true
+    try {
+      // Chama a função da API importada como apiAssignAnamnesis
+      const response = await apiAssignAnamnesis(patientId, templateId)
+
+      // Se o backend retornar a anamnese criada (o que é uma boa prática),
+      // podemos adicioná-la imediatamente ao estado local.
+      if (response.data.anamnesis) {
+        patientAnamneses.value.push(response.data.anamnesis)
+      }
+
+      toast.success('Anamnese atribuída com sucesso!')
+
+      // Retorna os dados (incluindo o token) para o modal
+      return { success: true, data: response.data }
+    } catch (error) {
+      console.error('Erro ao atribuir anamnese:', error)
+      const errorMessage =
+        error.response?.data?.message || error.message || 'Erro desconhecido'
+      toast.error(`Erro ao atribuir anamnese: ${errorMessage}`)
+      return { success: false, error }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   // ✨✨ FUNÇÃO CORRIGIDA (para o erro .filter) ✨✨
   // Ação para buscar TODAS as anamneses (respostas) de um paciente
   async function fetchAnamnesisForPatient(patientId) {
@@ -260,6 +287,7 @@ export const useAnamnesisStore = defineStore('anamnesis', () => {
     // Funções de Template
     fetchTemplates,
     createTemplate,
+    assignAnamnesis,
     deleteTemplate,
     fetchTemplateById,
     updateTemplate,
