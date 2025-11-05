@@ -1,7 +1,13 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useAnamnesisStore } from '@/stores/anamnesis'
-import { Plus, Trash2 } from 'lucide-vue-next'
+import {
+  Plus,
+  Trash2,
+  ChevronRight,
+  ChevronDown,
+  CornerDownRight,
+} from 'lucide-vue-next' // Ícones adicionados
 import FormInput from '@/components/global/FormInput.vue'
 import StyledSelect from '@/components/global/StyledSelect.vue'
 import { useToast } from 'vue-toastification'
@@ -16,6 +22,7 @@ const toast = useToast()
 
 const templateName = ref('')
 const questions = ref([])
+const openConditionalGroups = ref({}) // Novo: Para controlar o toggle UI
 
 const isEditMode = computed(() => !!props.templateIdToEdit && !props.templateToDuplicate)
 
@@ -27,65 +34,92 @@ const questionTypes = [
   { value: 'multiple_choice', label: 'Múltipla Escolha (várias respostas)' },
 ]
 
-// ✨ onMounted ATUALIZADO (Adicionando _tempId) ✨
+// ✨ NOVO: Helper para gerar o qId
+function generateQId() {
+  // Gera um ID aleatório simples (Ex: "q_a98b2c1")
+  return 'q_' + Math.random().toString(36).substring(2, 9)
+}
+
+// ✨ NOVO: Helper recursivo para processar perguntas (para duplicar/editar)
+function processLoadedQuestions(questionArray) {
+  if (!questionArray || questionArray.length === 0) {
+    return []
+  }
+
+  return questionArray.map((q) => {
+    // Garante um qId (seja do backend ou um novo para duplicação)
+    const newQId = props.templateToDuplicate ? generateQId() : q.qId || generateQId()
+
+    // Processa recursivamente as sub-perguntas
+    const processedConditionalQuestions = (q.conditionalQuestions || []).map(
+      (group) => {
+        return {
+          ...group,
+          _tempId: Date.now() + Math.random(), // ID temporário para UI
+          questions: processLoadedQuestions(group.questions || []), // Recursão
+        }
+      }
+    )
+
+    return {
+      ...q,
+      qId: newQId,
+      _tempId: q._id || newQId, // ID temporário para o v-for
+      options: q.options || [],
+      conditionalQuestions: processedConditionalQuestions,
+    }
+  })
+}
+
+// ✨ onMounted ATUALIZADO (Usando os novos helpers) ✨
 onMounted(async () => {
   console.log('Modal Montado.')
 
   try {
     if (props.templateToDuplicate) {
       // 1. MODO DUPLICAR
-      console.log('Entrando em MODO DUPLICAR')
-      templateName.value = `Cópia de ${props.templateToDuplicate.name}`
-
-      if (Array.isArray(props.templateToDuplicate.questions)) {
-        // Copia e adiciona um ID temporário para forçar a reatividade do :key
-        let counter = 0
-        questions.value = JSON.parse(JSON.stringify(props.templateToDuplicate.questions)).map(
-          (q) => ({
-            ...q,
-            _tempId: counter++, // Adiciona um ID único
-          }),
-        )
-
-        console.log('Perguntas copiadas (com _tempId):', questions.value)
-      } else {
-        questions.value = []
-      }
+      console.log('Entrou em MODO DUPLICAR')
+      templateName.value = `${props.templateToDuplicate.name} (Cópia)`
+      // Processa as perguntas recursivamente para gerar novos qIds
+      questions.value = processLoadedQuestions(props.templateToDuplicate.questions)
     } else if (isEditMode.value) {
       // 2. MODO EDIÇÃO
-      console.log('Entrando em MODO EDIÇÃO')
-      const templateData = await anamnesisStore.fetchTemplateById(props.templateIdToEdit)
+      console.log('Entrou em MODO EDIÇÃO', props.templateIdToEdit)
+      const templateData = await anamnesisStore.fetchTemplateById(
+        props.templateIdToEdit
+      )
       if (templateData) {
         templateName.value = templateData.name
-
-        if (Array.isArray(templateData.questions)) {
-          let counter = 0
-          // Adiciona ID temporário aqui também, por segurança
-          questions.value = JSON.parse(JSON.stringify(templateData.questions)).map((q) => ({
-            ...q,
-            _tempId: counter++,
-          }))
-          console.log('Perguntas carregadas (edição):', questions.value)
-        } else {
-          questions.value = []
-        }
+        // Processa as perguntas para garantir a estrutura local
+        questions.value = processLoadedQuestions(templateData.questions)
+      } else {
+        toast.error('Não foi possível carregar o modelo para edição.')
+        emit('close')
       }
     } else {
       // 3. MODO CRIAÇÃO
-      console.log('Entrando em MODO CRIAÇÃO (Novo)')
+      console.log('Entrou em MODO CRIAÇÃO')
+      // Adiciona uma primeira pergunta vazia
+      addNewQuestion()
     }
   } catch (error) {
-    console.error('Erro no onMounted do CreateAnamnesisModal:', error)
-    toast.error('Erro ao carregar dados no modal.')
+    console.error('Erro no onMounted do modal:', error)
+    toast.error(
+      error.response?.data?.message ||
+        'Erro ao preparar o modal de anamnese.'
+    )
+    emit('close')
   }
 })
 
-function addQuestion() {
+function addNewQuestion() {
   questions.value.push({
+    _tempId: Date.now(), // ID temporário para a UI (v-for key)
+    qId: generateQId(), // ✨ NOVO: ID Único da Pergunta
     title: '',
     questionType: 'text',
     options: [],
-    _tempId: new Date().getTime(), // Garante um ID único ao adicionar nova pergunta
+    conditionalQuestions: [], // ✨ NOVO: Array para perguntas condicionais
   })
 }
 
@@ -93,190 +127,524 @@ function removeQuestion(index) {
   questions.value.splice(index, 1)
 }
 
-function addOption(question) {
-  if (!question.options) {
-    question.options = []
+function addOption(questionIndex) {
+  questions.value[questionIndex].options.push('')
+}
+
+function removeOption(questionIndex, optionIndex) {
+  questions.value[questionIndex].options.splice(optionIndex, 1)
+}
+
+// --- ✨ NOVAS FUNÇÕES PARA PERGUNTAS CONDICIONAIS ---
+
+function addConditionalQuestionGroup(questionIndex) {
+  const question = questions.value[questionIndex]
+  if (!question.conditionalQuestions) {
+    question.conditionalQuestions = []
   }
-  question.options.push('')
+
+  // Define a primeira resposta possível como padrão
+  let defaultCondition = ''
+  if (question.questionType === 'yes_no') {
+    defaultCondition = true // "Sim"
+  } else if (question.questionType === 'single_choice' && question.options.length > 0) {
+    defaultCondition = question.options[0]
+  }
+
+  const newGroup = {
+    _tempId: Date.now(), // ID temporário para UI
+    showWhenAnswerIs: defaultCondition,
+    questions: [],
+  }
+
+  question.conditionalQuestions.push(newGroup)
+
+  // Adiciona a primeira sub-pergunta automaticamente
+  addConditionalQuestion(questionIndex, question.conditionalQuestions.length - 1)
+
+  // // Abre o toggle da UI
+  // toggleConditionalGroup(question._tempId)
 }
 
-function removeOption(question, optIndex) {
-  question.options.splice(optIndex, 1)
+function removeConditionalQuestionGroup(questionIndex, groupIndex) {
+  questions.value[questionIndex].conditionalQuestions.splice(groupIndex, 1)
 }
 
-async function saveTemplate() {
-  // O backend não se importa com o _tempId, então podemos enviá-lo
-  const templateData = {
+function addConditionalQuestion(questionIndex, groupIndex) {
+  const group = questions.value[questionIndex].conditionalQuestions[groupIndex]
+  if (!group.questions) {
+    group.questions = []
+  }
+  group.questions.push({
+    _tempId: Date.now(),
+    qId: generateQId(), // ✨ NOVO: qId para sub-pergunta
+    title: '',
+    questionType: 'text',
+    options: [],
+    // Sub-perguntas (nível 2) não podem ter condicionais (por enquanto)
+    conditionalQuestions: [],
+  })
+}
+
+function removeConditionalQuestion(questionIndex, groupIndex, subQuestionIndex) {
+  questions.value[questionIndex].conditionalQuestions[groupIndex].questions.splice(
+    subQuestionIndex,
+    1
+  )
+}
+
+// Controla a UI para abrir/fechar o <details> de um grupo condicional
+function toggleConditionalGroup(questionTempId) {
+  openConditionalGroups.value[questionTempId] =
+    !openConditionalGroups.value[questionTempId]
+}
+
+// Retorna as opções de resposta que podem disparar uma condição
+function getConditionOptions(question) {
+  if (question.questionType === 'yes_no') {
+    return [
+      { label: 'Sim', value: true },
+      { label: 'Não', value: false },
+    ]
+  }
+  if (question.questionType === 'single_choice') {
+    return question.options.map((opt) => ({ label: opt, value: opt }))
+  }
+  return []
+}
+
+// --- FIM DAS NOVAS FUNÇÕES ---
+
+// ✨ NOVO: Helper recursivo para limpar o payload antes de enviar
+function cleanPayload(questionArray) {
+  if (!questionArray) return []
+  return questionArray.map((q) => {
+    // Remove o _tempId e outras chaves temporárias da UI
+    const { _tempId, ...questionData } = q
+
+    // Limpa recursivamente as sub-perguntas
+    const cleanedConditionalQuestions = (
+      questionData.conditionalQuestions || []
+    ).map((group) => {
+      const { _tempId: groupTempId, ...groupData } = group
+      return {
+        ...groupData,
+        questions: cleanPayload(groupData.questions || []), // Recursão
+      }
+    })
+
+    return {
+      ...questionData,
+      conditionalQuestions: cleanedConditionalQuestions,
+    }
+  })
+}
+
+async function handleSubmit() {
+  if (!templateName.value) {
+    toast.error('Por favor, dê um nome ao modelo.')
+    return
+  }
+
+  // ✨ ATUALIZADO: Limpa o payload usando o helper
+  const preparedQuestions = cleanPayload(questions.value)
+
+  const payload = {
     name: templateName.value,
-    questions: questions.value,
+    questions: preparedQuestions,
   }
 
-  let result
-  if (isEditMode.value) {
-    result = await anamnesisStore.updateTemplate(props.templateIdToEdit, templateData)
-  } else {
-    result = await anamnesisStore.createTemplate(templateData)
-  }
+  console.log('Payload final (limpo):', JSON.stringify(payload, null, 2))
 
-  if (result.success) {
-    toast.success(
-      isEditMode.value ? 'Modelo atualizado com sucesso!' : 'Modelo criado com sucesso!',
-    )
+  try {
+    let response
+    if (isEditMode.value) {
+      // MODO EDIÇÃO
+      response = await anamnesisStore.updateTemplate(
+        props.templateIdToEdit,
+        payload
+      )
+      toast.success(response.message || 'Modelo atualizado com sucesso!')
+    } else {
+      // MODO CRIAÇÃO (ou DUPLICAÇÃO)
+      response = await anamnesisStore.createTemplate(payload)
+      toast.success(response.message || 'Modelo criado com sucesso!')
+    }
     emit('close')
+  } catch (error) {
+    console.error('Erro ao salvar o modelo:', error)
+    toast.error(
+      error.response?.data?.message || 'Não foi possível salvar o modelo.'
+    )
   }
 }
 </script>
 
 <template>
-  <div class="modal-overlay">
+  <div class="modal-backdrop" @click.self="emit('close')">
     <div class="modal-content">
-      <header class="modal-header">
-        <h2>{{ isEditMode ? 'Editar Modelo de Anamnese' : 'Criar Novo Modelo de Anamnese' }}</h2>
-        <p>Construa um formulário personalizado para suas consultas.</p>
-      </header>
+      <div class="modal-header">
+        <h3 v-if="isEditMode" class="modal-title">Editar Modelo de Anamnese</h3>
+        <h3 v-else-if="props.templateToDuplicate" class="modal-title">
+          Duplicar Modelo de Anamnese
+        </h3>
+        <h3 v-else class="modal-title">Criar Novo Modelo de Anamnese</h3>
+        <button class="modal-close-btn" @click="emit('close')">&times;</button>
+      </div>
 
-      <div class="form-body">
+      <div class="modal-body">
         <FormInput
-          v-model="templateName"
           label="Nome do Modelo"
-          placeholder="Ex: Anamnese Pediátrica"
+          v-model="templateName"
+          placeholder="Ex: Anamnese Adulto Completa"
+          required
         />
 
-        <div
-          v-for="(question, index) in questions"
-          :key="question._tempId || index"
-          class="question-card"
-        >
-          <FormInput
-            v-model="question.title"
-            :label="`Pergunta ${index + 1}`"
-            placeholder="Digite o título da pergunta"
-          />
+        <hr class="separator" />
 
-          <div class="question-type-selector">
-            <label>Tipo de Resposta</label>
-            <StyledSelect v-model="question.questionType" :options="questionTypes" />
-          </div>
-
+        <div class="questions-list">
           <div
-            v-if="['single_choice', 'multiple_choice'].includes(question.questionType)"
-            class="options-section"
+            v-for="(question, qIndex) in questions"
+            :key="question._tempId"
+            class="question-card"
           >
-            <label>Opções de Resposta</label>
-            <div
-              v-for="(option, optIndex) in question.options"
-              :key="optIndex"
-              class="option-input-wrapper"
-            >
-              <FormInput
-                v-model="question.options[optIndex]"
-                :placeholder="`Opção ${optIndex + 1}`"
-              />
+            <div class="question-header">
+              <span class="question-number">{{ qIndex + 1 }}.</span>
+              <div class="form-group-inline">
+                <FormInput
+                  label="Pergunta"
+                  v-model="question.title"
+                  placeholder="Ex: Você tem alguma alergia?"
+                  class="question-title-input"
+                />
+                <StyledSelect
+                  label="Tipo de Resposta"
+                  v-model="question.questionType"
+                  :options="questionTypes"
+                  class="question-type-select"
+                />
+              </div>
               <button
-                @click="removeOption(question, optIndex)"
-                type="button"
-                class="delete-option-btn"
+                class="btn-icon btn-delete"
+                @click="removeQuestion(qIndex)"
+                title="Remover Pergunta"
               >
-                <Trash2 :size="16" />
+                <Trash2 :size="18" />
               </button>
             </div>
-            <button @click="addOption(question)" type="button" class="add-option-btn">
-              <Plus :size="16" /> Adicionar Opção
-            </button>
-          </div>
 
-          <button @click="removeQuestion(index)" type="button" class="delete-question-btn">
-            <Trash2 :size="16" />
-          </button>
+            <div
+              v-if="
+                question.questionType === 'single_choice' ||
+                question.questionType === 'multiple_choice'
+              "
+              class="options-wrapper"
+            >
+              <label class="options-label">Opções de Resposta</label>
+              <div
+                v-for="(option, oIndex) in question.options"
+                :key="oIndex"
+                class="option-input-wrapper"
+              >
+                <FormInput
+                  :label="`Opção ${oIndex + 1}`"
+                  :hideLabel="true"
+                  v-model="question.options[oIndex]"
+                  placeholder="Digite o texto da opção"
+                />
+                <button
+                  class="btn-icon btn-delete-option"
+                  @click="removeOption(qIndex, oIndex)"
+                >
+                  <Trash2 :size="16" />
+                </button>
+              </div>
+              <button class="add-option-btn" @click="addOption(qIndex)">
+                <Plus :size="16" /> Adicionar Opção
+              </button>
+            </div>
+
+            <div
+              class="conditional-section"
+              v-if="
+                question.questionType === 'yes_no' ||
+                question.questionType === 'single_choice'
+              "
+            >
+              <button
+                class="btn-toggle-conditional"
+                @click="toggleConditionalGroup(question._tempId)"
+              >
+                <ChevronRight
+                  :size="16"
+                  v-if="!openConditionalGroups[question._tempId]"
+                />
+                <ChevronDown :size="16" v-else />
+                Perguntas Condicionais
+                <span
+                  class="badge"
+                  v-if="question.conditionalQuestions?.length > 0"
+                >
+                  {{ question.conditionalQuestions.length }}
+                </span>
+              </button>
+
+              <div
+                class="conditional-groups-wrapper"
+                v-if="openConditionalGroups[question._tempId]"
+              >
+                <div
+                  v-for="(group, gIndex) in question.conditionalQuestions"
+                  :key="group._tempId"
+                  class="conditional-group"
+                >
+                  <div class="group-header">
+                    <span>
+                      Mostrar perguntas SE a resposta for:
+                    </span>
+                    <StyledSelect
+                      label="Condição"
+                      :hideLabel="true"
+                      v-model="group.showWhenAnswerIs"
+                      :options="getConditionOptions(question)"
+                      class="condition-select"
+                    />
+                    <button
+                      class="btn-icon btn-delete-option"
+                      @click="removeConditionalQuestionGroup(qIndex, gIndex)"
+                      title="Remover Grupo Condicional"
+                    >
+                      <Trash2 :size="16" />
+                    </button>
+                  </div>
+
+                  <div class="sub-question-list">
+                    <div
+                      v-for="(subQuestion, sIndex) in group.questions"
+                      :key="subQuestion._tempId"
+                      class="sub-question-card"
+                    >
+                      <CornerDownRight :size="18" class="sub-q-icon" />
+
+                      <div class="form-group-inline">
+                        <FormInput
+                          label="Sub-Pergunta"
+                          :hideLabel="true"
+                          v-model="subQuestion.title"
+                          placeholder="Ex: Quais alergias?"
+                          class="question-title-input"
+                        />
+                        <StyledSelect
+                          label="Tipo da Sub-Pergunta"
+                          :hideLabel="true"
+                          v-model="subQuestion.questionType"
+                          :options="questionTypes"
+                          class="question-type-select"
+                        />
+                      </div>
+                      <button
+                        class="btn-icon btn-delete"
+                        @click="
+                          removeConditionalQuestion(qIndex, gIndex, sIndex)
+                        "
+                        title="Remover Sub-Pergunta"
+                      >
+                        <Trash2 :size="16" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    class="add-option-btn add-sub-question"
+                    @click="addConditionalQuestion(qIndex, gIndex)"
+                  >
+                    <Plus :size="16" /> Adicionar Sub-Pergunta
+                  </button>
+                </div>
+
+                <button
+                  class="add-group-btn"
+                  @click="addConditionalQuestionGroup(qIndex)"
+                >
+                  <Plus :size="16" /> Adicionar Outra Condição
+                </button>
+              </div>
+            </div>
+            </div>
         </div>
 
-        <button @click="addQuestion" type="button" class="add-question-btn">
-          <Plus :size="16" /> Adicionar Pergunta
+        <button class="add-question-btn" @click="addNewQuestion">
+          <Plus :size="20" />
+          Adicionar Pergunta Principal
         </button>
       </div>
 
-      <footer class="modal-footer">
-        <button @click="$emit('close')" type="button" class="btn-secondary">Cancelar</button>
-        <button @click="saveTemplate" type="button" class="btn-primary">
-          {{ isEditMode ? 'Salvar Alterações' : 'Salvar Modelo' }}
+      <div class="modal-footer">
+        <button class="btn btn-secondary" @click="emit('close')">
+          Cancelar
         </button>
-      </footer>
+        <button class="btn btn-primary" @click="handleSubmit">
+          <span v-if="isEditMode">Salvar Alterações</span>
+          <span v-else>Criar Modelo</span>
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.modal-overlay {
+.modal-backdrop {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(249, 250, 251, 0.7);
-  backdrop-filter: blur(10px);
+  background-color: rgba(0, 0, 0, 0.6);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 100;
-}
-.modal-content {
-  background: var(--branco);
-  width: 90%;
-  max-width: 800px;
-  height: 90vh;
-  border-radius: 1rem;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
-}
-.modal-header {
-  padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-h2 {
-  font-size: 1.25rem;
-}
-p {
-  color: var(--cinza-texto);
-}
-.form-body {
-  padding: 1.5rem;
-  flex-grow: 1;
+  z-index: 1000;
   overflow-y: auto;
 }
-.question-card {
-  position: relative;
-  border: 1px solid #e5e7eb;
-  padding: 1.5rem;
-  border-radius: 0.75rem;
-  margin-top: 1.5rem;
-  background-color: #f9fafb;
+
+.modal-content {
+  width: 100%;
+  max-width: 800px;
+  background-color: #fff;
+  border-radius: 1rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 95vh;
 }
-.delete-question-btn {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  color: var(--cinza-texto);
-  cursor: pointer;
+
+.modal-header {
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-title {
+  font-family: var(--fonte-titulo);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--preto);
+}
+
+.modal-close-btn {
   background: none;
   border: none;
+  font-size: 2rem;
+  font-weight: 300;
+  color: #9ca3af;
+  cursor: pointer;
+  line-height: 1;
 }
-.question-type-selector {
-  margin-top: 1rem;
-  text-align: left;
+
+.modal-body {
+  padding: 2rem;
+  overflow-y: auto;
+  flex-grow: 1;
 }
-.question-type-selector label,
-.options-section label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  font-size: 0.875rem;
-}
-.options-section {
-  margin-top: 1.5rem;
-  padding-top: 1rem;
+
+.separator {
+  border: 0;
   border-top: 1px solid #e5e7eb;
+  margin: 1.5rem 0;
+}
+
+.questions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.question-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  transition: box-shadow 0.2s ease;
+}
+.question-card:focus-within {
+  border-color: var(--azul-principal-leve);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.question-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  width: 100%;
+}
+
+.question-number {
+  font-family: var(--fonte-titulo);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--azul-principal);
+  padding-top: 0.75rem; /* Alinha com o input */
+}
+
+.form-group-inline {
+  display: flex;
+  flex-grow: 1;
+  gap: 1rem;
+  align-items: flex-end;
+}
+.question-title-input {
+  flex-grow: 1;
+}
+.question-type-select {
+  width: 220px;
+  flex-shrink: 0;
+}
+
+.btn-icon {
+  padding: 0.5rem;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--cinza-texto);
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+  margin-top: 1.75rem; /* Alinha com botões */
+}
+.btn-icon:hover {
+  background-color: #f3f4f6;
+  color: var(--preto);
+}
+.btn-icon.btn-delete:hover {
+  background-color: #fee2e2;
+  color: #ef4444;
+}
+.btn-icon.btn-delete-option {
+  color: #9ca3af;
+  margin-top: 0;
+  padding: 0.25rem;
+}
+.btn-icon.btn-delete-option:hover {
+  background-color: #fee2e2;
+  color: #ef4444;
+}
+
+.options-wrapper {
+  padding-left: 2.5rem;
+  margin-top: 1rem;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 1rem;
+}
+.options-label {
+  display: block;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
 }
 .option-input-wrapper {
   display: flex;
@@ -287,13 +655,7 @@ p {
   flex-grow: 1;
   margin-bottom: 0.5rem;
 }
-.delete-option-btn {
-  color: #ef4444;
-  cursor: pointer;
-  background: none;
-  border: none;
-  padding: 0.5rem;
-}
+
 .add-option-btn {
   background: none;
   border: none;
@@ -304,7 +666,10 @@ p {
   align-items: center;
   gap: 0.25rem;
   margin-top: 0.5rem;
+  font-size: 0.9rem;
+  padding: 0.25rem;
 }
+
 .add-question-btn {
   width: 100%;
   padding: 0.75rem;
@@ -320,40 +685,131 @@ p {
   font-weight: 600;
   color: #374151;
 }
+.add-question-btn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
 .modal-footer {
-  padding: 1rem 1.5rem;
+  padding: 1.5rem 2rem;
   border-top: 1px solid #e5e7eb;
   display: flex;
   justify-content: flex-end;
-  gap: 1rem;
+  gap: 0.75rem;
   background-color: #f9fafb;
 }
-.btn-primary {
-  background: var(--azul-principal);
-  color: var(--branco);
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  font-weight: 600;
-}
-.btn-secondary {
-  background: var(--branco);
-  border: 1px solid #d1d5db;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  font-weight: 600;
+
+/* --- ✨ NOVOS ESTILOS CONDICIONAIS --- */
+.conditional-section {
+  padding-left: 2.5rem;
+  margin-top: 1rem;
 }
 
-@media (max-width: 768px) {
-  .modal-content {
-    padding-bottom: 20px;
-    border: none;
-    border-radius: 0;
-    margin: 0;
-    width: 100%;
-    height: 100%;
-  }
+.btn-toggle-conditional {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--cinza-texto);
+  font-size: 0.9rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+.btn-toggle-conditional:hover {
+  background-color: #f3f4f6;
+  color: var(--preto);
+}
+.badge {
+  background-color: #e0e7ff;
+  color: #4f46e5;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.5rem;
+  margin-left: 0.25rem;
+}
+
+.conditional-groups-wrapper {
+  margin-top: 1rem;
+  padding-left: 1rem;
+  border-left: 2px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.conditional-group {
+  background-color: #f9fafb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 1rem;
+}
+.condition-select {
+  width: 150px;
+  flex-shrink: 0;
+}
+.group-header .btn-icon {
+  margin-top: 0;
+  margin-left: auto;
+}
+
+.sub-question-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.sub-question-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+.sub-q-icon {
+  color: #9ca3af;
+  flex-shrink: 0;
+  margin-top: 0.85rem;
+}
+.sub-question-card .form-group-inline {
+  align-items: flex-start;
+}
+.sub-question-card .btn-icon {
+  margin-top: 0.5rem;
+}
+
+.add-sub-question {
+  margin-top: 1rem;
+  padding-left: 0.5rem;
+}
+
+.add-group-btn {
+  background: none;
+  border: 1px dashed #d1d5db;
+  color: #374151;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  align-self: flex-start;
+}
+.add-group-btn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
 }
 </style>

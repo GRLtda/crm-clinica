@@ -1,22 +1,61 @@
 <script setup>
-import { X } from 'lucide-vue-next';
+import { computed } from 'vue'
+import { X, CornerDownRight } from 'lucide-vue-next'
 
 const props = defineProps({
   anamnesis: { type: Object, required: true },
-});
-const emit = defineEmits(['close']);
+})
+const emit = defineEmits(['close'])
 
 function formatSimpleDate(dateString) {
-  if (!dateString) return '';
-  return new Date(dateString).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  if (!dateString) return ''
+  return new Date(dateString).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
 }
 
-// Função para encontrar o tipo da pergunta com base no título
-function getQuestionType(questionTitle) {
-  // Adiciona uma verificação para garantir que a lista de perguntas existe
-  const questions = props.anamnesis.template?.questions || [];
-  const question = questions.find(q => q.title === questionTitle);
-  return question ? question.questionType : 'text';
+// ✨ NOVO: Helper para converter índice em letra (0=A, 1=B, etc.)
+function getSubQuestionLetter(index) {
+  return String.fromCharCode(65 + index) // 65 é o char code para 'A'
+}
+
+const answersMap = computed(() => {
+  if (!props.anamnesis || !Array.isArray(props.anamnesis.answers)) {
+    return {}
+  }
+  return props.anamnesis.answers.reduce((acc, ans) => {
+    acc[ans.qId] = ans
+    return acc
+  }, {})
+})
+
+function formatAnswer(answerObj) {
+  if (!answerObj || answerObj.answer === null || answerObj.answer === undefined) {
+    return '<span class="no-answer">Não respondido</span>' // ✨ Adiciona classe
+  }
+
+  const answer = answerObj.answer
+
+  if (Array.isArray(answer)) {
+    if (answer.length === 0)
+      return '<span class="no-answer">Nenhuma opção selecionada</span>'
+    return `<ul>${answer.map((item) => `<li>${item}</li>`).join('')}</ul>`
+  }
+
+  if (typeof answer === 'boolean') {
+    return answer ? 'Sim' : 'Não'
+  }
+
+  if (typeof answer === 'string') {
+    if (answer.trim() === '') {
+      return '<span class="no-answer">Não respondido</span>'
+    }
+    return answer.replace(/\n/g, '<br>')
+  }
+
+  return answer
 }
 </script>
 
@@ -26,7 +65,10 @@ function getQuestionType(questionTitle) {
       <header class="modal-header">
         <div>
           <h2 class="title">{{ anamnesis.template.name }}</h2>
-          <p class="subtitle">Respostas fornecidas em {{ formatSimpleDate(anamnesis.updatedAt) }}</p>
+          <p class="subtitle">
+            Respondido por {{ anamnesis.patient?.name || 'Paciente' }} em
+            {{ formatSimpleDate(anamnesis.updatedAt) }}
+          </p>
         </div>
         <button @click="$emit('close')" class="close-btn" title="Fechar">
           <X :size="24" />
@@ -34,15 +76,56 @@ function getQuestionType(questionTitle) {
       </header>
 
       <div class="modal-body">
-        <div v-for="answer in anamnesis.answers" :key="answer.questionTitle" class="answer-block">
-          <label class="question-title">{{ answer.questionTitle }}</label>
-          <div class="answer-field" :class="getQuestionType(answer.questionTitle)">
-            <ul v-if="Array.isArray(answer.answer) && answer.answer.length > 0">
-              <li v-for="item in answer.answer" :key="item">{{ item }}</li>
-            </ul>
-            <span v-else>{{ answer.answer || 'Não respondido' }}</span>
+        <template
+          v-for="(question, index) in anamnesis.template.questions"
+          :key="question.qId"
+        >
+          <div class="answer-block">
+            <label class="question-title">
+              <span>{{ index + 1 }}.</span> {{ question.title }}
+            </label>
+            <div
+              class="answer-field"
+              v-html="formatAnswer(answersMap[question.qId])"
+            ></div>
           </div>
-        </div>
+
+          <div
+            v-for="group in question.conditionalQuestions"
+            :key="`${question.qId}-${group.showWhenAnswerIs}`"
+            class="conditional-block"
+          >
+            <Transition name="slide-fade">
+              <div
+                class="sub-question-wrapper"
+                v-if="
+                  answersMap[question.qId] &&
+                  answersMap[question.qId].answer === group.showWhenAnswerIs
+                "
+              >
+                <div
+                  v-for="(subQuestion, subIndex) in group.questions"
+                  :key="subQuestion.qId"
+                  class="answer-block sub-question"
+                >
+                  <label class="question-title">
+                    <CornerDownRight :size="16" class="sub-q-icon" />
+                    <span class="sub-q-number"
+                      >{{ index + 1 }}.{{
+                        getSubQuestionLetter(subIndex)
+                      }}</span
+                    >
+                    {{ subQuestion.title }}
+                  </label>
+                  <div
+                    class="answer-field"
+                    v-html="formatAnswer(answersMap[subQuestion.qId])"
+                  ></div>
+                </div>
+              </div>
+            </Transition>
+          </div>
+          </template>
       </div>
     </div>
   </div>
@@ -69,15 +152,21 @@ function getQuestionType(questionTitle) {
   max-width: 700px;
   max-height: 90vh;
   border-radius: 1rem;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   border: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
   animation: slide-up 0.3s ease-out;
 }
 @keyframes slide-up {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .modal-header {
   display: flex;
@@ -113,11 +202,19 @@ function getQuestionType(questionTitle) {
   margin-bottom: 0;
 }
 .question-title {
-  display: block;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
   margin-bottom: 0.5rem;
-  font-weight: 500;
-  font-size: 0.875rem;
+  font-weight: 600;
+  font-size: 1rem;
   color: var(--preto);
+  line-height: 1.4;
+}
+.question-title span {
+  color: var(--azul-principal);
+  font-weight: 700;
+  margin-top: 2px;
 }
 .answer-field {
   width: 100%;
@@ -132,24 +229,8 @@ function getQuestionType(questionTitle) {
   align-items: center;
   line-height: 1.6;
 }
-.answer-field.single_choice,
-.answer-field.yes_no {
-  justify-content: space-between;
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7281' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-  background-position: right 0.75rem center;
-  background-repeat: no-repeat;
-  background-size: 1em 1em;
-}
-.answer-field.long_text {
-  min-height: 120px;
-  align-items: flex-start;
-}
-.answer-field.multiple_choice {
-  padding: 0;
-  background-color: transparent;
-  border: none;
-}
-.answer-field ul {
+
+.answer-field :deep(ul) {
   list-style: none;
   padding: 0;
   margin: 0;
@@ -158,10 +239,63 @@ function getQuestionType(questionTitle) {
   gap: 0.5rem;
   width: 100%;
 }
-.answer-field ul li {
-  background-color: #f9fafb;
+.answer-field :deep(li) {
+  background-color: #f0f1f3;
   border: 1px solid #e5e7eb;
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
+  font-size: 0.9rem;
+}
+.answer-field :deep(.no-answer) {
+  /* ✨ Estilo para "Não respondido" */
+  color: #9ca3af;
+  font-style: italic;
+  font-size: 0.95rem;
+}
+
+/* --- ✨ NOVOS ESTILOS --- */
+.conditional-block {
+  padding-left: 1.5rem;
+  border-left: 3px solid #e5e7eb;
+  margin-left: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+.sub-question-wrapper {
+  overflow: hidden;
+}
+.sub-question {
+  margin-bottom: 1rem;
+}
+.sub-question:last-child {
+  margin-bottom: 0;
+}
+.sub-question .question-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #374151;
+}
+.sub-q-icon {
+  color: #9ca3af;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.sub-q-number {
+  font-weight: 700;
+  color: var(--azul-principal-leve);
+  margin-right: 0.25rem;
+  margin-top: 2px;
+}
+
+/* --- ✨ ESTILOS DE ANIMAÇÃO --- */
+.slide-fade-enter-active {
+  transition: all 0.3s ease-out;
+}
+.slide-fade-leave-active {
+  transition: all 0.2s cubic-bezier(1, 0.5, 0.8, 1);
+}
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  transform: translateY(-10px);
+  opacity: 0;
 }
 </style>

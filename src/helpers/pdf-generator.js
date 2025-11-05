@@ -1,163 +1,316 @@
 import { jsPDF } from 'jspdf'
+// ✨ 1. Importar a função da API
+import { getAnamnesisTemplateById } from '@/api/anamnesis'
 
 /**
  * Gera um PDF de uma anamnese respondida.
  * @param {object} anamnesis - O objeto completo da anamnese respondida.
  * @param {object} patient - O objeto com os dados do paciente.
  * @param {object} clinic - O objeto com os dados da clínica.
- * @returns {object} - Retorna o nome do arquivo e a URL de dados do PDF gerado.
+ * @returns {object} - Retorna { fileName, pdfUrl } ou { error }
  */
 export async function generateAnamnesisPdf(anamnesis, patient, clinic) {
-  const doc = new jsPDF()
-  let yPos = 20
-  const margin = 20
-  const pageWidth = doc.internal.pageSize.getWidth()
-  const pageHeight = doc.internal.pageSize.getHeight()
-  const usableWidth = pageWidth - margin * 2
+  // ✨ 2. Envolver tudo em um try...catch para evitar falhas silenciosas
+  try {
+    const doc = new jsPDF()
+    let yPos = 20
+    const margin = 20
+    const pageHeight = doc.internal.pageSize.getHeight()
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const usableWidth = pageWidth - margin * 2
 
-  function checkNewPage(neededHeight = 20) {
-    if (yPos + neededHeight > pageHeight - margin) {
-      doc.addPage()
-      yPos = margin
+    // --- Helpers Globais ---
+    function checkNewPage(neededHeight = 20) {
+      if (yPos + neededHeight > pageHeight - margin) {
+        doc.addPage()
+        yPos = margin
+      }
     }
-  }
 
-  const formatSimpleDate = (dateString) => {
-    if (!dateString) return ''
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-    })
-  }
-  const formattedBirthDate = patient?.birthDate
-    ? new Date(patient.birthDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
-    : ''
-
-  // --- CABEÇALHO DA CLÍNICA ---
-  if (clinic?.logoUrl) {
-    try {
-      const response = await fetch(clinic.logoUrl)
-      const blob = await response.blob()
-      const reader = new FileReader()
-      reader.readAsDataURL(blob)
-      await new Promise((resolve) => (reader.onloadend = resolve))
-      const imgData = reader.result
-      doc.addImage(imgData, 'PNG', margin, yPos, 30, 30, undefined, 'FAST')
-    } catch (e) {
-      console.error('Erro ao carregar logo da clínica:', e)
+    const formatSimpleDate = (dateString) => {
+      if (!dateString) return ''
+      return new Date(dateString).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      })
     }
-  }
-  doc.setFontSize(16)
-  doc.setFont(undefined, 'bold')
-  doc.text(clinic?.name || 'Ficha de Anamnese', pageWidth - margin, yPos + 10, {
-    align: 'right',
-  })
-  doc.setFontSize(10)
-  doc.setFont(undefined, 'normal')
-  doc.text(clinic?.address?.street || '', pageWidth - margin, yPos + 18, { align: 'right' })
-  doc.text(clinic?.phone || '', pageWidth - margin, yPos + 24, { align: 'right' })
-  yPos += 45
-
-  // --- DADOS DO PACIENTE ---
-  doc.setDrawColor('#e5e7eb')
-  doc.line(margin, yPos - 10, pageWidth - margin, yPos - 10)
-  doc.setFontSize(12)
-  doc.setFont(undefined, 'bold')
-  doc.text('INFORMAÇÕES DO PACIENTE', margin, yPos)
-  yPos += 8
-  doc.setFontSize(10)
-  doc.setFont(undefined, 'normal')
-  doc.text(`Nome: ${patient?.name || ''}`, margin, yPos)
-  doc.text(`CPF: ${patient?.cpf || ''}`, pageWidth / 2, yPos)
-  yPos += 6
-  doc.text(`Data de Nasc.: ${formattedBirthDate || ''}`, margin, yPos)
-  doc.text(`Gênero: ${patient?.gender || ''}`, pageWidth / 2, yPos)
-  yPos += 15
-
-  // --- TÍTULO DA ANAMNESE ---
-  doc.line(margin, yPos - 8, pageWidth - margin, yPos - 8)
-  doc.setFontSize(14)
-  doc.setFont(undefined, 'bold')
-  doc.text(anamnesis.template.name, pageWidth / 2, yPos, { align: 'center' })
-  yPos += 6
-  doc.setFontSize(9)
-  doc.setFont(undefined, 'italic')
-  doc.setTextColor('#6b7281')
-  doc.text(`Respondido em: ${formatSimpleDate(anamnesis.updatedAt)}`, pageWidth / 2, yPos, {
-    align: 'center',
-  })
-  yPos += 15
-  doc.setTextColor('#000000')
-
-  // --- PERGUNTAS E RESPOSTAS ---
-  anamnesis.answers.forEach((item, index) => {
-    const questions = anamnesis.template?.questions || []
-    const question = questions.find((q) => q.title === item.questionTitle)
-    if (!question) return
-
-    checkNewPage(20)
-    doc.setFontSize(10)
-    doc.setFont(undefined, 'bold')
-    const questionText = `${index + 1}. ${item.questionTitle}`
-    const questionLines = doc.splitTextToSize(questionText, usableWidth)
-    doc.text(questionLines, margin, yPos)
-    yPos += questionLines.length * 5
-
-    doc.setFontSize(10)
-    doc.setFont(undefined, 'normal')
-
-    switch (question.questionType) {
-      case 'text':
-      case 'long_text':
-        const answerText = item.answer || ' '
-        const textLines = doc.splitTextToSize(answerText, usableWidth)
-        checkNewPage(textLines.length * 5 + 5)
-        doc.text(textLines, margin, yPos)
-        doc.setDrawColor('#9ca3af')
-        for (let i = 0; i < textLines.length; i++) {
-          doc.line(margin, yPos + i * 5 + 1, margin + usableWidth, yPos + i * 5 + 1)
-        }
-        yPos += textLines.length * 5 + 8
-        break
-
-      case 'yes_no':
-        checkNewPage(15)
-        doc.text(`( ${item.answer === 'Sim' ? 'X' : ' '} ) Sim`, margin, yPos)
-        doc.text(`( ${item.answer === 'Não' ? 'X' : ' '} ) Não`, margin + 30, yPos)
-        yPos += 10
-        break
-
-      case 'single_choice':
-      case 'multiple_choice':
-        const selectedAnswers = Array.isArray(item.answer) ? item.answer : [item.answer]
-        const options = Array.isArray(question.options) ? question.options : []
-        checkNewPage(options.length * 6 + 5)
-        options.forEach((option) => {
-          doc.text(`( ${selectedAnswers.includes(option) ? 'X' : ' '} ) ${option}`, margin, yPos)
-          yPos += 6
+    const formattedBirthDate = patient?.birthDate
+      ? new Date(patient.birthDate).toLocaleDateString('pt-BR', {
+          timeZone: 'UTC',
         })
-        yPos += 4
-        break
+      : ''
 
-      default:
-        doc.text(String(item.answer || ''), margin, yPos)
-        yPos += 10
+    const getSubQuestionLetter = (index) => String.fromCharCode(65 + index)
+
+    // --- ✨ 3. Lógica para buscar o template completo (A CORREÇÃO) ---
+    let fullTemplate = anamnesis.template
+
+    // Verifica se o template não está populado (como no bug anterior)
+    if (
+      !fullTemplate ||
+      !fullTemplate.questions ||
+      fullTemplate.questions.length === 0
+    ) {
+      console.warn(
+        'Template incompleto no objeto anamnese. Buscando template completo...',
+      )
+      try {
+        // Busca o template completo da API
+        const templateData = await getAnamnesisTemplateById(fullTemplate._id)
+        if (!templateData || !templateData.questions) {
+          throw new Error('Não foi possível carregar as perguntas do template.')
+        }
+        fullTemplate = templateData // Substitui pelo template completo
+      } catch (apiError) {
+        console.error(
+          'Falha ao buscar template completo para o PDF:',
+          apiError,
+        )
+        // Lança o erro para o toast.error no componente
+        throw new Error(
+          `Falha ao buscar dados do template: ${apiError.message}`,
+        )
+      }
     }
-  })
 
-  // --- RODAPÉ ---
-  const pageCount = doc.internal.getNumberOfPages()
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i)
-    doc.setFontSize(8)
-    doc.setTextColor('#9ca3af')
-    doc.text(`Página ${i} de ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' })
+    // --- Mapa de Respostas ---
+    const answersMap = (anamnesis.answers || []).reduce((acc, ans) => {
+      acc[ans.qId] = ans
+      return acc
+    }, {})
+
+    // --- CABEÇALHO DA CLÍNICA ---
+    if (clinic?.logoUrl) {
+      try {
+        const response = await fetch(clinic.logoUrl)
+        const blob = await response.blob()
+        const reader = new FileReader()
+        const dataUrl = await new Promise((resolve) => {
+          reader.onloadend = () => resolve(reader.result)
+          reader.readAsDataURL(blob)
+        })
+        const imgProps = doc.getImageProperties(dataUrl)
+        const imgHeight = (imgProps.height * 20) / imgProps.width
+        doc.addImage(dataUrl, 'PNG', margin, yPos, 20, imgHeight)
+        yPos += imgHeight + 5
+      } catch (e) {
+        console.warn('Não foi possível carregar o logo no PDF:', e)
+        // Não quebra a geração, apenas pula o logo
+      }
+    }
+    checkNewPage(30)
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.text(clinic?.name || 'Ficha de Anamnese', margin, yPos)
+    yPos += 8
+
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.text(fullTemplate.name, margin, yPos) // Usa fullTemplate.name
+    yPos += 10
+
+    // --- INFORMAÇÕES DO PACIENTE ---
+    doc.setDrawColor(220, 220, 220)
+    doc.line(margin, yPos, pageWidth - margin, yPos)
+    yPos += 8
+
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Paciente:', margin, yPos)
+    doc.setFont('helvetica', 'normal')
+    doc.text(patient?.name || 'Não informado', margin + 20, yPos)
+    yPos += 6
+
+    doc.setFont('helvetica', 'bold')
+    doc.text('Data Nasc:', margin, yPos)
+    doc.setFont('helvetica', 'normal')
+    doc.text(formattedBirthDate, margin + 20, yPos)
+
+    doc.setFont('helvetica', 'bold')
+    doc.text('CPF:', margin + 60, yPos)
+    doc.setFont('helvetica', 'normal')
+    doc.text(patient?.cpf || 'Não informado', margin + 70, yPos)
+    yPos += 6
+
+    doc.setFont('helvetica', 'bold')
+    doc.text('Telefone:', margin, yPos)
+    doc.setFont('helvetica', 'normal')
+    doc.text(patient?.phone || 'Não informado', margin + 20, yPos)
+    yPos += 10
+
+    // --- LÓGICA DE RENDERIZAÇÃO DE PERGUNTAS ---
+
+    // (Função helper para formatar a resposta)
+    function formatAnswerForPDF(answerObj, questionType) {
+      if (
+        !answerObj ||
+        answerObj.answer === null ||
+        answerObj.answer === undefined
+      ) {
+        return 'Não respondido'
+      }
+      const answer = answerObj.answer
+
+      if (Array.isArray(answer)) {
+        if (answer.length === 0) return 'Nenhuma opção selecionada'
+        if (questionType === 'multiple_choice') return answer
+        return answer.join(', ')
+      }
+      if (typeof answer === 'boolean') {
+        return answer ? 'Sim' : 'Não'
+      }
+      if (String(answer).trim() === '') {
+        return 'Não respondido'
+      }
+      return String(answer)
+    }
+
+    // (Função helper para desenhar a resposta)
+    function renderAnswerByType(question, answerObj) {
+      const formattedAnswer = formatAnswerForPDF(
+        answerObj,
+        question.questionType,
+      )
+      const answerIndent = margin + 5
+
+      switch (question.questionType) {
+        case 'long_text':
+          checkNewPage(15)
+          const textLines = doc.splitTextToSize(formattedAnswer, usableWidth - 5)
+          doc.text(textLines, answerIndent, yPos)
+          yPos += textLines.length * 5 + 8
+          break
+
+        case 'yes_no':
+          checkNewPage(15)
+          doc.text(
+            `( ${formattedAnswer === 'Sim' ? 'X' : ' '} ) Sim`,
+            answerIndent,
+            yPos,
+          )
+          doc.text(
+            `( ${formattedAnswer === 'Não' ? 'X' : ' '} ) Não`,
+            answerIndent + 30,
+            yPos,
+          )
+          yPos += 10
+          break
+
+        case 'single_choice':
+        case 'multiple_choice':
+          const selectedAnswers = Array.isArray(formattedAnswer)
+            ? formattedAnswer
+            : [formattedAnswer]
+          const options = Array.isArray(question.options) ? question.options : []
+
+          checkNewPage(options.length * 6 + 5)
+          if (options.length > 0) {
+            options.forEach((option) => {
+              doc.text(
+                `( ${selectedAnswers.includes(option) ? 'X' : ' '} ) ${option}`,
+                answerIndent,
+                yPos,
+              )
+              yPos += 6
+            })
+          } else {
+            doc.text(formattedAnswer, answerIndent, yPos)
+            yPos += 10
+          }
+          yPos += 4
+          break
+
+        default: // 'text'
+          checkNewPage(10)
+          doc.text(formattedAnswer, answerIndent, yPos)
+          yPos += 10
+      }
+    }
+
+    // (Função recursiva para renderizar perguntas)
+    function renderQuestions(questionsArray, parentNumber = null) {
+      if (!questionsArray || questionsArray.length === 0) {
+        return
+      }
+
+      questionsArray.forEach((question, index) => {
+        const questionNumber = parentNumber
+          ? `${parentNumber}.${getSubQuestionLetter(index)}`
+          : `${index + 1}`
+
+        const answerObj = answersMap[question.qId]
+
+        checkNewPage(10)
+        doc.setFont('helvetica', 'bold')
+        const titleIndent = parentNumber ? margin + 5 : margin
+        const titleLines = doc.splitTextToSize(
+          `${questionNumber}. ${question.title}`,
+          usableWidth - (parentNumber ? 5 : 0),
+        )
+        doc.text(titleLines, titleIndent, yPos)
+        yPos += titleLines.length * 5 + 2
+
+        doc.setFont('helvetica', 'normal')
+        if (answerObj) {
+          renderAnswerByType(question, answerObj)
+        } else {
+          doc.text('Não respondido', margin + 5, yPos)
+          yPos += 10
+        }
+
+        if (
+          question.conditionalQuestions &&
+          question.conditionalQuestions.length > 0
+        ) {
+          const parentAnswer = answerObj ? answerObj.answer : null
+
+          question.conditionalQuestions.forEach((group) => {
+            if (parentAnswer === group.showWhenAnswerIs) {
+              renderQuestions(group.questions, questionNumber)
+            }
+          })
+        }
+
+        if (!parentNumber) {
+          yPos += 5
+        }
+      })
+    }
+
+    // --- Ponto de Entrada da Renderização ---
+    doc.line(margin, yPos, pageWidth - margin, yPos)
+    yPos += 10
+
+    // ✨ 4. Usa o fullTemplate.questions
+    renderQuestions(fullTemplate.questions)
+
+    // --- RODAPÉ ---
+    const pageCount = doc.internal.getNumberOfPages()
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i)
+      doc.setFontSize(8)
+      doc.setTextColor(150)
+      const text = `Página ${i} de ${pageCount} | Gerado em: ${formatSimpleDate(
+        new Date(),
+      )}`
+      doc.text(text, margin, pageHeight - 10)
+    }
+
+    // --- RETORNO ---
+    const pdfData = doc.output('datauristring')
+    const fileName = `Anamnese_${patient.name.replace(
+      / /g,
+      '_',
+    )}_${new Date().toISOString().split('T')[0]}.pdf`
+
+    return {
+      fileName: fileName,
+      pdfUrl: pdfData,
+    }
+  } catch (error) {
+    // ✨ 5. Pega o erro e o retorna para o componente
+    console.error('Erro final ao gerar PDF:', error)
+    return { error: error.message || 'Erro desconhecido ao gerar PDF.' }
   }
-
-  // --- RETORNA OS DADOS DO PDF ---
-  const fileName = `Anamnese_${patient?.name.replace(/\s+/g, '_')}_${anamnesis.template.name.replace(/\s+/g, '_')}.pdf`
-  const pdfDataUri = doc.output('datauristring')
-
-  return { fileName, pdfDataUri }
 }

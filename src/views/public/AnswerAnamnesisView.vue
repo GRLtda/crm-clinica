@@ -4,57 +4,86 @@ import { useRoute } from 'vue-router'
 import { useAnamnesisStore } from '@/stores/anamnesis'
 import { useToast } from 'vue-toastification'
 import confetti from 'canvas-confetti'
-import { CheckCircle2, AlertTriangle, Building } from 'lucide-vue-next'
+import {
+  CheckCircle2,
+  AlertTriangle,
+  Building,
+  CornerDownRight,
+} from 'lucide-vue-next'
+import AnamnesisQuestionInputs from '../public/AnamnesisQuestionInputs.vue' // (Ajuste o caminho se necessário)
 
 const route = useRoute()
 const anamnesisStore = useAnamnesisStore()
 const toast = useToast()
 
 const responseData = ref(null)
-const answers = ref([])
-const submissionStatus = ref('pending') // pending, success, error
-const validationErrors = ref({}) // ✨ Armazena os erros de validação
+const answers = ref({})
+const submissionStatus = ref('pending')
+const validationErrors = ref({})
+const token = route.params.token
+const storageKey = `anamnesis-answers-${token}`
+
+// --- FUNÇÕES DE LÓGICA (Sem alteração) ---
+
+function getDefaultAnswer(questionType) {
+  if (questionType === 'multiple_choice') return []
+  return null
+}
+
+function initializeAnswers(questionsArray) {
+  if (!Array.isArray(questionsArray)) return
+
+  for (const q of questionsArray) {
+    if (!q || !q.qId) continue
+
+    answers.value[q.qId] = {
+      qId: q.qId,
+      questionTitle: q.title,
+      answer: getDefaultAnswer(q.questionType),
+    }
+
+    if (q.conditionalQuestions && q.conditionalQuestions.length > 0) {
+      for (const group of q.conditionalQuestions) {
+        initializeAnswers(group.questions)
+      }
+    }
+  }
+}
+
+// ✨ NOVO: Helper para converter índice em letra (0=A, 1=B, etc.)
+function getSubQuestionLetter(index) {
+  return String.fromCharCode(65 + index) // 65 é o char code para 'A'
+}
 
 onMounted(async () => {
-  const token = route.params.token
-  const storageKey = `anamnesis-answers-${token}` // Chave única para o localStorage
-
-  const { success } = await anamnesisStore.fetchPublicTemplate(token)
+  const { success } = await anamnesisStore.fetchPublicAnamnesis(token)
 
   if (success && anamnesisStore.publicTemplate) {
     responseData.value = anamnesisStore.publicTemplate
     const questions = responseData.value.template?.questions
 
     if (Array.isArray(questions)) {
-      // 1. Inicializa a estrutura do formulário com base nas perguntas
-      answers.value = questions.map((q) => ({
-        questionTitle: q.title,
-        answer: q.questionType === 'multiple_choice' ? [] : '',
-      }))
+      initializeAnswers(questions)
 
-      // 2. Tenta carregar as respostas salvas do localStorage
       const savedAnswersRaw = localStorage.getItem(storageKey)
       if (savedAnswersRaw) {
         try {
           const savedAnswers = JSON.parse(savedAnswersRaw)
-          if (Array.isArray(savedAnswers)) {
-            // 3. Mescla as respostas salvas com a estrutura do formulário
-            answers.value.forEach((answerItem, index) => {
-              const savedItem = savedAnswers.find(
-                (sa) => sa.questionTitle === answerItem.questionTitle,
-              )
-              if (savedItem) {
-                answers.value[index].answer = savedItem.answer
+          if (savedAnswers && typeof savedAnswers === 'object') {
+            Object.keys(answers.value).forEach((qId) => {
+              if (savedAnswers[qId]) {
+                answers.value[qId] = savedAnswers[qId]
               }
             })
             toast.info('Seu progresso anterior foi restaurado!')
           }
         } catch (e) {
           console.error('Falha ao carregar respostas do localStorage:', e)
-          localStorage.removeItem(storageKey) // Limpa dados corrompidos
+          localStorage.removeItem(storageKey)
         }
       }
     } else {
+      console.warn('Nenhuma pergunta encontrada no template:', responseData.value)
       submissionStatus.value = 'error'
     }
   } else {
@@ -62,22 +91,20 @@ onMounted(async () => {
   }
 })
 
-// Observa por mudanças nas respostas e salva no localStorage
+// --- WATCHERS (Sem alteração) ---
 watch(
   answers,
   (newAnswers) => {
     if (responseData.value && submissionStatus.value === 'pending') {
-      const token = route.params.token
-      const storageKey = `anamnesis-answers-${token}`
       localStorage.setItem(storageKey, JSON.stringify(newAnswers))
 
-      // Limpa o erro de um campo assim que ele é preenchido
-      newAnswers.forEach((answer) => {
-        if (
-          (Array.isArray(answer.answer) ? answer.answer.length > 0 : !!answer.answer) &&
-          validationErrors.value[answer.questionTitle]
-        ) {
-          delete validationErrors.value[answer.questionTitle]
+      Object.keys(newAnswers).forEach((qId) => {
+        const answer = newAnswers[qId].answer
+        const isAnswerFilled = Array.isArray(answer)
+          ? answer.length > 0
+          : answer !== null
+        if (isAnswerFilled && validationErrors.value[qId]) {
+          delete validationErrors.value[qId]
         }
       })
     }
@@ -96,35 +123,88 @@ watch(submissionStatus, (newStatus) => {
   }
 })
 
-// ✨ FUNÇÃO DE VALIDAÇÃO ✨
+// --- FUNÇÕES DE VALIDAÇÃO E SUBMIT (Sem alteração) ---
+function validateRecursive(questionsArray) {
+  if (!Array.isArray(questionsArray)) return
+
+  for (const q of questionsArray) {
+    const answerObj = answers.value[q.qId]
+    const answer = answerObj ? answerObj.answer : null
+
+    const isAnswerEmpty = Array.isArray(answer)
+      ? answer.length === 0
+      : answer === null || answer === ''
+
+    if (isAnswerEmpty) {
+      validationErrors.value[q.qId] = true
+    } else {
+      delete validationErrors.value[q.qId]
+    }
+
+    if (q.conditionalQuestions && q.conditionalQuestions.length > 0) {
+      for (const group of q.conditionalQuestions) {
+        const cleanSubErrors = (subQuestions) => {
+          if (!subQuestions) return
+          subQuestions.forEach((subQ) => delete validationErrors.value[subQ.qId])
+        }
+
+        if (answer === group.showWhenAnswerIs) {
+          validateRecursive(group.questions)
+        } else {
+          cleanSubErrors(group.questions)
+        }
+      }
+    }
+  }
+}
+
 function validateForm() {
   validationErrors.value = {}
-  answers.value.forEach((answer) => {
-    const isAnswerEmpty = Array.isArray(answer.answer)
-      ? answer.answer.length === 0
-      : !answer.answer
-    if (isAnswerEmpty) {
-      validationErrors.value[answer.questionTitle] = true
-    }
-  })
+  validateRecursive(responseData.value.template.questions)
   return Object.keys(validationErrors.value).length === 0
+}
+
+function buildPayloadRecursive(questionsArray, payload) {
+  if (!Array.isArray(questionsArray)) return
+
+  for (const q of questionsArray) {
+    const answerObj = answers.value[q.qId]
+    if (answerObj) {
+      payload.push(answerObj)
+
+      if (q.conditionalQuestions && q.conditionalQuestions.length > 0) {
+        for (const group of q.conditionalQuestions) {
+          if (answerObj.answer === group.showWhenAnswerIs) {
+            buildPayloadRecursive(group.questions, payload)
+          }
+        }
+      }
+    }
+  }
 }
 
 async function handleSubmit() {
   if (!validateForm()) {
-    toast.error('Por favor, responda todas as perguntas antes de enviar.')
+    toast.error(
+      'Por favor, responda todas as perguntas obrigatórias antes de enviar.',
+    )
+    const firstErrorId = Object.keys(validationErrors.value)[0]
+    if (firstErrorId) {
+      const errorElement = document.getElementById(`q-${firstErrorId}`)
+      errorElement?.focus()
+    }
     return
   }
 
-  const token = route.params.token
-  const storageKey = `anamnesis-answers-${token}`
+  const payloadArray = []
+  buildPayloadRecursive(responseData.value.template.questions, payloadArray)
 
-  const { success } = await anamnesisStore.submitPatientAnswers(token, answers.value)
+  const payload = { answers: payloadArray }
+  const { success } = await anamnesisStore.submitPublicAnamnesis(token, payload)
+
   if (success) {
     localStorage.removeItem(storageKey)
     submissionStatus.value = 'success'
-  } else {
-    toast.error('Ocorreu um erro ao enviar suas respostas.')
   }
 }
 </script>
@@ -147,12 +227,12 @@ async function handleSubmit() {
       <AlertTriangle class="error-icon" :size="64" />
       <h2 class="error-title">Link Inválido ou Expirado</h2>
       <p class="error-message">
-        Não foi possível carregar o formulário. Por favor, entre em contato com a clínica para
-        solicitar um novo link.
+        Não foi possível carregar o formulário. Por favor, entre em contato com a
+        clínica para solicitar um novo link.
       </p>
     </div>
 
-    <template v-else-if="responseData">
+    <template v-else-if="responseData && answers">
       <header class="page-header">
         <div class="clinic-branding">
           <img
@@ -179,7 +259,8 @@ async function handleSubmit() {
               <div class="patient-meta">
                 <span>{{ responseData.patientInfo.gender }}</span>
                 <span v-if="responseData.patientInfo.cpf"
-                  >CPF: {{ responseData.patientInfo.cpf }}.***.***-**</span
+                  >CPF:
+                  {{ responseData.patientInfo.cpf.substring(0, 3) }}.***.***-**</span
                 >
               </div>
             </div>
@@ -188,94 +269,95 @@ async function handleSubmit() {
           <header class="form-header">
             <h1>{{ responseData.template.name }}</h1>
             <p>
-              Preencha o formulário abaixo com atenção. Suas respostas são confidenciais e
-              importantes para o seu atendimento.
+              Preencha o formulário abaixo com atenção. Suas respostas são
+              confidenciais e importantes para o seu atendimento.
             </p>
           </header>
 
           <form @submit.prevent="handleSubmit">
             <div
               v-for="(question, index) in responseData.template.questions"
-              :key="question.title"
+              :key="question.qId"
               class="question-block"
-              :class="{ 'has-error': validationErrors[question.title] }"
+              :class="{ 'has-error': validationErrors[question.qId] }"
             >
               <label class="question-title"
                 ><span>{{ index + 1 }}.</span> {{ question.title }}</label
               >
 
-              <input
-                v-if="question.questionType === 'text'"
-                type="text"
-                v-model="answers[index].answer"
-                class="form-input"
+              <AnamnesisQuestionInputs
+                v-if="answers[question.qId]"
+                :question="question"
+                :qId="question.qId"
+                v-model="answers[question.qId].answer"
               />
-              <textarea
-                v-if="question.questionType === 'long_text'"
-                v-model="answers[index].answer"
-                class="form-textarea"
-              ></textarea>
+              <span v-if="validationErrors[question.qId]" class="error-text"
+                >Este campo é obrigatório.</span
+              >
 
-              <div v-if="question.questionType === 'yes_no'" class="choice-group">
-                <div class="choice-item">
-                  <input
-                    type="radio"
-                    :id="`q-${index}-sim`"
-                    value="Sim"
-                    v-model="answers[index].answer"
-                  />
-                  <label :for="`q-${index}-sim`">Sim</label>
-                </div>
-                <div class="choice-item">
-                  <input
-                    type="radio"
-                    :id="`q-${index}-nao`"
-                    value="Não"
-                    v-model="answers[index].answer"
-                  />
-                  <label :for="`q-${index}-nao`">Não</label>
-                </div>
-              </div>
+              <div
+                v-for="group in question.conditionalQuestions"
+                :key="group.showWhenAnswerIs"
+                class="conditional-group"
+              >
+                <Transition name="slide-fade">
+                  <div
+                    class="sub-question-wrapper"
+                    v-if="
+                      answers[question.qId] &&
+                      answers[question.qId].answer === group.showWhenAnswerIs
+                    "
+                  >
+                    <div
+                      v-for="(subQuestion, subIndex) in group.questions"
+                      :key="subQuestion.qId"
+                      class="question-block sub-question"
+                      :class="{ 'has-error': validationErrors[subQuestion.qId] }"
+                    >
+                      <label class="question-title">
+                        <CornerDownRight :size="18" class="sub-q-icon" />
+                        <span class="sub-q-number"
+                          >{{ index + 1 }}.{{
+                            getSubQuestionLetter(subIndex)
+                          }}</span
+                        >
+                        {{ subQuestion.title }}
+                      </label>
 
-              <div v-if="question.questionType === 'single_choice'" class="choice-group">
-                <div v-for="option in question.options" :key="option" class="choice-item">
-                  <input
-                    type="radio"
-                    :id="`q-${index}-${option}`"
-                    :value="option"
-                    v-model="answers[index].answer"
-                  />
-                  <label :for="`q-${index}-${option}`">{{ option }}</label>
-                </div>
+                      <AnamnesisQuestionInputs
+                        v-if="answers[subQuestion.qId]"
+                        :question="subQuestion"
+                        :qId="subQuestion.qId"
+                        v-model="answers[subQuestion.qId].answer"
+                      />
+                      <span
+                        v-if="validationErrors[subQuestion.qId]"
+                        class="error-text"
+                        >Este campo é obrigatório.</span
+                      >
+                    </div>
+                  </div>
+                </Transition>
               </div>
-
-              <div v-if="question.questionType === 'multiple_choice'" class="choice-group">
-                <div v-for="option in question.options" :key="option" class="choice-item">
-                  <input
-                    type="checkbox"
-                    :id="`q-${index}-${option}`"
-                    :value="option"
-                    v-model="answers[index].answer"
-                  />
-                  <label :for="`q-${index}-${option}`">{{ option }}</label>
-                </div>
               </div>
-            </div>
             <button type="submit" class="submit-button">Enviar Respostas</button>
           </form>
         </div>
       </main>
       <footer class="page-footer">
-        <p>Plataforma segura por <strong>ClínicaCRM</strong></p>
+        <p>Plataforma segura por <strong>Front Clinica</strong></p>
       </footer>
     </template>
-    <div v-else>
+
+    <div v-else class="loading-state">
+      <div class="spinner"></div>
       <p>Carregando formulário...</p>
     </div>
   </div>
 </template>
 
 <style scoped>
+/* --- ESTILOS GLOBAIS (Sem alteração) --- */
 .anamnesis-page {
   display: flex;
   justify-items: center;
@@ -294,6 +376,7 @@ async function handleSubmit() {
 }
 .main-content {
   padding: 2rem;
+  width: 100%;
 }
 .page-footer {
   text-align: center;
@@ -389,7 +472,7 @@ p {
 }
 .question-title {
   display: flex;
-  align-items: center;
+  align-items: flex-start; /* ✨ Alinha no topo para texto longo */
   gap: 0.5rem;
   font-size: 1.125rem;
   font-weight: 600;
@@ -399,79 +482,14 @@ p {
   padding-left: 1rem;
   text-align: left;
   transition: color 0.2s;
+  line-height: 1.4; /* ✨ Melhora a leitura */
 }
 .question-title span {
   color: var(--azul-principal);
+  font-family: var(--fonte-titulo);
+  margin-top: 2px; /* ✨ Ajuste fino de alinhamento */
 }
-.form-input,
-.form-textarea {
-  width: 100%;
-  padding: 0.875rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.75rem;
-  font-size: 1rem;
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
-}
-.form-input:focus,
-.form-textarea:focus {
-  outline: none;
-  border-color: var(--azul-principal);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-}
-.form-textarea {
-  min-height: 120px;
-}
-.choice-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-.choice-item input[type='radio'],
-.choice-item input[type='checkbox'] {
-  display: none;
-}
-.choice-item label {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 1rem;
-  padding: 1rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.75rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.choice-item label:hover {
-  border-color: #9ca3af;
-  background-color: #f9fafb;
-}
-.choice-item label::before {
-  content: '';
-  width: 20px;
-  height: 20px;
-  border: 2px solid #d1d5db;
-  background-color: var(--branco);
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-}
-.choice-item input[type='radio'] + label::before {
-  border-radius: 50%;
-}
-.choice-item input[type='checkbox'] + label::before {
-  border-radius: 0.25rem;
-}
-.choice-item input:checked + label {
-  border-color: var(--azul-principal);
-  background-color: #eef2ff;
-  font-weight: 500;
-}
-.choice-item input:checked + label::before {
-  background-color: var(--azul-principal);
-  border-color: var(--azul-principal);
-  box-shadow: inset 0 0 0 3px var(--branco);
-}
+
 .submit-button {
   width: 100%;
   padding: 1rem;
@@ -488,23 +506,75 @@ p {
 .submit-button:hover {
   background-color: var(--azul-escuro);
 }
+
+/* --- ESTILOS DE ERRO (Sem alteração) --- */
+.error-text {
+  font-size: 0.875rem;
+  color: #ef4444;
+  margin-top: 0.5rem;
+  display: block;
+}
 .question-block.has-error .question-title {
   color: #ef4444;
   border-left-color: #ef4444;
 }
-.question-block.has-error .question-title span {
+.question-block.has-error .question-title span,
+.question-block.has-error .question-title .sub-q-icon,
+.question-block.has-error .question-title .sub-q-number {
+  /* ✨ Adiciona sub-q-number ao seletor de erro */
   color: #ef4444;
 }
-.question-block.has-error .form-input,
-.question-block.has-error .form-textarea {
-  border-color: #ef4444;
+
+/* --- ✨ ESTILOS CONDICIONAIS ATUALIZADOS --- */
+.conditional-group {
+  margin-top: 1.5rem;
+  padding-left: 1.5rem;
+  border-left: 3px solid #e5e7eb;
 }
-.question-block.has-error .choice-item label {
-  border-color: #ef4444;
-  background-color: #fee2e2;
+.sub-question-wrapper {
+  /* ✨ Wrapper para a animação */
+  overflow: hidden;
+}
+.sub-question {
+  margin-bottom: 1.5rem;
+  border: none;
+  padding-left: 0.5rem;
+}
+.sub-question .question-title {
+  font-size: 1rem;
+  border-left: none;
+  padding-left: 0;
+  font-weight: 500;
+  color: #374151;
+}
+.sub-q-icon {
+  color: #9ca3af;
+  margin-right: 0.25rem;
+  flex-shrink: 0;
+  margin-top: 4px; /* ✨ Ajusta alinhamento do ícone */
+}
+.sub-q-number {
+  /* ✨ Estilo para o número 1.A, 1.B... */
+  font-weight: 700;
+  color: var(--azul-principal-leve);
+  margin-right: 0.25rem;
+  margin-top: 2px;
 }
 
-/* --- Telas de Status (ESTILOS CORRIGIDOS E RESTAURADOS) --- */
+/* --- ✨ ESTILOS DE ANIMAÇÃO --- */
+.slide-fade-enter-active {
+  transition: all 0.3s ease-out;
+}
+.slide-fade-leave-active {
+  transition: all 0.2s cubic-bezier(1, 0.5, 0.8, 1);
+}
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  transform: translateY(-10px);
+  opacity: 0;
+}
+
+/* --- Telas de Status e Loading (Sem alteração) --- */
 .success-card,
 .error-card {
   text-align: center;
@@ -514,13 +584,11 @@ p {
   align-items: center;
   justify-content: center;
 }
-
 .success-icon {
   color: #10b981;
   margin-bottom: 1.5rem;
   animation: pop-in 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
-
 .success-title {
   font-family: var(--fonte-titulo);
   font-size: 2.25rem;
@@ -530,7 +598,6 @@ p {
   animation-delay: 0.2s;
   opacity: 0;
 }
-
 .success-message {
   font-size: 1.125rem;
   color: var(--cinza-texto);
@@ -541,12 +608,10 @@ p {
   animation-delay: 0.3s;
   opacity: 0;
 }
-
 .success-message strong {
   color: var(--preto);
   font-weight: 600;
 }
-
 .success-footer {
   font-size: 0.875rem;
   color: #9ca3af;
@@ -554,12 +619,10 @@ p {
   animation-delay: 0.4s;
   opacity: 0;
 }
-
 .error-icon {
   color: #f59e0b;
   margin-bottom: 1.5rem;
 }
-
 .error-title {
   font-family: var(--fonte-titulo);
   font-size: 2.25rem;
@@ -567,7 +630,6 @@ p {
   margin-bottom: 0.5rem;
   color: #b45309;
 }
-
 .error-message {
   font-size: 1.125rem;
   color: var(--cinza-texto);
@@ -585,7 +647,6 @@ p {
     opacity: 1;
   }
 }
-
 @keyframes slide-up {
   from {
     transform: translateY(20px);
@@ -597,26 +658,52 @@ p {
   }
 }
 
-/* ✨ INÍCIO DOS ESTILOS RESPONSIVOS PARA MOBILE ✨ */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 1rem;
+}
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 5px solid var(--azul-principal);
+  border-bottom-color: transparent;
+  border-radius: 50%;
+  display: inline-block;
+  box-sizing: border-box;
+  animation: rotation 1s linear infinite;
+}
+@keyframes rotation {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* --- Estilos Responsivos (Sem alteração) --- */
 @media (max-width: 768px) {
   .page-header {
     padding: 1rem;
     justify-content: space-between;
   }
   .main-content {
-    padding: 1rem; /* Reduz o padding externo */
+    padding: 1rem;
   }
   .page-footer {
     padding: 1rem;
   }
   .card {
-    margin: 0; /* Remove a margem horizontal */
-    padding: 1.5rem 1rem; /* Diminui o padding interno */
-    box-shadow: none; /* Remove a sombra */
-    border: none; /* Remove a borda */
-    background: transparent; /* Remove o background */
+    margin: 0;
+    padding: 1.5rem 1rem;
+    box-shadow: none;
+    border: none;
+    background: transparent;
   }
-
   .patient-info-header {
     flex-direction: column;
     align-items: center;
@@ -643,7 +730,6 @@ p {
   .form-header h1 {
     font-size: 1.5rem;
   }
-  /* Mantém o background e a borda para as telas de status, mas ajusta o padding/margin */
   .card.success-card,
   .card.error-card {
     padding: 3rem 1rem;
@@ -653,5 +739,4 @@ p {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
   }
 }
-/* ✨ FIM DOS ESTILOS RESPONSIVOS PARA MOBILE ✨ */
 </style>
