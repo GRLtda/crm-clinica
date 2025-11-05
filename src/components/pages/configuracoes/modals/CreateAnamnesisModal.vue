@@ -7,7 +7,7 @@ import {
   ChevronRight,
   ChevronDown,
   CornerDownRight,
-} from 'lucide-vue-next' // Ícones adicionados
+} from 'lucide-vue-next'
 import FormInput from '@/components/global/FormInput.vue'
 import StyledSelect from '@/components/global/StyledSelect.vue'
 import { useToast } from 'vue-toastification'
@@ -22,7 +22,8 @@ const toast = useToast()
 
 const templateName = ref('')
 const questions = ref([])
-const openConditionalGroups = ref({}) // Novo: Para controlar o toggle UI
+const openConditionalGroups = ref({})
+const validationErrors = ref(new Set())
 
 const isEditMode = computed(() => !!props.templateIdToEdit && !props.templateToDuplicate)
 
@@ -40,7 +41,33 @@ function generateQId() {
   return 'q_' + Math.random().toString(36).substring(2, 9)
 }
 
-// ✨ NOVO: Helper recursivo para processar perguntas (para duplicar/editar)
+// ✨ NOVO: Helper recursivo para validar perguntas
+function validateQuestions(questionArray) {
+  let isValid = true
+  if (!questionArray) return true
+
+  for (const q of questionArray) {
+    // 1. Valida o título da pergunta
+    if (!q.title || !q.title.trim()) {
+      validationErrors.value.add(q._tempId)
+      isValid = false
+    }
+
+    // 2. Valida recursivamente as sub-perguntas
+    if (q.conditionalQuestions && q.conditionalQuestions.length > 0) {
+      for (const group of q.conditionalQuestions) {
+        if (group.questions && group.questions.length > 0) {
+          if (!validateQuestions(group.questions)) {
+            // Chama recursivamente
+            isValid = false // Propaga o erro para cima
+          }
+        }
+      }
+    }
+  }
+  return isValid
+}
+
 function processLoadedQuestions(questionArray) {
   if (!questionArray || questionArray.length === 0) {
     return []
@@ -53,8 +80,25 @@ function processLoadedQuestions(questionArray) {
     // Processa recursivamente as sub-perguntas
     const processedConditionalQuestions = (q.conditionalQuestions || []).map(
       (group) => {
+        // ✨ CORREÇÃO AQUI ✨
+        // Garante que o valor da condição (showWhenAnswerIs) seja sempre
+        // uma string para compatibilidade com o StyledSelect.
+        let processedShowWhenAnswerIs = group.showWhenAnswerIs
+
+        if (typeof processedShowWhenAnswerIs === 'boolean') {
+          // Converte true -> 'true' e false -> 'false'
+          processedShowWhenAnswerIs = String(processedShowWhenAnswerIs)
+        } else if (
+          processedShowWhenAnswerIs === null ||
+          processedShowWhenAnswerIs === undefined
+        ) {
+          // Garante que não seja nulo se vier assim do DB
+          processedShowWhenAnswerIs = ''
+        }
+
         return {
           ...group,
+          showWhenAnswerIs: processedShowWhenAnswerIs, // <-- Usa o valor processado
           _tempId: Date.now() + Math.random(), // ID temporário para UI
           questions: processLoadedQuestions(group.questions || []), // Recursão
         }
@@ -146,7 +190,7 @@ function addConditionalQuestionGroup(questionIndex) {
   // Define a primeira resposta possível como padrão
   let defaultCondition = ''
   if (question.questionType === 'yes_no') {
-    defaultCondition = true // "Sim"
+    defaultCondition = 'true' // ✨ CORREÇÃO: Alterado de (boolean) true para (string) 'true'
   } else if (question.questionType === 'single_choice' && question.options.length > 0) {
     defaultCondition = question.options[0]
   }
@@ -224,11 +268,12 @@ function toggleConditionalGroup(questionTempId) {
 }
 
 // Retorna as opções de resposta que podem disparar uma condição
+// Retorna as opções de resposta que podem disparar uma condição
 function getConditionOptions(question) {
   if (question.questionType === 'yes_no') {
     return [
-      { label: 'Sim', value: true },
-      { label: 'Não', value: false },
+      { label: 'Sim', value: 'true' },
+      { label: 'Não', value: 'false' },
     ]
   }
   if (question.questionType === 'single_choice') {
@@ -265,12 +310,30 @@ function cleanPayload(questionArray) {
 }
 
 async function handleSubmit() {
+  // ✨ ATUALIZADO: Limpa erros anteriores e valida
+  validationErrors.value.clear()
+  let isFormValid = true
+
   if (!templateName.value) {
     toast.error('Por favor, dê um nome ao modelo.')
-    return
+    validationErrors.value.add('templateName') // Rastreia o erro
+    isFormValid = false
   }
 
-  // ✨ ATUALIZADO: Limpa o payload usando o helper
+  // Valida as perguntas principais e sub-perguntas
+  if (!validateQuestions(questions.value)) {
+    isFormValid = false
+  }
+
+  if (!isFormValid) {
+    toast.error(
+      'Existem campos obrigatórios não preenchidos. Verifique os campos em vermelho.'
+    )
+    return
+  }
+  // --- Fim da validação ---
+
+  // Se chegou aqui, é válido. Continua o processo:
   const preparedQuestions = cleanPayload(questions.value)
 
   const payload = {
@@ -322,6 +385,7 @@ async function handleSubmit() {
           v-model="templateName"
           placeholder="Ex: Anamnese Adulto Completa"
           required
+          :class="{ 'has-error': validationErrors.has('templateName') }"
         />
 
         <hr class="separator" />
@@ -340,6 +404,7 @@ async function handleSubmit() {
                   v-model="question.title"
                   placeholder="Ex: Você tem alguma alergia?"
                   class="question-title-input"
+                  :class="{ 'has-error': validationErrors.has(question._tempId) }"
                 />
                 <StyledSelect
                   label="Tipo de Resposta"
@@ -458,6 +523,9 @@ async function handleSubmit() {
                             v-model="subQuestion.title"
                             placeholder="Ex: Quais alergias?"
                             class="question-title-input"
+                            :class="{
+                              'has-error': validationErrors.has(subQuestion._tempId),
+                            }"
                           />
                           <StyledSelect
                             label="Tipo da Sub-Pergunta"
@@ -876,6 +944,20 @@ async function handleSubmit() {
   margin-top: 1rem;
   padding-left: 0.5rem;
 }
+
+/* --- ✨ NOVO ESTILO DE VALIDAÇÃO ✨ --- */
+.has-error :deep(input),
+.has-error :deep(textarea) {
+  border-color: #ef4444 !important; /* Vermelho erro */
+  background-color: #fee2e2 !important; /* Fundo vermelho bem claro */
+}
+
+.has-error :deep(input:focus),
+.has-error :deep(textarea:focus) {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important; /* Sombra vermelha no foco */
+}
+/* --- FIM DO NOVO ESTILO --- */
 
 .add-group-btn {
   background: none;
