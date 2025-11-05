@@ -162,8 +162,8 @@ function addConditionalQuestionGroup(questionIndex) {
   // Adiciona a primeira sub-pergunta automaticamente
   addConditionalQuestion(questionIndex, question.conditionalQuestions.length - 1)
 
-  // // Abre o toggle da UI
-  // toggleConditionalGroup(question._tempId)
+  // Abre o toggle da UI
+  toggleConditionalGroup(question._tempId)
 }
 
 function removeConditionalQuestionGroup(questionIndex, groupIndex) {
@@ -191,6 +191,30 @@ function removeConditionalQuestion(questionIndex, groupIndex, subQuestionIndex) 
     subQuestionIndex,
     1
   )
+}
+
+// ✨ NOVA FUNÇÃO (Adicionar Opção na Sub-Pergunta)
+function addSubQuestionOption(questionIndex, groupIndex, subQuestionIndex) {
+  const subQuestion =
+    questions.value[questionIndex].conditionalQuestions[groupIndex].questions[
+      subQuestionIndex
+    ]
+  if (!subQuestion.options) {
+    subQuestion.options = []
+  }
+  subQuestion.options.push('')
+}
+
+// ✨ NOVA FUNÇÃO (Remover Opção na Sub-Pergunta)
+function removeSubQuestionOption(
+  questionIndex,
+  groupIndex,
+  subQuestionIndex,
+  optionIndex
+) {
+  questions.value[questionIndex].conditionalQuestions[groupIndex].questions[
+    subQuestionIndex
+  ].options.splice(optionIndex, 1)
 }
 
 // Controla a UI para abrir/fechar o <details> de um grupo condicional
@@ -426,21 +450,65 @@ async function handleSubmit() {
                     >
                       <CornerDownRight :size="18" class="sub-q-icon" />
 
-                      <div class="form-group-inline">
-                        <FormInput
-                          label="Sub-Pergunta"
-                          :hideLabel="true"
-                          v-model="subQuestion.title"
-                          placeholder="Ex: Quais alergias?"
-                          class="question-title-input"
-                        />
-                        <StyledSelect
-                          label="Tipo da Sub-Pergunta"
-                          :hideLabel="true"
-                          v-model="subQuestion.questionType"
-                          :options="questionTypes"
-                          class="question-type-select"
-                        />
+                      <div class="sub-question-content-wrapper">
+                        <div class="form-group-inline">
+                          <FormInput
+                            label="Sub-Pergunta"
+                            :hideLabel="true"
+                            v-model="subQuestion.title"
+                            placeholder="Ex: Quais alergias?"
+                            class="question-title-input"
+                          />
+                          <StyledSelect
+                            label="Tipo da Sub-Pergunta"
+                            :hideLabel="true"
+                            v-model="subQuestion.questionType"
+                            :options="questionTypes"
+                            class="question-type-select"
+                          />
+                        </div>
+
+                        <div
+                          v-if="
+                            subQuestion.questionType === 'single_choice' ||
+                            subQuestion.questionType === 'multiple_choice'
+                          "
+                          class="options-wrapper sub-options-wrapper"
+                        >
+                          <div
+                            v-for="(option, oIndex) in subQuestion.options"
+                            :key="oIndex"
+                            class="option-input-wrapper"
+                          >
+                            <FormInput
+                              :label="`Opção ${oIndex + 1}`"
+                              :hideLabel="true"
+                              v-model="subQuestion.options[oIndex]"
+                              placeholder="Digite o texto da opção"
+                            />
+                            <button
+                              class="btn-icon btn-delete-option"
+                              @click="
+                                removeSubQuestionOption(
+                                  qIndex,
+                                  gIndex,
+                                  sIndex,
+                                  oIndex
+                                )
+                              "
+                            >
+                              <Trash2 :size="16" />
+                            </button>
+                          </div>
+                          <button
+                            class="add-option-btn"
+                            @click="
+                              addSubQuestionOption(qIndex, gIndex, sIndex)
+                            "
+                          >
+                            <Plus :size="16" /> Adicionar Opção
+                          </button>
+                        </div>
                       </div>
                       <button
                         class="btn-icon btn-delete"
@@ -453,7 +521,6 @@ async function handleSubmit() {
                       </button>
                     </div>
                   </div>
-
                   <button
                     class="add-option-btn add-sub-question"
                     @click="addConditionalQuestion(qIndex, gIndex)"
@@ -787,6 +854,23 @@ async function handleSubmit() {
 .sub-question-card .btn-icon {
   margin-top: 0.5rem;
 }
+
+/* --- ✨ NOVOS ESTILOS PARA CORREÇÃO (OPÇÕES EM SUB-PERGUNTAS) --- */
+.sub-question-content-wrapper {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.sub-options-wrapper {
+  /* Remove o padding-left e margin-top excessivo do .options-wrapper principal */
+  padding-left: 0;
+  margin-top: 0.75rem;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 0.75rem;
+}
+/* --- FIM DOS NOVOS ESTILOS --- */
+
 
 .add-sub-question {
   margin-top: 1rem;
