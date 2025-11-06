@@ -43,6 +43,9 @@ let conflictCheckDebounce = null
 // 💡 NOVO ESTADO: Armazena os horários sugeridos
 const suggestedTimes = ref([])
 
+// 💡 NOVO COMPUTED: Identifica se estamos em modo "Reagendamento"
+const isRescheduleMode = computed(() => !!props.initialData?.patient)
+
 const clinicWorkingHours = computed(() => {
   if (!clinicStore.currentClinic?.workingHours) {
     return {}
@@ -85,16 +88,25 @@ const appointmentData = ref({
 
 onMounted(() => {
   if (props.initialData) {
+    // Define o paciente (ID ou Objeto)
     appointmentData.value.patient = props.initialData.patient?._id || props.initialData.patient
-    if (props.initialData.startTime) {
+
+    // ✨ LÓGICA DE REAGENDAMENTO ✨
+    // Se temos um paciente (isRescheduleMode == true), pulamos para o passo 2
+    // e resetamos a data/hora para o usuário escolher um NOVO horário.
+    if (isRescheduleMode.value) {
+      currentStep.value = 2
+      appointmentData.value.date = new Date() // Começa hoje por padrão
+      appointmentData.value.startTime = null
+      appointmentData.value.endTime = null
+    }
+    // Lógica antiga (caso queira pré-preencher um horário, ex: clique no calendário)
+    else if (props.initialData.startTime) {
       appointmentData.value.date = new Date(props.initialData.startTime)
       appointmentData.value.startTime = new Date(props.initialData.startTime).toLocaleTimeString(
         'pt-BR',
         { hour: '2-digit', minute: '2-digit' },
       )
-    }
-    if (appointmentData.value.patient) {
-      currentStep.value = 2
     }
   }
 })
@@ -104,73 +116,80 @@ const patientOptions = computed(() => {
 })
 
 function isTimeInFuture(timeString, selectedDate) {
-  const now = new Date();
+  const now = new Date()
   if (!isToday(selectedDate)) {
-    return true; // Se não for hoje, qualquer horário é futuro em relação a "agora"
+    return true // Se não for hoje, qualquer horário é futuro em relação a "agora"
   }
-  const [hours, minutes] = timeString.split(':').map(Number);
-  const timeToCheck = setMilliseconds(setSeconds(setMinutes(setHours(selectedDate, hours), minutes), 0), 0);
-  return timeToCheck > now;
+  const [hours, minutes] = timeString.split(':').map(Number)
+  const timeToCheck = setMilliseconds(
+    setSeconds(setMinutes(setHours(selectedDate, hours), minutes), 0),
+    0,
+  )
+  return timeToCheck > now
 }
 
-
 const timeOptions = computed(() => {
-  const selectedDate = appointmentData.value.date; // ✨ Data selecionada
-  const selectedDay = getDayOfWeek(selectedDate);
-  const workingHours = clinicWorkingHours.value[selectedDay];
-  const allowOutside = clinicStore.currentClinic?.allowAppointmentsOutsideWorkingHours;
+  const selectedDate = appointmentData.value.date // ✨ Data selecionada
+  const selectedDay = getDayOfWeek(selectedDate)
+  const workingHours = clinicWorkingHours.value[selectedDay]
+  const allowOutside = clinicStore.currentClinic?.allowAppointmentsOutsideWorkingHours
 
-  const options = [];
-  const interval = 15; // 15 minutos
+  const options = []
+  const interval = 15 // 15 minutos
 
-  let startTime = 0; // 00:00
-  let endTime = 24 * 60; // 24:00
+  let startTime = 0 // 00:00
+  let endTime = 24 * 60 // 24:00
 
   if (!allowOutside) {
-    if (!workingHours) return []; // Dia fechado e não permite fora do horário
-    const [startH, startM] = workingHours.open.split(':').map(Number);
-    const [endH, endM] = workingHours.close.split(':').map(Number);
-    startTime = startH * 60 + startM;
-    endTime = endH * 60 + endM;
+    if (!workingHours) return [] // Dia fechado e não permite fora do horário
+    const [startH, startM] = workingHours.open.split(':').map(Number)
+    const [endH, endM] = workingHours.close.split(':').map(Number)
+    startTime = startH * 60 + startM
+    endTime = endH * 60 + endM
   }
 
   for (let i = startTime; i < endTime; i += interval) {
-    const hours = Math.floor(i / 60);
-    const minutes = i % 60;
-    const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    const hours = Math.floor(i / 60)
+    const minutes = i % 60
+    const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
 
     // ✨ VERIFICA SE O HORÁRIO É FUTURO APENAS SE FOR HOJE ✨
     if (isTimeInFuture(timeStr, selectedDate)) {
-      options.push({ value: timeStr, label: timeStr });
+      options.push({ value: timeStr, label: timeStr })
     }
   }
 
-  return options;
-});
+  return options
+})
 
 const isOutsideWorkingHours = computed(() => {
-    if (!appointmentData.value.startTime || !clinicStore.currentClinic?.allowAppointmentsOutsideWorkingHours) {
-        return false;
-    }
-    const selectedDay = getDayOfWeek(appointmentData.value.date);
-    const workingHours = clinicWorkingHours.value[selectedDay];
+  if (
+    !appointmentData.value.startTime ||
+    !clinicStore.currentClinic?.allowAppointmentsOutsideWorkingHours
+  ) {
+    return false
+  }
+  const selectedDay = getDayOfWeek(appointmentData.value.date)
+  const workingHours = clinicWorkingHours.value[selectedDay]
 
-    if (!workingHours) {
-        return true; // The whole day is outside working hours
-    }
+  if (!workingHours) {
+    return true // The whole day is outside working hours
+  }
 
-    return appointmentData.value.startTime < workingHours.open || appointmentData.value.startTime >= workingHours.close;
-});
+  return (
+    appointmentData.value.startTime < workingHours.open ||
+    appointmentData.value.startTime >= workingHours.close
+  )
+})
 
 const noTimeSlotsAvailable = computed(() => {
-  const selectedDay = getDayOfWeek(appointmentData.value.date);
-  const workingHours = clinicWorkingHours.value[selectedDay];
-  const allowOutside = clinicStore.currentClinic?.allowAppointmentsOutsideWorkingHours;
-  const shouldHaveTimes = allowOutside || (workingHours && workingHours.open && workingHours.close);
+  const selectedDay = getDayOfWeek(appointmentData.value.date)
+  const workingHours = clinicWorkingHours.value[selectedDay]
+  const allowOutside = clinicStore.currentClinic?.allowAppointmentsOutsideWorkingHours
+  const shouldHaveTimes = allowOutside || (workingHours && workingHours.open && workingHours.close)
 
-  return shouldHaveTimes && timeOptions.value.length === 0;
-});
-
+  return shouldHaveTimes && timeOptions.value.length === 0
+})
 
 const endTimeOptions = computed(() => {
   if (!appointmentData.value.startTime) return []
@@ -208,48 +227,47 @@ function getISOString(date, timeString) {
 
 // 💡 NOVA FUNÇÃO: Encontra os próximos horários disponíveis
 function findNextAvailableTimes(conflictingTime) {
-  const allTimes = timeOptions.value;
-  const conflictIndex = allTimes.findIndex(t => t.value === conflictingTime);
+  const allTimes = timeOptions.value
+  const conflictIndex = allTimes.findIndex((t) => t.value === conflictingTime)
 
   if (conflictIndex === -1) {
-    suggestedTimes.value = [];
-    return;
+    suggestedTimes.value = []
+    return
   }
 
   // Sugere os próximos 3 horários após o horário conflitante
-  suggestedTimes.value = allTimes.slice(conflictIndex + 1, conflictIndex + 4);
+  suggestedTimes.value = allTimes.slice(conflictIndex + 1, conflictIndex + 4)
 }
 
 // 💡 NOVA FUNÇÃO: Define o horário ao clicar na sugestão
 function handleSuggestionClick(timeValue) {
   // Define o novo horário de início
-  appointmentData.value.startTime = timeValue;
+  appointmentData.value.startTime = timeValue
 
   // Limpa as sugestões e o erro de conflito
-  suggestedTimes.value = [];
-  conflictError.value = null;
-  if (errors.value.time) errors.value.time = null;
+  suggestedTimes.value = []
+  conflictError.value = null
+  if (errors.value.time) errors.value.time = null
 
   // Recalcula o horário de término (baseado na lógica existente no watcher)
-  const [hour, minute] = timeValue.split(':').map(Number);
-  const baseDate = new Date(appointmentData.value.date);
-  baseDate.setHours(hour, minute, 0, 0);
-  baseDate.setMinutes(baseDate.getMinutes() + 30); // Adiciona 30 minutos
+  const [hour, minute] = timeValue.split(':').map(Number)
+  const baseDate = new Date(appointmentData.value.date)
+  baseDate.setHours(hour, minute, 0, 0)
+  baseDate.setMinutes(baseDate.getMinutes() + 30) // Adiciona 30 minutos
 
-  const endHour = String(baseDate.getHours()).padStart(2, '0');
-  const endMinute = String(baseDate.getMinutes()).padStart(2, '0');
-  const endTime = `${endHour}:${endMinute}`;
+  const endHour = String(baseDate.getHours()).padStart(2, '0')
+  const endMinute = String(baseDate.getMinutes()).padStart(2, '0')
+  const endTime = `${endHour}:${endMinute}`
 
   // Define o horário de término
   if (endTimeOptions.value.some((opt) => opt.value === endTime)) {
-    appointmentData.value.endTime = endTime;
+    appointmentData.value.endTime = endTime
   } else {
-    appointmentData.value.endTime = null;
+    appointmentData.value.endTime = null
   }
 
   // O watcher do 'endTime' será acionado automaticamente e chamará a verificação de conflito
 }
-
 
 // ✨ 4. Nova função para checar conflitos
 async function checkAppointmentConflict() {
@@ -279,7 +297,7 @@ async function checkAppointmentConflict() {
       const response = await checkConflict(
         appointmentData.value.patient,
         startTimeISO,
-        endTimeISO
+        endTimeISO,
       )
 
       if (response.data.conflict) {
@@ -290,7 +308,10 @@ async function checkAppointmentConflict() {
         conflictError.value = null
         suggestedTimes.value = [] // 💡 Limpa sugestões se não houver conflito
         // Limpa o erro SÓ SE for um erro de conflito
-        if (errors.value.time && (errors.value.time.includes('conflito') || errors.value.time.includes('existe'))) {
+        if (
+          errors.value.time &&
+          (errors.value.time.includes('conflito') || errors.value.time.includes('existe'))
+        ) {
           errors.value.time = null
         }
       }
@@ -353,12 +374,15 @@ watch(
   () => {
     // Limpa erros anteriores e inicia a verificação
     conflictError.value = null
-    if (errors.value.time && (errors.value.time.includes('conflito') || errors.value.time.includes('existe'))) {
+    if (
+      errors.value.time &&
+      (errors.value.time.includes('conflito') || errors.value.time.includes('existe'))
+    ) {
       errors.value.time = null
     }
     checkAppointmentConflict()
   },
-  { deep: true } // Necessário para a data
+  { deep: true }, // Necessário para a data
 )
 
 // ✨ 7. Função de validação atualizada
@@ -416,14 +440,24 @@ async function handleSubmit() {
     startTime: startTime.toISOString(),
     endTime: endTime.toISOString(),
     sendReminder: appointmentData.value.sendReminder,
+    // ✨ ADICIONA A FLAG DE REAGENDAMENTO ✨
+    isReturn: isRescheduleMode.value,
   }
 
+  // 🔔 A store 'createAppointment' precisa lidar com essa flag 'isReturn'
+  // (provavelmente cancelando o agendamento antigo e criando um novo)
   const { success } = await appointmentsStore.createAppointment(payload)
   if (success) {
-    toast.success('Agendamento criado com sucesso!')
+    toast.success(
+      isRescheduleMode.value
+        ? 'Agendamento reagendado com sucesso!'
+        : 'Agendamento criado com sucesso!',
+    )
     emit('close')
   } else {
-    toast.error('Erro ao criar agendamento.')
+    toast.error(
+      isRescheduleMode.value ? 'Erro ao reagendar.' : 'Erro ao criar agendamento.',
+    )
   }
 }
 </script>
@@ -433,8 +467,14 @@ async function handleSubmit() {
     <div class="modal-content">
       <header class="modal-header">
         <div>
-          <h2>Novo Agendamento</h2>
-          <p>Preencha os dados para criar um novo atendimento.</p>
+          <h2>{{ isRescheduleMode ? 'Reagendar Horário' : 'Novo Agendamento' }}</h2>
+          <p>
+            {{
+              isRescheduleMode
+                ? 'Escolha uma nova data e horário para o paciente.'
+                : 'Preencha os dados para criar um novo atendimento.'
+            }}
+          </p>
         </div>
         <button @click="$emit('close')" class="btn-close-mobile">
           <X :size="24" />
@@ -452,15 +492,19 @@ async function handleSubmit() {
             @search="handlePatientSearch"
             :error="!!errors.patient"
             placeholder="Digite para buscar um paciente"
+            :disabled="isRescheduleMode"
           />
           <p v-if="errors.patient" class="error-message">{{ errors.patient }}</p>
-          <div class="divider">
-            <span>OU</span>
-          </div>
-          <button @click="goToCreatePatient" class="btn-outline">
-            <Plus :size="16" />
-            Cadastrar novo paciente
-          </button>
+
+          <template v-if="!isRescheduleMode">
+            <div class="divider">
+              <span>OU</span>
+            </div>
+            <button @click="goToCreatePatient" class="btn-outline">
+              <Plus :size="16" />
+              Cadastrar novo paciente
+            </button>
+          </template>
         </div>
 
         <div v-if="currentStep === 2" class="step-content">
@@ -503,11 +547,13 @@ async function handleSubmit() {
             <div v-else class="closed-message">
               <DoorClosed :size="16" /> Clínica fechada neste dia.
             </div>
-             <div v-if="isOutsideWorkingHours && !conflictError" class="warning-message">
+            <div v-if="isOutsideWorkingHours && !conflictError" class="warning-message">
               <Info :size="16" />
               Atenção: O horário selecionado está fora do expediente da clínica.
             </div>
-            <p v-if="errors.time || conflictError" class="error-message">{{ conflictError || errors.time }}</p>
+            <p v-if="errors.time || conflictError" class="error-message">
+              {{ conflictError || errors.time }}
+            </p>
 
             <div v-if="suggestedTimes.length > 0" class="suggestions-wrapper">
               <p class="suggestions-title">Horários alternativos sugeridos:</p>
@@ -523,7 +569,6 @@ async function handleSubmit() {
                 </button>
               </div>
             </div>
-
           </div>
         </div>
 
@@ -583,7 +628,15 @@ async function handleSubmit() {
             class="btn-primary"
             :disabled="appointmentsStore.isLoading"
           >
-            {{ appointmentsStore.isLoading ? 'Agendando...' : 'Confirmar' }}
+            {{
+              appointmentsStore.isLoading
+                ? isRescheduleMode
+                  ? 'Reagendando...'
+                  : 'Agendando...'
+                : isRescheduleMode
+                ? 'Confirmar Reagendamento'
+                : 'Confirmar'
+            }}
           </button>
         </div>
       </footer>

@@ -249,9 +249,87 @@ function handleDetailsModalClose() {
   fetchDataForView()
 }
 
-function handleReschedule(appointmentToEdit) {
+function openModal(date) {
+  // Limpa dados antigos e define a data (se houver)
+  initialAppointmentData.value = date ? { startTime: date } : null
+  isModalOpen.value = true
+}
+
+function onEventClick(event) {
+  console.log('DEBUG (inicio.vue): onEventClick. Evento selecionado:', event)
+  selectedEventForDetails.value = event
+  isDetailsModalOpen.value = true
+}
+
+function closeModal() {
+  isModalOpen.value = false
+  initialAppointmentData.value = null // Sempre limpar os dados ao fechar
+}
+
+function closeDetailsModal() {
   isDetailsModalOpen.value = false
-  toast.info('Funcionalidade de reagendamento em desenvolvimento!')
+  // Não limpamos o selectedEventForDetails aqui
+  // para o caso do 'handleReschedule' precisar dele
+}
+
+function handleReschedule(appointmentToReschedule) {
+  // ✨ DEBUG 3: Ver o que o handleReschedule recebeu
+  console.log('DEBUG (inicio.vue): handleReschedule foi chamado.')
+  console.log(
+    'DEBUG (inicio.vue): Recebido (deve ser o objeto do agendamento):',
+    appointmentToReschedule,
+  )
+
+  // A 'appointmentToReschedule' JÁ É o originalEvent (o agendamento em si)
+  // ✨ A verificação de BUG estava aqui.
+  if (!appointmentToReschedule) {
+    console.error(
+      'DEBUG (inicio.vue): Erro! O objeto do agendamento é nulo ou indefinido.',
+    )
+    toast.error('Erro ao carregar dados do agendamento.')
+    closeDetailsModal()
+    return
+  }
+
+  // 1. Define os dados iniciais para o modo "Reagendar"
+  const patientData = appointmentToReschedule.patient
+
+  // ✨ DEBUG 4: Ver o paciente
+  console.log('DEBUG (inicio.vue): Paciente extraído:', patientData)
+
+  const patientId = typeof patientData === 'object' ? patientData._id : patientData
+
+  // ✨ DEBUG 5: Ver o ID do paciente
+  console.log('DEBUG (inicio.vue): ID do Paciente:', patientId)
+
+  if (!patientId) {
+    console.error('DEBUG (inicio.vue): Erro! Não foi possível extrair o ID do paciente.')
+    toast.error('Não foi possível identificar o paciente para o reagendamento.')
+    closeDetailsModal() // Apenas fecha o modal de detalhes
+    return
+  }
+
+  initialAppointmentData.value = {
+    patient: patientId,
+    // (Opcional) Se a store precisar saber qual agendamento antigo cancelar:
+    // oldAppointmentId: appointmentToReschedule._id
+  }
+
+  // ✨ DEBUG 6: Ver os dados que serão enviados para o modal de criação
+  console.log(
+    'DEBUG (inicio.vue): Dados definidos para o CreateAppointmentModal:',
+    initialAppointmentData.value,
+  )
+
+  // 2. Fecha o modal de detalhes
+  isDetailsModalOpen.value = false
+
+  // 3. Abre o modal de criação (em modo reagendamento)
+  nextTick(() => {
+    // ✨ DEBUG 7: Confirmando abertura do modal
+    console.log('DEBUG (inicio.vue): Abrindo o CreateAppointmentModal.')
+    isModalOpen.value = true
+  })
 }
 </script>
 
@@ -259,13 +337,13 @@ function handleReschedule(appointmentToEdit) {
   <div class="calendar-page-container">
     <CreateAppointmentModal
       v-if="isModalOpen"
-      @close="handleModalClose"
       :initial-data="initialAppointmentData"
+      @close="closeModal"
     />
     <AppointmentDetailsModal
       v-if="isDetailsModalOpen && selectedEventForDetails"
       :event="selectedEventForDetails"
-      @close="handleDetailsModalClose"
+      @close="closeDetailsModal"
       @edit="handleReschedule"
     />
 

@@ -65,6 +65,7 @@ async function updateStatus(status) {
 }
 
 function handleReschedule() {
+  console.log('DEBUG (DetailsModal): Emitindo @edit com:', props.event.originalEvent)
   emit('edit', props.event.originalEvent)
   emit('close')
 }
