@@ -13,6 +13,7 @@ import {
   CalendarOff,
   CalendarPlus,
   CheckCircle,
+  RefreshCw, // ✨ 1. Adicionar o ícone de "retorno"
 } from 'lucide-vue-next'
 import { useStatusBadge } from '@/composables/useStatusBadge.js'
 import { formatPhone } from '@/directives/phone-mask.js'
@@ -43,29 +44,55 @@ const badgeStyle = computed(() => badgeInfo.value.badgeStyle)
 const displayText = computed(() => badgeInfo.value.displayText)
 // ✨ ========= FIM DA CORREÇÃO ========= ✨
 
-function formatTime(dateString) {
-  if (!dateString) return ''
-  return new Date(dateString).toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+// ✨ 2. Computed para verificar se é retorno
+const isReturn = computed(() => {
+  return props.event.originalEvent?.isReturn === true
+})
+
+function formatTime(dateString, formatStr) {
+  try {
+    const date = new Date(dateString)
+    if (formatStr === 'dd/MM/yyyy') {
+      return date.toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+    }
+    if (formatStr === 'HH:mm') {
+      return date.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'UTC',
+      })
+    }
+    return date.toLocaleString('pt-BR', { timeZone: 'UTC' })
+  } catch (error) {
+    console.error('Erro ao formatar data:', dateString, error)
+    return 'Data inválida'
+  }
+}
+
+function goToPatient() {
+  if (patient.value && patient.value._id) {
+    emit('close')
+    router.push(`/app/pacientes/${patient.value._id}`)
+  } else {
+    toast.info('Este agendamento não parece ter um paciente vinculado.')
+  }
 }
 
 async function updateStatus(status) {
-  const { success } = await appointmentsStore.updateAppointmentStatus(
-    props.event.originalEvent._id,
-    status,
-  )
+  const appointmentId = props.event.originalEvent._id
+  const success = await appointmentsStore.updateAppointmentStatus(appointmentId, status)
   if (success) {
-    toast.success(`Agendamento marcado como "${status}"!`)
+    toast.success(`Agendamento ${status.toLowerCase()} com sucesso!`)
     emit('close')
   } else {
-    toast.error('Erro ao atualizar o status do agendamento.')
+    toast.error('Erro ao atualizar status.')
   }
 }
 
 function handleReschedule() {
+  // ✨ DEBUG 1: Ver o que estamos emitindo
   console.log('DEBUG (DetailsModal): Emitindo @edit com:', props.event.originalEvent)
+
   emit('edit', props.event.originalEvent)
   emit('close')
 }
@@ -108,6 +135,10 @@ function handleReschedule() {
             <Clock :size="16" />
             <span>{{ formatTime(event.start) }} - {{ formatTime(event.end) }}</span>
           </div>
+          <div v-if="isReturn" class="info-chip return-chip">
+          <RefreshCw :size="16" />
+          <span>Este é um agendamento de retorno.</span>
+        </div>
         </div>
       </div>
 
@@ -174,6 +205,24 @@ function handleReschedule() {
     opacity: 1;
     transform: scale(1);
   }
+}
+
+.info-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.return-chip {
+  background-color: #eef2ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
 }
 
 .modal-header {
