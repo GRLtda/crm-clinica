@@ -609,7 +609,12 @@ async function handleSubmit() {
       <footer class="modal-footer">
         <button @click="$emit('close')" type="button" class="btn-secondary">Cancelar</button>
         <div class="footer-actions">
-          <button v-if="currentStep > 1" @click="currentStep--" type="button" class="btn-secondary">
+          <button
+            v-if="currentStep === 3 || (currentStep === 2 && !isRescheduleMode)"
+            @click="currentStep--"
+            type="button"
+            class="btn-secondary"
+          >
             Voltar
           </button>
           <button
@@ -634,7 +639,7 @@ async function handleSubmit() {
                   ? 'Reagendando...'
                   : 'Agendando...'
                 : isRescheduleMode
-                ? 'Confirmar Reagendamento'
+                ? 'Confirmar'
                 : 'Confirmar'
             }}
           </button>
