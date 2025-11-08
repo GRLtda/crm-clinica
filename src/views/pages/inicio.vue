@@ -125,6 +125,15 @@ async function fetchDataForView() {
   }
 }
 
+function handleEditAction(eventData) {
+  console.log('DEBUG (inicio.vue): handleEditAction chamado com modo:', eventData._mode)
+  initialAppointmentData.value = eventData
+
+  console.log('DEBUG (inicio.vue): Dados definidos para o CreateAppointmentModal:', initialAppointmentData.value)
+
+  isModalOpen.value = true
+}
+
 function goToPrevious() {
   const daysToSubtract = calendarView.value === 'day' ? 1 : 7
   selectedDate.value = subDays(selectedDate.value, daysToSubtract)
@@ -341,11 +350,11 @@ function handleReschedule(appointmentToReschedule) {
       @close="closeModal"
     />
     <AppointmentDetailsModal
-      v-if="isDetailsModalOpen && selectedEventForDetails"
-      :event="selectedEventForDetails"
-      @close="closeDetailsModal"
-      @edit="handleReschedule"
-    />
+  v-if="isDetailsModalOpen"
+  :event="selectedEventForDetails"
+  @close="isDetailsModalOpen = false"
+  @edit="handleEditAction"
+/>
 
     <div class="calendar-container" :class="{ 'is-loading': appointmentsStore.isLoading }">
       <div v-if="appointmentsStore.isLoading" class="loading-overlay">

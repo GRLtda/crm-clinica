@@ -14,6 +14,7 @@ import {
   CalendarPlus,
   CheckCircle,
   RefreshCw, // ✨ 1. Adicionar o ícone de "retorno"
+  CalendarCheck
 } from 'lucide-vue-next'
 import { useStatusBadge } from '@/composables/useStatusBadge.js'
 import { formatPhone } from '@/directives/phone-mask.js'
@@ -90,10 +91,14 @@ async function updateStatus(status) {
 }
 
 function handleReschedule() {
-  // ✨ DEBUG 1: Ver o que estamos emitindo
-  console.log('DEBUG (DetailsModal): Emitindo @edit com:', props.event.originalEvent)
+  console.log('DEBUG (DetailsModal): Emitindo @edit (reagendar) com:', props.event.originalEvent)
+  emit('edit', { ...props.event.originalEvent, _mode: 'reschedule' })
+  emit('close')
+}
 
-  emit('edit', props.event.originalEvent)
+function handleRebook() {
+  console.log('DEBUG (DetailsModal): Emitindo @edit (remarcar) com:', props.event.originalEvent)
+  emit('edit', { ...props.event.originalEvent, _mode: 'rebook' })
   emit('close')
 }
 </script>
@@ -136,17 +141,23 @@ function handleReschedule() {
             <span>{{ formatTime(event.start) }} - {{ formatTime(event.end) }}</span>
           </div>
           <div v-if="isReturn" class="info-chip return-chip">
-          <RefreshCw :size="16" />
-          <span>Este é um agendamento de retorno.</span>
-        </div>
+            <RefreshCw :size="16" />
+            <span>Este é um agendamento de retorno.</span>
+          </div>
         </div>
       </div>
 
       <footer class="modal-footer">
-        <button @click="handleReschedule" class="btn-secondary">
-          <CalendarPlus :size="16" />
-          Reagendar
-        </button>
+        <div class="reschedule-actions">
+          <button @click="handleReschedule" class="btn-secondary">
+            <CalendarPlus :size="16" />
+            Reagendar
+          </button>
+          <button @click="handleRebook" class="btn-secondary">
+            <CalendarCheck :size="16" />
+            Remarcar
+          </button>
+        </div>
         <div class="status-actions">
           <button @click="updateStatus('Confirmado')" class="btn-success">
             <CheckCircle :size="16" />
@@ -452,6 +463,12 @@ function handleReschedule() {
     background-color: var(--branco);
     padding: 1.5rem;
     border-top: 1px solid #e5e7eb;
+  }
+
+  .reschedule-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
   }
 
   .status-actions {

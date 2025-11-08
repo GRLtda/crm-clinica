@@ -51,6 +51,19 @@ export const useAppointmentsStore = defineStore('appointments', () => {
     }
   }
 
+  async function updateAppointment(appointmentId, appointmentData) {
+    isLoading.value = true
+    try {
+      await apiUpdateAppointment(appointmentId, appointmentData)
+      return { success: true }
+    } catch (error) {
+      console.error('Erro ao atualizar agendamento:', error)
+      return { success: false, error }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   async function updateAppointmentStatus(appointmentId, status) {
     isLoading.value = true
     try {
@@ -86,6 +99,7 @@ export const useAppointmentsStore = defineStore('appointments', () => {
     appointments,
     fetchAppointmentsByDate,
     createAppointment,
+    updateAppointment,
     updateAppointmentStatus,
     fetchAppointmentsByPatient,
   }

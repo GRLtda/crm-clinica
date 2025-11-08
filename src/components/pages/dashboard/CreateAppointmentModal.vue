@@ -43,9 +43,22 @@ let conflictCheckDebounce = null
 // 💡 NOVO ESTADO: Armazena os horários sugeridos
 const suggestedTimes = ref([])
 
-// 💡 NOVO COMPUTED: Identifica se estamos em modo "Reagendamento"
-const isRescheduleMode = computed(() => !!props.initialData?.patient)
+const isRescheduleMode = computed(() => {
+  return !!props.initialData?.patient && props.initialData?._mode === 'reschedule'
+})
 
+// Modo "Remarcar" (Atualiza o agendamento existente)
+const isRebookMode = computed(() => {
+  return !!props.initialData?.patient && props.initialData?._mode === 'rebook'
+})
+
+// Estamos em qualquer modo de edição (Reagendar ou Remarcar)?
+// Usado para pular a Etapa 1 e desabilitar o select de paciente.
+const isEditMode = computed(() => {
+  return isRescheduleMode.value || isRebookMode.value
+})
+
+// 💡 NOVO COMPUTED: Identifica se estamos em modo "Reagendamento"
 const clinicWorkingHours = computed(() => {
   if (!clinicStore.currentClinic?.workingHours) {
     return {}
@@ -88,19 +101,15 @@ const appointmentData = ref({
 
 onMounted(() => {
   if (props.initialData) {
-    // Define o paciente (ID ou Objeto)
     appointmentData.value.patient = props.initialData.patient?._id || props.initialData.patient
 
-    // ✨ LÓGICA DE REAGENDAMENTO ✨
-    // Se temos um paciente (isRescheduleMode == true), pulamos para o passo 2
-    // e resetamos a data/hora para o usuário escolher um NOVO horário.
-    if (isRescheduleMode.value) {
+    if (isEditMode.value) {
       currentStep.value = 2
-      appointmentData.value.date = new Date() // Começa hoje por padrão
+      appointmentData.value.date = new Date()
       appointmentData.value.startTime = null
       appointmentData.value.endTime = null
     }
-    // Lógica antiga (caso queira pré-preencher um horário, ex: clique no calendário)
+    // Lógica antiga (clique no calendário)
     else if (props.initialData.startTime) {
       appointmentData.value.date = new Date(props.initialData.startTime)
       appointmentData.value.startTime = new Date(props.initialData.startTime).toLocaleTimeString(
@@ -424,40 +433,63 @@ function nextStep() {
 async function handleSubmit() {
   if (!validateStep()) return
 
+  // Pega data e hora da UI
   const [startHour, startMinute] = appointmentData.value.startTime.split(':').map(Number)
   const [endHour, endMinute] = appointmentData.value.endTime.split(':').map(Number)
-
   const baseDate = new Date(appointmentData.value.date)
   const year = baseDate.getFullYear()
   const month = baseDate.getMonth()
   const day = baseDate.getDate()
-
   const startTime = new Date(year, month, day, startHour, startMinute)
   const endTime = new Date(year, month, day, endHour, endMinute)
 
-  const payload = {
-    patient: appointmentData.value.patient,
-    startTime: startTime.toISOString(),
-    endTime: endTime.toISOString(),
-    sendReminder: appointmentData.value.sendReminder,
-    // ✨ ADICIONA A FLAG DE REAGENDAMENTO ✨
-    isReturn: isRescheduleMode.value,
-  }
+  // Decide se vai ATUALIZAR (Remarcar) ou CRIAR (Novo/Reagendar)
+  if (isRebookMode.value) {
+    // --- MODO REMARCAR (UPDATE) ---
+    const appointmentId = props.initialData?._id
+    if (!appointmentId) {
+      toast.error('Erro: ID do agendamento original não encontrado para remarcação.')
+      return
+    }
 
-  // 🔔 A store 'createAppointment' precisa lidar com essa flag 'isReturn'
-  // (provavelmente cancelando o agendamento antigo e criando um novo)
-  const { success } = await appointmentsStore.createAppointment(payload)
-  if (success) {
-    toast.success(
-      isRescheduleMode.value
-        ? 'Agendamento reagendado com sucesso!'
-        : 'Agendamento criado com sucesso!',
-    )
-    emit('close')
+    const payload = {
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
+      // Manter o 'status' original (ex: 'Agendado'),
+      // a menos que queiramos forçar um 'Reagendado'
+      // status: 'Agendado'
+    }
+
+    // Chama a nova ação 'updateAppointment' da store
+    const { success } = await appointmentsStore.updateAppointment(appointmentId, payload)
+    if (success) {
+      toast.success('Agendamento remarcado com sucesso!')
+      emit('close')
+    } else {
+      toast.error('Erro ao remarcar o agendamento.')
+    }
   } else {
-    toast.error(
-      isRescheduleMode.value ? 'Erro ao reagendar.' : 'Erro ao criar agendamento.',
-    )
+    const payload = {
+      patient: appointmentData.value.patient,
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
+      sendReminder: appointmentData.value.sendReminder,
+      isReturn: isRescheduleMode.value,
+    }
+
+    const { success } = await appointmentsStore.createAppointment(payload)
+    if (success) {
+      toast.success(
+        isRescheduleMode.value
+          ? 'Agendamento reagendado com sucesso!'
+          : 'Agendamento criado com sucesso!',
+      )
+      emit('close')
+    } else {
+      toast.error(
+        isRescheduleMode.value ? 'Erro ao reagendar.' : 'Erro ao criar agendamento.',
+      )
+    }
   }
 }
 </script>
@@ -467,10 +499,20 @@ async function handleSubmit() {
     <div class="modal-content">
       <header class="modal-header">
         <div>
-          <h2>{{ isRescheduleMode ? 'Reagendar Horário' : 'Novo Agendamento' }}</h2>
+          <h2>
+            {{
+              isRebookMode
+                ? 'Remarcar Agendamento'
+                : isRescheduleMode
+                ? 'Reagendar Horário'
+                : 'Novo Agendamento'
+            }}
+          </h2>
           <p>
             {{
-              isRescheduleMode
+              isRebookMode
+                ? 'Escolha o novo horário para o agendamento existente.'
+                : isRescheduleMode
                 ? 'Escolha uma nova data e horário para o paciente.'
                 : 'Preencha os dados para criar um novo atendimento.'
             }}
@@ -492,11 +534,11 @@ async function handleSubmit() {
             @search="handlePatientSearch"
             :error="!!errors.patient"
             placeholder="Digite para buscar um paciente"
-            :disabled="isRescheduleMode"
+            :disabled="isEditMode"
           />
           <p v-if="errors.patient" class="error-message">{{ errors.patient }}</p>
 
-          <template v-if="!isRescheduleMode">
+          <template v-if="!isEditMode">
             <div class="divider">
               <span>OU</span>
             </div>
@@ -610,7 +652,7 @@ async function handleSubmit() {
         <button @click="$emit('close')" type="button" class="btn-secondary">Cancelar</button>
         <div class="footer-actions">
           <button
-            v-if="currentStep === 3 || (currentStep === 2 && !isRescheduleMode)"
+            v-if="currentStep === 3 || (currentStep === 2 && !isEditMode)"
             @click="currentStep--"
             type="button"
             class="btn-secondary"
@@ -635,11 +677,15 @@ async function handleSubmit() {
           >
             {{
               appointmentsStore.isLoading
-                ? isRescheduleMode
-                  ? 'Reagendando...'
+                ? isRebookMode
+                  ? 'Salvando...'
+                  : isRescheduleMode
+                  ? 'Salvando...'
                   : 'Agendando...'
+                : isRebookMode
+                ? 'Confirmar Remarcação'
                 : isRescheduleMode
-                ? 'Confirmar'
+                ? 'Confirmar Reagendamento'
                 : 'Confirmar'
             }}
           </button>
