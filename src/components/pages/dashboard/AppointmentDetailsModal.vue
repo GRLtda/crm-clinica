@@ -16,7 +16,8 @@ import {
   CheckCircle,
   RefreshCw,
   CalendarCheck,
-  ChevronDown // ✨ 2. ADICIONAR O ÍCONE DO DROPDOWN
+  SquarePen,
+  ChevronDown
 } from 'lucide-vue-next'
 import { useStatusBadge } from '@/composables/useStatusBadge.js'
 import { formatPhone } from '@/directives/phone-mask.js'
@@ -143,10 +144,6 @@ function handleRebook() {
         <div class="appointment-details">
           <div class="detail-item">
             <Calendar :size="16" />
-            <span>{{ new Date(event.start).toLocaleDateString('pt-BR') }}</span>
-          </div>
-          <div class="detail-item">
-            <Calendar :size="16" />
             <span>{{
               new Date(event.start).toLocaleDateString('pt-BR', {
                 timeZone: 'America/Sao_Paulo',
@@ -177,14 +174,23 @@ function handleRebook() {
         </div>
 
         <div class="status-actions">
-          <div class="dropdown-wrapper" v-click-outside="() => (isStatusDropdownOpen = false)">
+          <div
+            v-if="event.originalEvent.status !== 'Cancelado'"
+            class="dropdown-wrapper"
+            v-click-outside="() => (isStatusDropdownOpen = false)"
+          >
             <button @click="toggleStatusDropdown" class="btn-secondary btn-dropdown-toggle">
+              <SquarePen :size="16" />
               <span>Alterar Status</span>
               <ChevronDown :size="16" :class="{ 'rotate-180': isStatusDropdownOpen }" />
             </button>
 
             <div v-if="isStatusDropdownOpen" class="dropdown-menu">
-              <button @click="updateStatus('Confirmado')" class="dropdown-item success">
+              <button
+                v-if="event.originalEvent.status !== 'Confirmado'"
+                @click="updateStatus('Confirmado')"
+                class="dropdown-item success"
+              >
                 <CheckCircle :size="16" />
                 <span>Confirmar Chegada</span>
               </button>
@@ -200,7 +206,7 @@ function handleRebook() {
           </div>
         </div>
       </footer>
-    </div>
+      </div>
   </div>
 </template>
 
