@@ -5,18 +5,24 @@ import {
   updateAppointment as apiUpdateAppointment,
   getAppointments as apiGetAppointments,
 } from '@/api/appointments'
-import apiClient from '@/api' // Seu cliente de API
+import apiClient from '@/api'
 import { useDashboardStore } from './dashboard'
 
 export const useAppointmentsStore = defineStore('appointments', () => {
-  const appointments = ref([]) // Garante que o estado inicial seja um array vazio
+  const appointments = ref([])
   const patientAppointments = ref([])
   const isLoading = ref(false)
 
+  const currentStartDate = ref(null)
+  const currentEndDate = ref(null)
+
   async function fetchAppointmentsByDate(startDate, endDate) {
     isLoading.value = true
+
+    currentStartDate.value = startDate
+    currentEndDate.value = endDate
+
     try {
-      // Se endDate não for fornecido, usa o startDate para buscar um único dia
       const params = { startDate, endDate: endDate || startDate }
       const response = await apiGetAppointments(params)
 
@@ -40,8 +46,11 @@ export const useAppointmentsStore = defineStore('appointments', () => {
       await apiCreateAppointment(appointmentData)
       const dashboardStore = useDashboardStore()
       dashboardStore.fetchDashboardStats()
-      // Recarrega os agendamentos da view atual para refletir a adição
-      // (a view de agenda já faz isso ao fechar o modal, mas é uma boa prática)
+
+      if (currentStartDate.value) {
+        fetchAppointmentsByDate(currentStartDate.value, currentEndDate.value)
+      }
+
       return { success: true }
     } catch (error) {
       console.error('Erro ao criar agendamento:', error)
@@ -55,6 +64,11 @@ export const useAppointmentsStore = defineStore('appointments', () => {
     isLoading.value = true
     try {
       await apiUpdateAppointment(appointmentId, appointmentData)
+
+      if (currentStartDate.value) {
+        fetchAppointmentsByDate(currentStartDate.value, currentEndDate.value)
+      }
+
       return { success: true }
     } catch (error) {
       console.error('Erro ao atualizar agendamento:', error)
@@ -69,7 +83,12 @@ export const useAppointmentsStore = defineStore('appointments', () => {
     try {
       await apiUpdateAppointment(appointmentId, { status })
       const dashboardStore = useDashboardStore()
-      dashboardStore.fetchDashboardStats() // Atualiza o dashboard também
+      dashboardStore.fetchDashboardStats()
+
+      if (currentStartDate.value) {
+        fetchAppointmentsByDate(currentStartDate.value, currentEndDate.value)
+      }
+
       return { success: true }
     } catch (error) {
       console.error('Erro ao atualizar status do agendamento:', error)

@@ -272,13 +272,14 @@ function onEventClick(event) {
 
 function closeModal() {
   isModalOpen.value = false
-  initialAppointmentData.value = null // Sempre limpar os dados ao fechar
+  initialAppointmentData.value = null
+
+  fetchDataForView()
 }
 
 function closeDetailsModal() {
   isDetailsModalOpen.value = false
-  // Não limpamos o selectedEventForDetails aqui
-  // para o caso do 'handleReschedule' precisar dele
+  fetchDataForView()
 }
 
 function handleReschedule(appointmentToReschedule) {

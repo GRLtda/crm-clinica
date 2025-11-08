@@ -1,5 +1,6 @@
 <script setup>
-import { computed } from 'vue'
+// ✨ 1. ADICIONAR O 'ref'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppointmentsStore } from '@/stores/appointments'
 import { useToast } from 'vue-toastification'
@@ -13,8 +14,9 @@ import {
   CalendarOff,
   CalendarPlus,
   CheckCircle,
-  RefreshCw, // ✨ 1. Adicionar o ícone de "retorno"
-  CalendarCheck
+  RefreshCw,
+  CalendarCheck,
+  ChevronDown // ✨ 2. ADICIONAR O ÍCONE DO DROPDOWN
 } from 'lucide-vue-next'
 import { useStatusBadge } from '@/composables/useStatusBadge.js'
 import { formatPhone } from '@/directives/phone-mask.js'
@@ -50,20 +52,25 @@ const isReturn = computed(() => {
   return props.event.originalEvent?.isReturn === true
 })
 
+// ✨ 3. ADICIONAR CONTROLE DO DROPDOWN
+const isStatusDropdownOpen = ref(false)
+
+function toggleStatusDropdown() {
+  isStatusDropdownOpen.value = !isStatusDropdownOpen.value
+}
+
 function formatTime(dateString, formatStr) {
   try {
     const date = new Date(dateString)
+    const options = { timeZone: 'America/Sao_Paulo' }
+
     if (formatStr === 'dd/MM/yyyy') {
-      return date.toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+      return date.toLocaleDateString('pt-BR', options)
     }
-    if (formatStr === 'HH:mm') {
-      return date.toLocaleTimeString('pt-BR', {
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'UTC',
-      })
-    }
-    return date.toLocaleString('pt-BR', { timeZone: 'UTC' })
+
+    options.hour = '2-digit'
+    options.minute = '2-digit'
+    return date.toLocaleTimeString('pt-BR', options)
   } catch (error) {
     console.error('Erro ao formatar data:', dateString, error)
     return 'Data inválida'
@@ -79,7 +86,9 @@ function goToPatient() {
   }
 }
 
+// ✨ 4. FUNÇÃO 'updateStatus' MODIFICADA (PARA FECHAR O DROPDOWN)
 async function updateStatus(status) {
+  isStatusDropdownOpen.value = false // Fecha o dropdown ao selecionar
   const appointmentId = props.event.originalEvent._id
   const success = await appointmentsStore.updateAppointmentStatus(appointmentId, status)
   if (success) {
@@ -137,6 +146,14 @@ function handleRebook() {
             <span>{{ new Date(event.start).toLocaleDateString('pt-BR') }}</span>
           </div>
           <div class="detail-item">
+            <Calendar :size="16" />
+            <span>{{
+              new Date(event.start).toLocaleDateString('pt-BR', {
+                timeZone: 'America/Sao_Paulo',
+              })
+            }}</span>
+          </div>
+          <div class="detail-item">
             <Clock :size="16" />
             <span>{{ formatTime(event.start) }} - {{ formatTime(event.end) }}</span>
           </div>
@@ -154,23 +171,33 @@ function handleRebook() {
             Reagendar
           </button>
           <button @click="handleRebook" class="btn-secondary">
-            <CalendarCheck :size="16" />
-            Remarcar
+            <RefreshCw :size="16" />
+            Retorno
           </button>
         </div>
+
         <div class="status-actions">
-          <button @click="updateStatus('Confirmado')" class="btn-success">
-            <CheckCircle :size="16" />
-            Confirmar Chegada
-          </button>
-          <button @click="updateStatus('Não Compareceu')" class="btn-outline-danger">
-            <CalendarOff :size="16" />
-            Não Compareceu
-          </button>
-          <button @click="updateStatus('Cancelado')" class="btn-danger">
-            <Trash2 :size="16" />
-            Cancelar
-          </button>
+          <div class="dropdown-wrapper" v-click-outside="() => (isStatusDropdownOpen = false)">
+            <button @click="toggleStatusDropdown" class="btn-secondary btn-dropdown-toggle">
+              <span>Alterar Status</span>
+              <ChevronDown :size="16" :class="{ 'rotate-180': isStatusDropdownOpen }" />
+            </button>
+
+            <div v-if="isStatusDropdownOpen" class="dropdown-menu">
+              <button @click="updateStatus('Confirmado')" class="dropdown-item success">
+                <CheckCircle :size="16" />
+                <span>Confirmar Chegada</span>
+              </button>
+              <button @click="updateStatus('Não Compareceu')" class="dropdown-item outline-danger">
+                <CalendarOff :size="16" />
+                <span>Não Compareceu</span>
+              </button>
+              <button @click="updateStatus('Cancelado')" class="dropdown-item danger">
+                <Trash2 :size="16" />
+                <span>Cancelar</span>
+              </button>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
@@ -426,6 +453,80 @@ function handleRebook() {
   background: #bbf7d0;
 }
 
+/* ===== ESTILOS DO NOVO DROPDOWN DE STATUS ===== */
+.dropdown-wrapper {
+  position: relative;
+}
+
+.btn-dropdown-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 180px; /* Largura mínima para o botão no desktop */
+}
+
+.btn-dropdown-toggle svg {
+  transition: transform 0.2s ease;
+}
+.btn-dropdown-toggle .rotate-180 {
+  transform: rotate(180deg);
+}
+
+.dropdown-menu {
+  position: absolute;
+  bottom: 100%; /* Aparece acima do botão */
+  right: 0;
+  width: 240px; /* Largura do menu */
+  background: var(--branco);
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem; /* Borda mais arredondada para popups */
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.07);
+  z-index: 1010; /* Acima do overlay do modal */
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  animation: modal-fade-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-weight: 500;
+  font-size: 0.875rem;
+  border-radius: 0.5rem;
+  transition: background-color 0.15s ease;
+}
+
+.dropdown-item:hover {
+  background-color: #f3f4f6; /* Cor de hover suave */
+}
+
+/* Cores dos ícones e texto */
+.dropdown-item.success {
+  color: #166534; /* Verde do btn-success */
+}
+.dropdown-item.outline-danger {
+  color: #ef4444; /* Vermelho do btn-outline-danger */
+}
+.dropdown-item.danger {
+  color: #ef4444; /* Vermelho do btn-danger */
+}
+
+.reschedule-actions {
+    display: flex;
+    gap: 0.75rem;
+  }
+
 /* ===== INÍCIO DAS MELHORIAS PARA MOBILE ===== */
 
 @media (max-width: 768px) {
@@ -466,15 +567,13 @@ function handleRebook() {
   }
 
   .reschedule-actions {
-    flex-direction: column;
+    display: flex;
     gap: 0.75rem;
-    width: 100%;
   }
 
   .status-actions {
-    flex-direction: column;
+    display: flex;
     gap: 0.75rem;
-    width: 100%;
   }
 
   .modal-footer .btn-secondary,
@@ -484,6 +583,23 @@ function handleRebook() {
     width: 100%;
     justify-content: center;
     padding: 1rem;
+  }
+
+  /* ✨ ADICIONAR ESTAS REGRAS NO FINAL DO BLOCO MEDIA QUERY */
+  .dropdown-wrapper {
+    width: 100%;
+  }
+
+  .btn-dropdown-toggle {
+    width: 100%;
+    justify-content: center; /* Centraliza no mobile, como os outros botões */
+    padding: 1rem;
+  }
+
+  .dropdown-menu {
+    width: 100%; /* Menu ocupa a largura total no mobile */
+    right: auto;
+    left: 0;
   }
 }
 </style>
