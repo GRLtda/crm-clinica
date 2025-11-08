@@ -40,70 +40,81 @@ const filteredAndSortedAppointments = computed(() => {
   const statusOrder = {
     Confirmado: 1,
     Agendado: 2,
-    Realizado: 3,
-    Cancelado: 4,
+    'Em Atendimento': 3,
+    Finalizado: 4,
     'Não Compareceu': 5,
+    Cancelado: 6,
   }
 
   return filtered.sort((a, b) => {
+    // Primeiro, ordena por status
     const orderA = statusOrder[a.status] || 99
     const orderB = statusOrder[b.status] || 99
-
     if (orderA !== orderB) {
       return orderA - orderB
     }
-
+    // Se o status for o mesmo, ordena pelo horário de início
     return new Date(a.startTime) - new Date(b.startTime)
   })
 })
 
-onMounted(() => {
-  const today = format(new Date(), 'yyyy-MM-dd')
-  appointmentsStore.fetchAppointmentsByDate(today)
-})
-
-function formatTime(dateString) {
-  if (!dateString) return ''
-  // ✨ CORREÇÃO AQUI: Removido o 'timeZone: UTC'
-  return new Date(dateString).toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+function formatTime(dateTimeString) {
+  return format(new Date(dateTimeString), 'HH:mm')
 }
 
 function openCreateModal() {
   isModalOpen.value = true
 }
 
-function goToAppointmentPage(appt) {
-  if (appt) {
-    router.push(`/app/atendimentos/${appt._id}/patient/${appt.patient._id}`)
-  }
-}
-
 function openPopover(appointment, event) {
-  activePopover.value = {
-    appointment: appointment,
-    event: event,
+  // Fecha o popover anterior se estiver abrindo um novo
+  if (activePopover.value.appointment) {
+    activePopover.value.appointment = null
+    activePopover.value.event = null
   }
+
+  // Atraso para garantir que o DOM seja atualizado
+  setTimeout(() => {
+    activePopover.value.appointment = appointment
+    activePopover.value.event = event
+  }, 0)
 }
 
 function closePopover() {
-  activePopover.value = { appointment: null, event: null }
+  activePopover.value.appointment = null
+  activePopover.value.event = null
 }
 
 async function handleStatusChange(appointment, newStatus) {
   const { success } = await appointmentsStore.updateAppointmentStatus(appointment._id, newStatus)
   if (success) {
-    toast.success(`Status alterado para "${newStatus}"!`)
+    toast.success(`Status alterado para "${newStatus}"`)
+    // A store já atualiza a lista, então o popover/card será atualizado
   } else {
-    toast.error(`Não foi possível alterar o status.`)
+    toast.error('Erro ao atualizar status.')
   }
+  closePopover()
 }
 
-function rebookAppointment() {
-  isModalOpen.value = true
+function goToAppointmentPage(appointment) {
+  router.push({ name: 'InProgressAppointment', params: { id: appointment._id } })
 }
+
+function rebookAppointment(appointment) {
+  // Lógica para reagendar
+  console.log('Reagendar:', appointment)
+  toast.info('Funcionalidade de reagendamento em breve.')
+  closePopover()
+}
+
+onMounted(() => {
+  const today = new Date()
+  const todayStr = format(today, 'yyyy-MM-dd')
+  // Só busca se a lista estiver vazia
+  if (appointmentsStore.appointments.length === 0) {
+    appointmentsStore.fetchAppointmentsByDate(todayStr, todayStr)
+  }
+})
 </script>
 
 <template>
@@ -131,9 +142,10 @@ function rebookAppointment() {
     </header>
 
     <div class="content-wrapper">
-      <div v-if="appointmentsStore.isLoading" class="state-cell">Carregando agendamentos...</div>
-
-      <div v-else-if="filteredAndSortedAppointments.length === 0" class="empty-state">
+      <div
+        v-if="!appointmentsStore.isLoading && filteredAndSortedAppointments.length === 0"
+        class="empty-state"
+      >
         <div class="empty-state-icon">
           <CalendarDays :size="48" />
         </div>
@@ -147,7 +159,7 @@ function rebookAppointment() {
         </button>
       </div>
 
-      <div velse>
+      <div v-else>
         <div class="table-container">
           <table>
             <thead>
@@ -167,32 +179,55 @@ function rebookAppointment() {
               </tr>
             </thead>
             <tbody v-auto-animate>
-              <tr
-                v-for="appt in filteredAndSortedAppointments"
-                :key="appt._id"
-                class="appointment-row"
-                @click="openPopover(appt, $event)"
-              >
-                <td>
-                  <div class="patient-info">
-                    <div class="patient-avatar">{{ appt.patient.name.charAt(0) }}</div>
-                    <span class="patient-name">{{ appt.patient.name }}</span>
-                  </div>
-                </td>
-                <td>
-                  <div class="status-wrapper">
-                    <span
-                      :class="useStatusBadge(appt.status).badgeClass"
-                      :style="useStatusBadge(appt.status).badgeStyle"
-                    >
-                      {{ useStatusBadge(appt.status).displayText }}
-                    </span>
-                  </div>
-                </td>
-                <td class="time-cell">
-                  {{ formatTime(appt.startTime) }} - {{ formatTime(appt.endTime) }}
-                </td>
-              </tr>
+              <template v-if="appointmentsStore.isLoading">
+                <tr v-for="n in 5" :key="`skel-desk-${n}`" class="skeleton-row">
+                  <td>
+                    <div class="patient-info">
+                      <div class="skeleton skeleton-avatar"></div>
+                      <div class="skeleton skeleton-text" style="width: 60%"></div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="status-wrapper">
+                      <div class="skeleton skeleton-badge"></div>
+                    </div>
+                  </td>
+                  <td class="time-cell">
+                    <div
+                      class="skeleton skeleton-text"
+                      style="width: 70%; max-width: 100px; margin: auto"
+                    ></div>
+                  </td>
+                </tr>
+              </template>
+              <template v-else>
+                <tr
+                  v-for="appt in filteredAndSortedAppointments"
+                  :key="appt._id"
+                  class="appointment-row"
+                  @click="openPopover(appt, $event)"
+                >
+                  <td>
+                    <div class="patient-info">
+                      <div class="patient-avatar">{{ appt.patient.name.charAt(0) }}</div>
+                      <span class="patient-name">{{ appt.patient.name }}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="status-wrapper">
+                      <span
+                        :class="useStatusBadge(appt.status).badgeClass"
+                        :style="useStatusBadge(appt.status).badgeStyle"
+                      >
+                        {{ useStatusBadge(appt.status).displayText }}
+                      </span>
+                    </div>
+                  </td>
+                  <td class="time-cell">
+                    {{ formatTime(appt.startTime) }} - {{ formatTime(appt.endTime) }}
+                  </td>
+                </tr>
+              </template>
             </tbody>
           </table>
         </div>
@@ -499,6 +534,58 @@ th > * {
   max-width: 400px;
   margin-bottom: 1.5rem;
 }
+
+/* 💀 INÍCIO SKELETON 💀 */
+.skeleton {
+  background-color: #e5e7eb; /* Cor cinza clara */
+  border-radius: 0.5rem;
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.skeleton-row,
+.skeleton-card {
+  pointer-events: none;
+}
+
+.skeleton-row:hover td {
+  background-color: var(--branco) !important; /* Previne o hover da linha */
+}
+
+.skeleton-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.skeleton-text {
+  height: 1rem;
+  width: 100%;
+}
+
+.skeleton-text-sm {
+  height: 0.875rem;
+  width: 100%;
+}
+
+.skeleton-badge {
+  height: 24px;
+  width: 70%;
+  max-width: 90px;
+  border-radius: 99px;
+  flex-shrink: 0;
+}
+/* 💀 FIM SKELETON 💀 */
 
 /* 📱 INÍCIO DOS ESTILOS RESPONSIVOS 📱 */
 
