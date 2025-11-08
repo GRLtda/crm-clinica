@@ -11,6 +11,7 @@ import {
   Hash,
   User,
   Phone,
+  Users,
   SlidersHorizontal,
 } from 'lucide-vue-next'
 import AppPagination from '@/components/global/AppPagination.vue'
@@ -24,7 +25,7 @@ const toast = useToast()
 const patients = computed(() => patientsStore.allPatients)
 const pagination = computed(() => patientsStore.pagination)
 const actionsMenuOpenFor = ref(null)
-const isInitialLoad = ref(true)
+// const isInitialLoad = ref(true) // ❌ REMOVIDO
 
 const selectedPatientId = ref(null)
 let debounceTimeout = null
@@ -52,7 +53,7 @@ watch(selectedPatientId, (newId) => {
 
 onMounted(async () => {
   await patientsStore.fetchAllPatients(1)
-  isInitialLoad.value = false
+  // isInitialLoad.value = false // ❌ REMOVIDO
 })
 
 function handlePageChange(newPage) {
@@ -116,7 +117,10 @@ const formatCPF = (cpf) => {
       </div>
     </header>
 
-    <div class="table-wrapper" :class="{ 'is-loading': patientsStore.isLoading && !isInitialLoad }">
+    <div
+      class="table-wrapper"
+      :class="{ 'is-loading': patientsStore.isLoading && patients.length > 0 }"
+    >
       <div class="table-container desktop-only">
         <table>
           <thead>
@@ -149,88 +153,144 @@ const formatCPF = (cpf) => {
             </tr>
           </thead>
           <tbody>
-            <tr v-if="patientsStore.isLoading && isInitialLoad">
-              <td colspan="5" class="state-cell">Carregando pacientes...</td>
-            </tr>
-            <tr v-else-if="patients.length === 0">
-              <td colspan="5" class="state-cell">Nenhum paciente encontrado.</td>
-            </tr>
-            <tr
-              v-for="patient in patients"
-              :key="patient._id"
-              class="patient-row"
-              @click="goToPatient(patient._id)"
-            >
-              <td>
-                <div class="patient-avatar">{{ patient.name.charAt(0).toUpperCase() }}</div>
-              </td>
-              <td>{{ formatCPF(patient.cpf) }}</td>
-              <td class="patient-name">{{ patient.name }}</td>
-              <td class="patient-phone" >{{ formatPhone(patient.phone) }}</td> <td class="actions-cell" @click.stop>
-                <div class="actions-wrapper" v-click-outside="() => (actionsMenuOpenFor = null)">
-                  <button @click.stop="toggleActionsMenu(patient._id)" class="btn-icon">
-                    <MoreHorizontal :size="20" />
-                  </button>
-                  <Transition name="fade">
-                    <div v-if="actionsMenuOpenFor === patient._id" class="actions-dropdown">
-                      <router-link
-                        :to="`/app/pacientes/${patient._id}?edit=true`"
-                        class="dropdown-item"
-                      >
-                        <Pencil :size="14" /> Editar
-                      </router-link>
-                      <button @click.stop="handleDelete(patient._id)" class="dropdown-item delete">
-                        <Trash2 :size="14" /> Excluir
-                      </button>
+            <template v-if="patientsStore.isLoading && patients.length === 0">
+              <tr v-for="n in 10" :key="`skel-desk-${n}`" class="skeleton-row">
+                <td><div class="skeleton skeleton-avatar"></div></td>
+                <td><div class="skeleton skeleton-text" style="width: 80%"></div></td>
+                <td><div class="skeleton skeleton-text" style="width: 60%"></div></td>
+                <td><div class="skeleton skeleton-text" style="width: 70%"></div></td>
+                <td class="actions-cell"><div class="skeleton skeleton-button"></div></td>
+              </tr>
+            </template>
+
+            <template v-else-if="!patientsStore.isLoading && patients.length === 0">
+              <tr>
+                <td colspan="5" class="state-cell">
+                  <div class="empty-state-content">
+                    <div class="empty-state-icon-bg">
+                      <Users :size="24" />
                     </div>
-                  </Transition>
-                </div>
-              </td>
-            </tr>
+                    <h3 class="empty-state-title">Nenhum paciente encontrado</h3>
+                    <p class="empty-state-text">
+                      Comece cadastrando um novo paciente para vê-lo aqui.
+                    </p>
+                    <router-link to="/app/pacientes/novo" class="btn-primary-sm">
+                      <UserPlus :size="16" />
+                      <span>Adicionar Paciente</span>
+                    </router-link>
+                  </div>
+                </td>
+              </tr>
+            </template>
+
+            <template v-else>
+              <tr
+                v-for="patient in patients"
+                :key="patient._id"
+                class="patient-row"
+                @click="goToPatient(patient._id)"
+              >
+                <td>
+                  <div class="patient-avatar">{{ patient.name.charAt(0).toUpperCase() }}</div>
+                </td>
+                <td>{{ formatCPF(patient.cpf) }}</td>
+                <td class="patient-name">{{ patient.name }}</td>
+                <td class="patient-phone">{{ formatPhone(patient.phone) }}</td>
+                <td class="actions-cell" @click.stop>
+                  <div class="actions-wrapper" v-click-outside="() => (actionsMenuOpenFor = null)">
+                    <button @click.stop="toggleActionsMenu(patient._id)" class="btn-icon">
+                      <MoreHorizontal :size="20" />
+                    </button>
+                    <Transition name="fade">
+                      <div v-if="actionsMenuOpenFor === patient._id" class="actions-dropdown">
+                        <router-link
+                          :to="`/app/pacientes/${patient._id}?edit=true`"
+                          class="dropdown-item"
+                        >
+                          <Pencil :size="14" /> Editar
+                        </router-link>
+                        <button
+                          @click.stop="handleDelete(patient._id)"
+                          class="dropdown-item delete"
+                        >
+                          <Trash2 :size="14" /> Excluir
+                        </button>
+                      </div>
+                    </Transition>
+                  </div>
+                </td>
+              </tr>
+            </template>
           </tbody>
         </table>
       </div>
 
       <div class="mobile-list" v-auto-animate>
-        <div
-          v-for="patient in patients"
-          :key="patient._id"
-          class="patient-card"
-          @click="goToPatient(patient._id)"
-        >
-          <div class="patient-info-mobile">
-            <div class="patient-avatar">{{ patient.name.charAt(0).toUpperCase() }}</div>
-            <div class="patient-details-mobile">
-              <span class="patient-name">{{ patient.name }}</span>
-              <span class="patient-cpf-masked">{{ formatCPF(patient.cpf) }}</span>
+        <template v-if="patientsStore.isLoading && patients.length === 0">
+          <div v-for="n in 10" :key="`skel-mob-${n}`" class="patient-card skeleton-card">
+            <div class="patient-info-mobile">
+              <div class="skeleton skeleton-avatar"></div>
+              <div class="patient-details-mobile">
+                <div class="skeleton skeleton-text"></div>
+                <div class="skeleton skeleton-text-sm"></div>
+              </div>
+            </div>
+            <div class="skeleton skeleton-button"></div>
+          </div>
+        </template>
+
+        <template v-else-if="patients.length > 0">
+          <div
+            v-for="patient in patients"
+            :key="patient._id"
+            class="patient-card"
+            @click="goToPatient(patient._id)"
+          >
+            <div class="patient-info-mobile">
+              <div class="patient-avatar">{{ patient.name.charAt(0).toUpperCase() }}</div>
+              <div class="patient-details-mobile">
+                <span class="patient-name">{{ patient.name }}</span>
+                <span class="patient-cpf-masked">{{ formatCPF(patient.cpf) }}</span>
+              </div>
+            </div>
+
+            <div
+              class="actions-wrapper"
+              v-click-outside="() => (actionsMenuOpenFor = null)"
+              @click.stop
+            >
+              <button @click.stop="toggleActionsMenu(patient._id)" class="btn-icon">
+                <MoreHorizontal :size="20" />
+              </button>
+              <Transition name="fade">
+                <div v-if="actionsMenuOpenFor === patient._id" class="actions-dropdown">
+                  <router-link
+                    :to="`/app/pacientes/${patient._id}?edit=true`"
+                    class="dropdown-item"
+                  >
+                    <Pencil :size="14" /> Editar
+                  </router-link>
+                  <button @click.stop="handleDelete(patient._id)" class="dropdown-item delete">
+                    <Trash2 :size="14" /> Excluir
+                  </button>
+                </div>
+              </Transition>
             </div>
           </div>
+        </template>
 
-          <div
-            class="actions-wrapper"
-            v-click-outside="() => (actionsMenuOpenFor = null)"
-            @click.stop
-          >
-            <button @click.stop="toggleActionsMenu(patient._id)" class="btn-icon">
-              <MoreHorizontal :size="20" />
-            </button>
-            <Transition name="fade">
-              <div v-if="actionsMenuOpenFor === patient._id" class="actions-dropdown">
-                <router-link
-                  :to="`/app/pacientes/${patient._id}?edit=true`"
-                  class="dropdown-item"
-                >
-                  <Pencil :size="14" /> Editar
-                </router-link>
-                <button @click.stop="handleDelete(patient._id)" class="dropdown-item delete">
-                  <Trash2 :size="14" /> Excluir
-                </button>
-              </div>
-            </Transition>
+        <div v-if="!patientsStore.isLoading && patients.length === 0" class="state-cell">
+          <div class="empty-state-content">
+            <div class="empty-state-icon-bg">
+              <Users :size="24" />
+            </div>
+            <h3 class="empty-state-title">Nenhum paciente encontrado</h3>
+            <p class="empty-state-text">Comece cadastrando um novo paciente para vê-lo aqui.</p>
+            <router-link to="/app/pacientes/novo" class="btn-primary-sm">
+              <UserPlus :size="16" />
+              <span>Adicionar Paciente</span>
+            </router-link>
           </div>
-        </div>
-        <div v-if="patients.length === 0 && !patientsStore.isLoading" class="state-cell">
-          Nenhum paciente encontrado.
         </div>
       </div>
 
@@ -291,6 +351,27 @@ const formatCPF = (cpf) => {
 .btn-primary:hover {
   background-color: var(--azul-escuro);
 }
+
+.btn-primary-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 1rem; /* Padding menor */
+  border-radius: 0.75rem;
+  border: none;
+  background-color: var(--azul-principal);
+  color: var(--branco);
+  font-size: 0.95rem; /* Fonte menor */
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  text-decoration: none;
+  height: 40px; /* Altura menor */
+}
+.btn-primary-sm:hover {
+  background-color: var(--azul-escuro);
+}
+
 .patient-search :deep(.input-wrapper) {
   height: 44px;
   border-radius: 0.75rem;
@@ -314,6 +395,37 @@ const formatCPF = (cpf) => {
 .table-container {
   overflow-x: auto;
   min-height: 60vh;
+}
+
+.empty-state-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  max-width: 380px;
+  margin: 0 auto;
+}
+.empty-state-icon-bg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: #eef2ff; /* Mesmo azul do avatar */
+  color: var(--azul-principal);
+}
+.empty-state-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+.empty-state-text {
+  color: var(--cinza-texto);
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
 }
 table {
   width: 100%;
@@ -450,7 +562,59 @@ th.actions-header .th-content {
   transform: translateY(-5px);
 }
 
-/* ✨ INÍCIO DAS MUDANÇAS PARA O RESPONSIVO ✨ */
+.skeleton {
+  background-color: #e5e7eb; /* Cor cinza clara */
+  border-radius: 0.5rem;
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.skeleton-row,
+.skeleton-card {
+  /* Remove o hover de linhas/cards do skeleton */
+  pointer-events: none;
+}
+
+.skeleton-row:hover td {
+  background-color: var(--branco) !important; /* Previne o hover da linha */
+}
+
+.skeleton-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.skeleton-text {
+  height: 1rem;
+  width: 100%;
+}
+
+.skeleton-text-sm {
+  height: 0.875rem;
+  width: 70%;
+  margin-top: 0.35rem;
+}
+
+.skeleton-button {
+  width: 36px; /* Tamanho aprox. do btn-icon */
+  height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.actions-cell .skeleton-button {
+  margin-left: auto; /* Alinha à direita na célula de ações desktop */
+}
 .mobile-list {
   display: none; /* Escondido por padrão */
 }
@@ -467,6 +631,11 @@ th.actions-header .th-content {
   .patient-search,
   .btn-primary {
     width: 100%;
+  }
+  .mobile-list > .state-cell {
+    padding: 2rem 0;
+    background-color: transparent;
+    border: none;
   }
   .btn-primary {
     justify-content: center;
