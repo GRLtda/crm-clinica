@@ -110,10 +110,7 @@ function rebookAppointment(appointment) {
 onMounted(() => {
   const today = new Date()
   const todayStr = format(today, 'yyyy-MM-dd')
-  // Só busca se a lista estiver vazia
-  if (appointmentsStore.appointments.length === 0) {
-    appointmentsStore.fetchAppointmentsByDate(todayStr, todayStr)
-  }
+  appointmentsStore.fetchAppointmentsByDate(todayStr, todayStr)
 })
 </script>
 
