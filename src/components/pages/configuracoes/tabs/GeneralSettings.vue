@@ -290,7 +290,7 @@ onBeforeRouteLeave((to, from, next) => {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: var(--azul-escuro);
+    color: var(--azul-principal);
     margin-bottom: 1.5rem;
     font-weight: 600;
     border-bottom: 1px solid #f3f4f6;
