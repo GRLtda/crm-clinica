@@ -14,3 +14,13 @@ export const register = (userData) => {
 export const login = (credentials) => {
   return apiClient.post('/auth/login', credentials)
 }
+
+// Função para solicitar o código de reset via email/telefone
+export const forgotPassword = (emailOrPhone) => {
+  return apiClient.post('/auth/forgot-password', { emailOrPhone })
+}
+
+// Função para redefinir a senha com o código
+export const resetPassword = (data) => {
+  return apiClient.post('/auth/reset-password', data) // data = { code, newPassword }
+}

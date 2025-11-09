@@ -1,6 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { register as apiRegister, login as apiLogin, getMe } from '@/api/auth'
+import {
+  register as apiRegister,
+  login as apiLogin,
+  getMe,
+  forgotPassword as apiForgotPassword,
+  resetPassword as apiResetPassword,
+} from '@/api/auth'
 import apiClient from '@/api/index'
 import { useClinicStore } from './clinic'
 
@@ -110,5 +116,58 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { user, token, isAuthenticated, hasClinic, register, login, logout, checkAuth, fetchUser }
+  // --- ✨ NOVAS FUNÇÕES ADICIONADAS ---
+
+  /**
+   * Etapa 1: Solicita o código de reset para o backend.
+   */
+  async function requestPasswordReset(emailOrPhone) {
+    try {
+      const response = await apiForgotPassword(emailOrPhone)
+      // API sempre retorna 200 OK (mesmo se não achar) por segurança
+      return { success: true, message: response.data.message }
+    } catch (error) {
+      // Ex: 429 Too Many Requests
+      console.error('Erro ao solicitar reset de senha:', error)
+      const message = error.response?.data?.message || 'Erro ao solicitar o código.'
+      return { success: false, error: message }
+    }
+  }
+
+  /**
+   * Etapa 2: Envia o código e a nova senha para o backend.
+   */
+  async function performPasswordReset(data) {
+    try {
+      const response = await apiResetPassword(data)
+      // API retorna 200 OK com token e dados básicos do usuário
+      const { token: authToken } = response.data
+
+      setToken(authToken) // 1. Configura o token
+
+      // 2. Busca os dados completos (incluindo clínica) para logar
+      const fullUserData = await fetchUser()
+
+      return { success: true, user: fullUserData }
+    } catch (error) {
+      // Ex: 400 Bad Request (Código inválido/expirado)
+      console.error('Erro ao redefinir senha:', error)
+      const message = error.response?.data?.message || 'Código inválido ou expirado.'
+      return { success: false, error: message }
+    }
+  }
+
+  return {
+    user,
+    token,
+    isAuthenticated,
+    hasClinic,
+    register,
+    login,
+    logout,
+    checkAuth,
+    fetchUser,
+    requestPasswordReset,
+    performPasswordReset,
+  }
 })
