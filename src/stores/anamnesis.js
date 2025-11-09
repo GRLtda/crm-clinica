@@ -169,21 +169,19 @@ export const useAnamnesisStore = defineStore('anamnesis', () => {
     }
   }
 
-  async function assignAnamnesis(patientId, templateId) {
+  async function assignAnamnesis(patientId, payload) {
     isLoading.value = true
     try {
-      // Chama a função da API importada como apiAssignAnamnesis
-      const response = await apiAssignAnamnesis(patientId, templateId)
+      const response = await apiAssignAnamnesis(patientId, payload)
 
-      // Se o backend retornar a anamnese criada (o que é uma boa prática),
-      // podemos adicioná-la imediatamente ao estado local.
-      if (response.data.anamnesis) {
+      if (response.data && response.data._id) {
+        patientAnamneses.value.unshift(response.data)
+      } else if (response.data.anamnesis) {
         patientAnamneses.value.push(response.data.anamnesis)
       }
 
       toast.success('Anamnese atribuída com sucesso!')
 
-      // Retorna os dados (incluindo o token) para o modal
       return { success: true, data: response.data }
     } catch (error) {
       console.error('Erro ao atribuir anamnese:', error)
@@ -196,23 +194,17 @@ export const useAnamnesisStore = defineStore('anamnesis', () => {
     }
   }
 
-  // ✨✨ FUNÇÃO CORRIGIDA (para o erro .filter) ✨✨
-  // Ação para buscar TODAS as anamneses (respostas) de um paciente
   async function fetchAnamnesisForPatient(patientId) {
     isLoading.value = true
     patientAnamneses.value = [] // Reseta para um array vazio antes da chamada
     try {
       const response = await apiGetForPatient(patientId)
 
-      // ✨ CORREÇÃO:
-      // Garante que 'patientAnamneses.value' seja SEMPRE um array.
       if (Array.isArray(response.data)) {
         patientAnamneses.value = response.data
       } else if (response.data && Array.isArray(response.data.data)) {
-        // Fallback para caso a API embrulhe a resposta em um objeto { data: [...] }
         patientAnamneses.value = response.data.data
       } else {
-        // Se a API retornar algo inesperado (null, {}, etc.), mantém como array vazio
         console.warn(
           'API de anamnese do paciente não retornou um array:',
           response.data,

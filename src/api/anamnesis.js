@@ -26,9 +26,9 @@ export const updateAnamnesisTemplate = (templateId, templateData) => {
 }
 
 // Atribui uma anamnese (cria uma resposta pendente)
-export const assignAnamnesis = (patientId, templateId) => {
-  // O backend espera { templateId } no body
-  return apiClient.post(`/patients/${patientId}/anamnesis`, { templateId })
+export const assignAnamnesis = (patientId, payload) => {
+  // O backend espera { templateId, mode, tokenTtlDays, sendNotification }
+  return apiClient.post(`/patients/${patientId}/anamnesis`, payload)
 }
 
 // Busca o formulário público usando o token do paciente

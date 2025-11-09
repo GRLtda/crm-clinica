@@ -17,6 +17,7 @@ const templates = ref([]);
 const selectedTemplateId = ref(null);
 const generatedLink = ref(null);
 const isLoading = ref(false);
+const sendNotification = ref(true); // <-- NOVO ESTADO
 
 onMounted(async () => {
   await anamnesisStore.fetchTemplates();
@@ -29,11 +30,31 @@ async function handleGenerateLink() {
     return;
   }
   isLoading.value = true;
-  const { success, data } = await anamnesisStore.assignAnamnesis(props.patientId, selectedTemplateId.value);
+
+  // <-- INÍCIO DA MUDANÇA
+  const payload = {
+    templateId: selectedTemplateId.value,
+    mode: 'Paciente', // Obrigatório para notificação
+    tokenTtlDays: 7, // Definido no README
+    sendNotification: sendNotification.value
+  }
+  // Atualiza a chamada para enviar o payload completo
+  const { success, data } = await anamnesisStore.assignAnamnesis(props.patientId, payload);
+  // <-- FIM DA MUDANÇA
+
   if (success) {
     const token = data.patientAccessToken;
     generatedLink.value = `${window.location.origin}/anamnese/${token}`;
-    toast.success('Link gerado com sucesso!');
+
+    // Mensagem de sucesso baseada na seleção e na resposta da API
+    if (sendNotification.value && data.notificationSent === false) {
+       toast.success('Link gerado! Notificação na fila de envio.');
+    } else if (sendNotification.value && data.notificationSent === true) {
+       toast.success('Link gerado e notificação enviada!');
+    } else {
+       toast.success('Link gerado com sucesso!');
+    }
+
   } else {
     toast.error('Não foi possível gerar o link.');
   }
@@ -79,7 +100,14 @@ function copyLink() {
       <div class="modal-body">
         <div v-if="!generatedLink">
           <StyledSelect v-model="selectedTemplateId" :options="templates" label="Selecione o Modelo" />
-        </div>
+
+          <div class="checkbox-container">
+            <input type="checkbox" id="sendNotificationCheck" v-model="sendNotification" class="form-checkbox" />
+            <label for="sendNotificationCheck" class="checkbox-label">
+              Enviar notificação via WhatsApp
+            </label>
+          </div>
+          </div>
         <div v-else>
           <label class="form-label">Link Público Gerado</label>
           <div class="link-wrapper">
@@ -110,6 +138,35 @@ function copyLink() {
 .modal-header h2 { font-size: 1.25rem; }
 .modal-header p { color: var(--cinza-texto); }
 .modal-body { padding: 1.5rem; }
+
+/* INÍCIO ESTILOS DO CHECKBOX */
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding: 0.5rem 0;
+}
+.form-checkbox {
+  height: 1rem;
+  width: 1rem;
+  border-radius: 0.25rem;
+  border: 1px solid #d1d5db;
+  cursor: pointer;
+  accent-color: var(--azul-principal); /* Estiliza o 'check' */
+}
+.form-checkbox:checked {
+  background-color: var(--azul-principal);
+  border-color: var(--azul-principal);
+}
+.checkbox-label {
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: #374151; /* Cor escura para leitura */
+  user-select: none; /* Evita selecionar texto ao clicar */
+}
+/* FIM ESTILOS DO CHECKBOX */
+
 .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 1rem; background-color: #f9fafb; }
 .btn-primary { background: var(--azul-principal); color: var(--branco); border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; cursor: pointer; font-weight: 600; }
 .btn-secondary { background: var(--branco); border: 1px solid #d1d5db; padding: 0.75rem 1.5rem; border-radius: 0.5rem; cursor: pointer; font-weight: 600; }

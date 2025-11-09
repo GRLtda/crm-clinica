@@ -16,7 +16,7 @@ const triggerTypeDescriptions = {
   APPOINTMENT_1_DAY_BEFORE: 'Lembrete 1 Dia Antes',
   APPOINTMENT_2_DAYS_BEFORE: 'Lembrete 2 Dias Antes',
   PATIENT_BIRTHDAY: 'Mensagem de Aniversário',
-  // Adicione outros tipos aqui conforme necessário
+  ANAMNESIS_ASSIGNMENT: 'Envio de Anamnese',
 }
 
 export const useCrmSettingsStore = defineStore('crmSettings', () => {

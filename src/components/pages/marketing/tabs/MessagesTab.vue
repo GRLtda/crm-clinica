@@ -160,9 +160,6 @@ h2 {
    padding-bottom: 0;
 }
 
- .active-switch {
-    /* Adiciona um pequeno ajuste vertical se necessário */
- }
  /* Ajusta o padding interno do switch se precisar */
  .active-switch :deep(.switch-label) {
     padding-top: 0;
