@@ -8,7 +8,15 @@ import { useToast } from 'vue-toastification'
 // ✨ 1. Importar o LoaderCircle e a nova função da API
 import { User, Calendar, Bell, Plus, X, DoorClosed, Info, LoaderCircle } from 'lucide-vue-next'
 import { checkConflict } from '@/api/appointments'
-import { isToday, isFuture, parse, setHours, setMinutes, setSeconds, setMilliseconds } from 'date-fns'
+import {
+  isToday,
+  isFuture,
+  parse,
+  setHours,
+  setMinutes,
+  setSeconds,
+  setMilliseconds,
+} from 'date-fns'
 
 import Stepper from '@/components/pages/onboarding/Stepper.vue'
 import SearchableSelect from '@/components/global/SearchableSelect.vue'
@@ -303,11 +311,7 @@ async function checkAppointmentConflict() {
       const startTimeISO = getISOString(appointmentData.value.date, appointmentData.value.startTime)
       const endTimeISO = getISOString(appointmentData.value.date, appointmentData.value.endTime)
 
-      const response = await checkConflict(
-        appointmentData.value.patient,
-        startTimeISO,
-        endTimeISO,
-      )
+      const response = await checkConflict(appointmentData.value.patient, startTimeISO, endTimeISO)
 
       if (response.data.conflict) {
         conflictError.value = response.data.message
@@ -316,7 +320,6 @@ async function checkAppointmentConflict() {
       } else {
         conflictError.value = null
         suggestedTimes.value = [] // 💡 Limpa sugestões se não houver conflito
-        // Limpa o erro SÓ SE for um erro de conflito
         if (
           errors.value.time &&
           (errors.value.time.includes('conflito') || errors.value.time.includes('existe'))
@@ -486,9 +489,7 @@ async function handleSubmit() {
       )
       emit('close')
     } else {
-      toast.error(
-        isRescheduleMode.value ? 'Erro ao reagendar.' : 'Erro ao criar agendamento.',
-      )
+      toast.error(isRescheduleMode.value ? 'Erro ao reagendar.' : 'Erro ao criar agendamento.')
     }
   }
 }
@@ -502,10 +503,10 @@ async function handleSubmit() {
           <h2>
             {{
               isRebookMode
-                ? 'Remarcar Agendamento'
+                ? 'Agendar Retorno'
                 : isRescheduleMode
-                ? 'Reagendar Horário'
-                : 'Novo Agendamento'
+                  ? 'Reagendar Horário'
+                  : 'Novo Agendamento'
             }}
           </h2>
           <p>
@@ -513,8 +514,8 @@ async function handleSubmit() {
               isRebookMode
                 ? 'Escolha o novo horário para o agendamento existente.'
                 : isRescheduleMode
-                ? 'Escolha uma nova data e horário para o paciente.'
-                : 'Preencha os dados para criar um novo atendimento.'
+                  ? 'Escolha uma nova data e horário para o paciente.'
+                  : 'Preencha os dados para criar um novo atendimento.'
             }}
           </p>
         </div>
@@ -680,13 +681,13 @@ async function handleSubmit() {
                 ? isRebookMode
                   ? 'Salvando...'
                   : isRescheduleMode
-                  ? 'Salvando...'
-                  : 'Agendando...'
+                    ? 'Salvando...'
+                    : 'Agendando...'
                 : isRebookMode
-                ? 'Confirmar Remarcação'
-                : isRescheduleMode
-                ? 'Confirmar Reagendamento'
-                : 'Confirmar'
+                  ? 'Confirmar Remarcação'
+                  : isRescheduleMode
+                    ? 'Confirmar Reagendamento'
+                    : 'Confirmar'
             }}
           </button>
         </div>
@@ -731,7 +732,6 @@ async function handleSubmit() {
   border-color: var(--azul-principal);
   color: var(--azul-principal);
 }
-
 
 /* --- Estilos Anteriores --- */
 .warning-message {
@@ -856,8 +856,12 @@ async function handleSubmit() {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ✨ 11. Estilo para o erro de conflito (a prop :error já faz isso) */
@@ -866,7 +870,6 @@ async function handleSubmit() {
   border-color: #ef4444 !important;
   background-color: #fef2f2;
 }
-
 
 .divider {
   text-align: center;

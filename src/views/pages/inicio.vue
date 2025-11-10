@@ -371,7 +371,7 @@ function handleReschedule(appointmentToReschedule) {
         :selected-date="selectedDate"
         :events="formattedEvents"
         :active-view="calendarView"
-        :disable-views="['years', 'year', 'month']"
+        :disable-views="['years', 'year', 'month', 'day']"
         hide-view-selector
         :time-from="0 * 60"
         :time-to="24 * 60"

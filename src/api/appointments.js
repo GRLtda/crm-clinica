@@ -1,4 +1,4 @@
-import apiClient from './index';
+import apiClient from './index'
 
 /**
  * Busca agendamentos dentro de um período de datas.
@@ -9,17 +9,17 @@ import apiClient from './index';
  */
 export const getAppointments = ({ startDate, endDate }) => {
   return apiClient.get('/appointments', {
-    params: { startDate, endDate }
-  });
-};
+    params: { startDate, endDate },
+  })
+}
 
 export const createAppointment = (appointmentData) => {
-  return apiClient.post('/appointments', appointmentData);
-};
+  return apiClient.post('/appointments', appointmentData)
+}
 
 export const updateAppointment = (appointmentId, data) => {
-  return apiClient.put(`/appointments/${appointmentId}`, data);
-};
+  return apiClient.put(`/appointments/${appointmentId}`, data)
+}
 
 /**
  * ✨ NOVA FUNÇÃO ADICIONADA ✨
@@ -31,6 +31,6 @@ export const updateAppointment = (appointmentId, data) => {
  */
 export const checkConflict = (patientId, startTime, endTime) => {
   return apiClient.get('/appointments/check-conflict', {
-    params: { patientId, startTime, endTime }
-  });
-};
+    params: { patientId, startTime, endTime },
+  })
+}
