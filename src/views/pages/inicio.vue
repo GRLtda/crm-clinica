@@ -2,18 +2,21 @@
 import { ref, onMounted, computed, onUnmounted, nextTick } from 'vue'
 import { useAppointmentsStore } from '@/stores/appointments'
 import { useRouter } from 'vue-router'
-import {
-  Clock,
-  ChevronLeft,
-  ChevronRight,
-  ArrowRight,
-  LoaderCircle,
-} from 'lucide-vue-next'
+import { Clock, ChevronLeft, ChevronRight, ArrowRight, LoaderCircle } from 'lucide-vue-next'
 import CreateAppointmentModal from '@/components/pages/dashboard/CreateAppointmentModal.vue'
 import AppointmentDetailsModal from '@/components/pages/dashboard/AppointmentDetailsModal.vue'
 import VueCal from 'vue-cal'
 import 'vue-cal/dist/vuecal.css'
-import { startOfWeek, endOfWeek, format, addDays, subDays, startOfDay, endOfDay, isToday } from 'date-fns'
+import {
+  startOfWeek,
+  endOfWeek,
+  format,
+  addDays,
+  subDays,
+  startOfDay,
+  endOfDay,
+  isToday,
+} from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useToast } from 'vue-toastification'
 
@@ -27,11 +30,11 @@ const selectedEventForDetails = ref(null)
 const initialAppointmentData = ref(null)
 const selectedDate = ref(new Date())
 const currentTime = ref(new Date())
-const vueCalRef = ref(null);
+const vueCalRef = ref(null)
 let timer = null
 const calendarView = ref('week')
 const isMobile = ref(window.innerWidth <= 768)
-const isInitialLoad = ref(true);
+const isInitialLoad = ref(true)
 
 const weekAppointments = computed(() => appointmentsStore.appointments)
 
@@ -96,17 +99,21 @@ async function scrollToCurrentTime() {
         console.error('scrollToTime function is not available on the targeted instance.')
       }
     } else {
-      console.log('Scroll skipped. Instance available:', !!instance, 'Is today:', isToday(selectedDate.value))
+      console.log(
+        'Scroll skipped. Instance available:',
+        !!instance,
+        'Is today:',
+        isToday(selectedDate.value),
+      )
     }
   }, 300) // 300ms de timeout para garantir que o componente renderizou
 }
 
-
 function handleCalendarReady() {
-  console.log('VueCal @ready event fired.');
+  console.log('VueCal @ready event fired.')
   if (isInitialLoad.value) {
-    scrollToCurrentTime();
-    isInitialLoad.value = false;
+    scrollToCurrentTime()
+    isInitialLoad.value = false
   }
 }
 
@@ -119,9 +126,9 @@ async function fetchDataForView() {
     startDate = format(weekStart.value, 'yyyy-MM-dd')
     endDate = format(endOfWeek(selectedDate.value), 'yyyy-MM-dd')
   }
-  await appointmentsStore.fetchAppointmentsByDate(startDate, endDate);
+  await appointmentsStore.fetchAppointmentsByDate(startDate, endDate)
   if (!isInitialLoad.value && isToday(selectedDate.value)) {
-     scrollToCurrentTime();
+    scrollToCurrentTime()
   }
 }
 
@@ -129,7 +136,10 @@ function handleEditAction(eventData) {
   console.log('DEBUG (inicio.vue): handleEditAction chamado com modo:', eventData._mode)
   initialAppointmentData.value = eventData
 
-  console.log('DEBUG (inicio.vue): Dados definidos para o CreateAppointmentModal:', initialAppointmentData.value)
+  console.log(
+    'DEBUG (inicio.vue): Dados definidos para o CreateAppointmentModal:',
+    initialAppointmentData.value,
+  )
 
   isModalOpen.value = true
 }
@@ -162,7 +172,6 @@ const updateCalendarView = () => {
   }
 }
 
-
 function handleDayHeaderClick(date) {
   if (calendarView.value === 'week' && !isMobile.value) {
     selectedDate.value = date
@@ -176,20 +185,19 @@ function backToWeekView() {
   }
 }
 
-
 onMounted(async () => {
-  updateCalendarView();
-  await fetchDataForView();
-  window.addEventListener('resize', updateCalendarView);
+  updateCalendarView()
+  await fetchDataForView()
+  window.addEventListener('resize', updateCalendarView)
   timer = setInterval(() => {
-    currentTime.value = new Date();
-  }, 1000);
-});
+    currentTime.value = new Date()
+  }, 1000)
+})
 
 onUnmounted(() => {
-  clearInterval(timer);
-  window.removeEventListener('resize', updateCalendarView);
-});
+  clearInterval(timer)
+  window.removeEventListener('resize', updateCalendarView)
+})
 
 function formatToVueCalString(dateString) {
   if (!dateString) return ''
@@ -218,7 +226,7 @@ const formattedEvents = computed(() => {
       class: `clinic-event status--${status}`,
       originalEvent: appt,
       duration: duration, // Duração em minutos
-      status: status,     // Status limpo
+      status: status, // Status limpo
     }
   })
 })
@@ -231,12 +239,14 @@ function formatTime(dateString) {
   })
 }
 
+// ✨ CORREÇÃO: Função ajustada para enviar os dados corretos ao modal
 function handleCellClick(date) {
   const now = new Date()
   if (date < now) {
     return
   }
   initialAppointmentData.value = {
+    // O modal espera 'date' e 'startTime'
     date: date,
     startTime: format(date, 'HH:mm'),
   }
@@ -293,9 +303,7 @@ function handleReschedule(appointmentToReschedule) {
   // A 'appointmentToReschedule' JÁ É o originalEvent (o agendamento em si)
   // ✨ A verificação de BUG estava aqui.
   if (!appointmentToReschedule) {
-    console.error(
-      'DEBUG (inicio.vue): Erro! O objeto do agendamento é nulo ou indefinido.',
-    )
+    console.error('DEBUG (inicio.vue): Erro! O objeto do agendamento é nulo ou indefinido.')
     toast.error('Erro ao carregar dados do agendamento.')
     closeDetailsModal()
     return
@@ -351,11 +359,11 @@ function handleReschedule(appointmentToReschedule) {
       @close="closeModal"
     />
     <AppointmentDetailsModal
-  v-if="isDetailsModalOpen"
-  :event="selectedEventForDetails"
-  @close="isDetailsModalOpen = false"
-  @edit="handleEditAction"
-/>
+      v-if="isDetailsModalOpen"
+      :event="selectedEventForDetails"
+      @close="isDetailsModalOpen = false"
+      @edit="handleEditAction"
+    />
 
     <div class="calendar-container" :class="{ 'is-loading': appointmentsStore.isLoading }">
       <div v-if="appointmentsStore.isLoading" class="loading-overlay">
@@ -419,7 +427,11 @@ function handleReschedule(appointmentToReschedule) {
         </button>
 
         <div class="nav-center-content">
-          <button v-if="calendarView === 'day' && !isMobile" @click="backToWeekView" class="today-btn week-btn">
+          <button
+            v-if="calendarView === 'day' && !isMobile"
+            @click="backToWeekView"
+            class="today-btn week-btn"
+          >
             <ChevronLeft :size="16" />
             Semana
           </button>
@@ -671,7 +683,10 @@ function handleReschedule(appointmentToReschedule) {
 
   border-radius: 9999px;
   cursor: pointer;
-  transition: background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
   color: #374151;
   flex-shrink: 0;
 }
@@ -695,7 +710,6 @@ function handleReschedule(appointmentToReschedule) {
   padding: 0 0.75rem;
 }
 /* --- ✨ [FIM DA ALTERAÇÃO] --- */
-
 
 .calendar-container {
   height: 100%;
@@ -740,8 +754,12 @@ function handleReschedule(appointmentToReschedule) {
   color: var(--azul-principal);
 }
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .custom-event-content-short,
@@ -789,7 +807,6 @@ function handleReschedule(appointmentToReschedule) {
   opacity: 0.7;
   margin-top: 2px;
 }
-
 
 @media (max-width: 768px) {
   .calendar-toolbar-floating {

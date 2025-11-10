@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePatientsStore } from '@/stores/patients'
 import { useAppointmentsStore } from '@/stores/appointments'
@@ -117,13 +117,17 @@ onMounted(() => {
       appointmentData.value.startTime = null
       appointmentData.value.endTime = null
     }
-    // Lógica antiga (clique no calendário)
-    else if (props.initialData.startTime) {
-      appointmentData.value.date = new Date(props.initialData.startTime)
-      appointmentData.value.startTime = new Date(props.initialData.startTime).toLocaleTimeString(
-        'pt-BR',
-        { hour: '2-digit', minute: '2-digit' },
-      )
+    // ✨ CORREÇÃO: Lógica para clique em célula vazia do calendário
+    else if (props.initialData.date && props.initialData.startTime) {
+      const initialDate = new Date(props.initialData.date)
+      appointmentData.value.date = initialDate
+
+      // ✨ CORREÇÃO: Espera o DOM ser atualizado após a mudança da data
+      nextTick(() => {
+        if (timeOptions.value.some((opt) => opt.value === props.initialData.startTime)) {
+          appointmentData.value.startTime = props.initialData.startTime
+        }
+      })
     }
   }
 })
