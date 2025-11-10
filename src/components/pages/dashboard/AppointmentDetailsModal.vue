@@ -1,6 +1,6 @@
 <script setup>
-// ✨ 1. ADICIONAR O 'ref'
-import { computed, ref } from 'vue'
+// ✨ 1. ADICIONAR onUnmounted
+import { computed, ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppointmentsStore } from '@/stores/appointments'
 import { useToast } from 'vue-toastification'
@@ -17,7 +17,7 @@ import {
   RefreshCw,
   CalendarCheck,
   SquarePen,
-  ChevronDown
+  ChevronDown,
 } from 'lucide-vue-next'
 import { useStatusBadge } from '@/composables/useStatusBadge.js'
 import { formatPhone } from '@/directives/phone-mask.js'
@@ -55,9 +55,26 @@ const isReturn = computed(() => {
 
 // ✨ 3. ADICIONAR CONTROLE DO DROPDOWN
 const isStatusDropdownOpen = ref(false)
+const isConfirmingCancel = ref(false)
+const cancelConfirmTimer = ref(null) // Timer para a confirmação
+
+function clearCancelTimer() {
+  if (cancelConfirmTimer.value) {
+    clearTimeout(cancelConfirmTimer.value)
+    cancelConfirmTimer.value = null
+  }
+}
 
 function toggleStatusDropdown() {
   isStatusDropdownOpen.value = !isStatusDropdownOpen.value
+  if (!isStatusDropdownOpen.value) {
+    resetCancelConfirmation()
+  }
+}
+
+function closeDropdown() {
+  resetCancelConfirmation()
+  isStatusDropdownOpen.value = false
 }
 
 function formatTime(dateString, formatStr) {
@@ -89,7 +106,7 @@ function goToPatient() {
 
 // ✨ 4. FUNÇÃO 'updateStatus' MODIFICADA (PARA FECHAR O DROPDOWN)
 async function updateStatus(status) {
-  isStatusDropdownOpen.value = false // Fecha o dropdown ao selecionar
+  closeDropdown() // Fecha o dropdown e reseta a confirmação
   const appointmentId = props.event.originalEvent._id
   const success = await appointmentsStore.updateAppointmentStatus(appointmentId, status)
   if (success) {
@@ -97,6 +114,24 @@ async function updateStatus(status) {
     emit('close')
   } else {
     toast.error('Erro ao atualizar status.')
+  }
+}
+
+function resetCancelConfirmation() {
+  clearCancelTimer()
+  isConfirmingCancel.value = false
+}
+
+function handleCancelClick() {
+  if (isConfirmingCancel.value) {
+    clearCancelTimer()
+    updateStatus('Cancelado')
+  } else {
+    isConfirmingCancel.value = true
+    // Inicia o timer de 5 segundos para reverter
+    cancelConfirmTimer.value = setTimeout(() => {
+      resetCancelConfirmation()
+    }, 5000)
   }
 }
 
@@ -111,6 +146,11 @@ function handleRebook() {
   emit('edit', { ...props.event.originalEvent, _mode: 'rebook' })
   emit('close')
 }
+
+// Garante que o timer seja limpo se o componente for destruído
+onUnmounted(() => {
+  clearCancelTimer()
+})
 </script>
 
 <template>
@@ -163,11 +203,19 @@ function handleRebook() {
 
       <footer class="modal-footer">
         <div class="reschedule-actions">
-          <button @click="handleReschedule" class="btn-secondary">
+          <button
+            @click="handleReschedule"
+            class="btn-secondary"
+            :disabled="event.originalEvent.status === 'Cancelado'"
+          >
             <CalendarPlus :size="16" />
             Reagendar
           </button>
-          <button @click="handleRebook" class="btn-secondary">
+          <button
+            @click="handleRebook"
+            class="btn-secondary"
+            :disabled="event.originalEvent.status === 'Cancelado'"
+          >
             <RefreshCw :size="16" />
             Retorno
           </button>
@@ -177,7 +225,7 @@ function handleRebook() {
           <div
             v-if="event.originalEvent.status !== 'Cancelado'"
             class="dropdown-wrapper"
-            v-click-outside="() => (isStatusDropdownOpen = false)"
+            v-click-outside="closeDropdown"
           >
             <button @click="toggleStatusDropdown" class="btn-secondary btn-dropdown-toggle">
               <SquarePen :size="16" />
@@ -198,15 +246,21 @@ function handleRebook() {
                 <CalendarOff :size="16" />
                 <span>Não Compareceu</span>
               </button>
-              <button @click="updateStatus('Cancelado')" class="dropdown-item danger">
+              <button
+                @click="handleCancelClick"
+                :class="[
+                  'dropdown-item',
+                  isConfirmingCancel ? 'danger-confirm is-confirming' : 'danger',
+                ]"
+              >
                 <Trash2 :size="16" />
-                <span>Cancelar</span>
+                <span>{{ isConfirmingCancel ? 'Confirmar Cancelamento' : 'Cancelar' }}</span>
               </button>
             </div>
           </div>
         </div>
       </footer>
-      </div>
+    </div>
   </div>
 </template>
 
@@ -403,8 +457,14 @@ function handleRebook() {
   font-weight: 600;
   transition: background-color 0.2s;
 }
+
 .btn-secondary:hover {
   background-color: #f9fafb;
+}
+
+.btn-secondary:disabled {
+  background-color: #f9fafb;
+  cursor: not-allowed;
 }
 
 .btn-danger {
@@ -528,10 +588,42 @@ function handleRebook() {
   color: #ef4444; /* Vermelho do btn-danger */
 }
 
-.reschedule-actions {
-    display: flex;
-    gap: 0.75rem;
+.dropdown-item.danger-confirm {
+  color: var(--branco);
+  background-color: #dc2626;
+}
+
+/* ✨ ESTILOS PARA A ANIMAÇÃO DE CONFIRMAÇÃO ✨ */
+.dropdown-item.is-confirming {
+  position: relative;
+  overflow: hidden;
+}
+
+.dropdown-item.is-confirming::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.2);
+  animation: fill-in 5s linear forwards;
+  z-index: 0;
+}
+
+@keyframes fill-in {
+  from {
+    transform: translateX(-100%);
   }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.reschedule-actions {
+  display: flex;
+  gap: 0.75rem;
+}
 
 /* ===== INÍCIO DAS MELHORIAS PARA MOBILE ===== */
 
