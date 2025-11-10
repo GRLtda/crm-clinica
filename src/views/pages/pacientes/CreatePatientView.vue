@@ -14,6 +14,8 @@ const toast = useToast()
 
 const currentStep = ref(1)
 const transitionName = ref('slide-next')
+const isSubmitting = ref(false) // ✨ 1. Adiciona estado para controlar o envio
+const errors = ref({}) // ✨ Novo: Estado para erros de validação
 
 const steps = [
   { name: 'Dados Pessoais', subtitle: 'Principais', icon: User },
@@ -38,10 +40,22 @@ const patientData = ref({
   },
 })
 
+function validateStep1() {
+  errors.value = {}
+  if (!patientData.value.name.trim()) {
+    errors.value.name = 'O nome do paciente é obrigatório.'
+    return false
+  }
+  return true
+}
+
 function nextStep() {
-  if (currentStep.value < steps.length) {
-    transitionName.value = 'slide-next'
-    currentStep.value++
+  // ✨ Validação adicionada aqui
+  if (currentStep.value === 1) {
+    if (validateStep1()) {
+      transitionName.value = 'slide-next'
+      currentStep.value++
+    }
   }
 }
 
@@ -53,24 +67,33 @@ function prevStep() {
 }
 
 async function submitForm() {
-  const payload = JSON.parse(JSON.stringify(patientData.value))
+  if (isSubmitting.value) return // ✨ 2. Impede cliques múltiplos
+  isSubmitting.value = true
 
-  if (payload.cpf) {
-    payload.cpf = payload.cpf.replace(/\D/g, '')
-  }
-  if (payload.phone) {
-    payload.phone = payload.phone.replace(/\D/g, '')
-  }
+  try {
+    const payload = JSON.parse(JSON.stringify(patientData.value))
 
-  const { success, error } = await patientsStore.createPatient(payload)
+    if (payload.cpf) {
+      payload.cpf = payload.cpf.replace(/\D/g, '')
+    }
+    if (payload.phone) {
+      payload.phone = payload.phone.replace(/\D/g, '')
+    }
 
-  if (success) {
-    toast.success('Paciente cadastrado com sucesso!')
-    router.push('/app/pacientes')
-  } else {
-    // E usamos a variável 'error' para exibir a mensagem específica.
-    const errorMessage = error || 'Erro ao cadastrar paciente.'
-    toast.error(errorMessage)
+    const { success, error } = await patientsStore.createPatient(payload)
+
+    if (success) {
+      toast.success('Paciente cadastrado com sucesso!')
+      router.push('/app/pacientes')
+    } else {
+      // E usamos a variável 'error' para exibir a mensagem específica.
+      const errorMessage = error || 'Erro ao cadastrar paciente.'
+      toast.error(errorMessage)
+    }
+  } catch (e) {
+    toast.error('Ocorreu um erro inesperado. Tente novamente.')
+  } finally {
+    isSubmitting.value = false // ✨ 3. Reativa o botão no final
   }
 }
 </script>
@@ -97,7 +120,11 @@ async function submitForm() {
     <div class="form-content" v-auto-animate>
       <Transition :name="transitionName" mode="out-in">
         <div :key="currentStep">
-          <StepPersonalData v-if="currentStep === 1" v-model="patientData" />
+          <StepPersonalData
+            v-if="currentStep === 1"
+            v-model="patientData"
+            :error-message="errors.name"
+          />
           <StepAddressData v-if="currentStep === 2" v-model="patientData.address" />
         </div>
       </Transition>
@@ -115,8 +142,10 @@ async function submitForm() {
         @click="submitForm"
         type="button"
         class="btn-primary"
+        :disabled="isSubmitting"
       >
-        Salvar Paciente
+        <!-- ✨ 4. Altera o texto e desabilita o botão -->
+        {{ isSubmitting ? 'Salvando...' : 'Salvar Paciente' }}
       </button>
     </footer>
   </div>
