@@ -73,48 +73,9 @@ const getAbbreviatedDay = (fullDay) => {
   return dayName.substring(0, 3).toUpperCase()
 }
 
-async function scrollToCurrentTime() {
-  await nextTick()
-
-  setTimeout(() => {
-    const instance = vueCalRef.value
-
-    if (instance && isToday(selectedDate.value)) {
-      console.log('VueCal instance target:', instance)
-
-      // ✨ CORREÇÃO AQUI: Verifica se a função existe e a chama diretamente
-      if (typeof instance.scrollToTime === 'function') {
-        console.log('scrollToTime function found, attempting scroll...')
-        const now = new Date()
-        const minutes = now.getHours() * 60 + now.getMinutes()
-        const scrollToMinutes = Math.max(0, minutes - 60) // Rola para 1h antes
-        try {
-          // Chama a função diretamente na instância
-          instance.scrollToTime(scrollToMinutes, 0, {})
-          console.log(`Scroll command sent for ${scrollToMinutes} minutes.`)
-        } catch (error) {
-          console.error('Error calling vue-cal scrollToTime:', error)
-        }
-      } else {
-        console.error('scrollToTime function is not available on the targeted instance.')
-      }
-    } else {
-      console.log(
-        'Scroll skipped. Instance available:',
-        !!instance,
-        'Is today:',
-        isToday(selectedDate.value),
-      )
-    }
-  }, 300) // 300ms de timeout para garantir que o componente renderizou
-}
-
 function handleCalendarReady() {
   console.log('VueCal @ready event fired.')
-  if (isInitialLoad.value) {
-    scrollToCurrentTime()
-    isInitialLoad.value = false
-  }
+  isInitialLoad.value = false
 }
 
 async function fetchDataForView() {
@@ -127,9 +88,6 @@ async function fetchDataForView() {
     endDate = format(endOfWeek(selectedDate.value), 'yyyy-MM-dd')
   }
   await appointmentsStore.fetchAppointmentsByDate(startDate, endDate)
-  if (!isInitialLoad.value && isToday(selectedDate.value)) {
-    scrollToCurrentTime()
-  }
 }
 
 function handleEditAction(eventData) {
