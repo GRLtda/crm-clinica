@@ -14,10 +14,10 @@ import InProgressAppointmentView from '../views/pages/atendimentos/InProgressApp
 import AjudaView from '../views/pages/ajuda/AjudaView.vue'
 import MarketingView from '../views/pages/marketing/MarketingView.vue'
 
-import MessagesTab from '../components/pages/marketing/tabs/MessagesTab.vue'
-import TemplatesTab from '../components/pages/marketing/tabs/TemplatesTab.vue'
-import ConnectionTab from '../components/pages/marketing/tabs/ConnectionTab.vue'
-import LogsTab from '../components/pages/marketing/tabs/LogsTab.vue'
+import MessagesTab from '../views/pages/marketing/pages/MessagesTab.vue'
+import TemplatesTab from '../views/pages/marketing/pages/TemplatesTab.vue'
+import ConnectionTab from '../views/pages/marketing/pages/ConnectionTab.vue'
+import LogsTab from '../views/pages/marketing/pages/LogsTab.vue'
 
 const dashboardRoutes = [
   {

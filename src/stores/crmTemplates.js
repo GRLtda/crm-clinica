@@ -51,8 +51,6 @@ export const useCrmTemplatesStore = defineStore('crmTemplates', () => {
     try {
       const response = await getTemplateVariables()
       if (response.data?.variables && Array.isArray(response.data.variables)) {
-         // Simplesmente armazena a lista de strings por enquanto
-         // Poderíamos mapear para objetos com descrições se a API retornasse mais dados
         availableVariables.value = response.data.variables.map(v => ({ variable: v, description: 'Descrição vinda da API (exemplo)' }))
       }
     } catch (err) {
