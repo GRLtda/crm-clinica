@@ -5,6 +5,7 @@ import {
   searchPatients as apiSearchPatients,
   getPatientById as apiGetPatientById,
   updatePatient as apiUpdatePatient,
+  deletePatient as apiDeletePatient, // ✨ 2. Importar a função da API
   getAllPatients as apiGetAllPatients, // ✨ 1. Importar a nova função
 } from '@/api/patients'
 
@@ -123,6 +124,33 @@ export const usePatientsStore = defineStore('patients', () => {
     }
   }
 
+  /**
+   * ✨ 6. NOVA ACTION: Exclui um paciente.
+   */
+  async function deletePatient(patientId) {
+    isLoading.value = true
+    error.value = null
+    try {
+      await apiDeletePatient(patientId)
+      // Remove o paciente da lista local para atualização imediata da UI
+      allPatients.value = allPatients.value.filter((p) => p._id !== patientId)
+      pagination.value.total-- // Decrementa o total
+
+      // Se a página atual ficar vazia, busca a página anterior para evitar uma página em branco
+      if (allPatients.value.length === 0 && pagination.value.page > 1) {
+        await fetchAllPatients(pagination.value.page - 1)
+      }
+
+      return { success: true }
+    } catch (err) {
+      error.value = err.response?.data?.message || 'Erro ao excluir o paciente.'
+      console.error('Falha em deletePatient:', err)
+      return { success: false, error: error.value }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   // RETURN
   return {
     allPatients,
@@ -135,6 +163,7 @@ export const usePatientsStore = defineStore('patients', () => {
     searchPatients,
     fetchPatientById,
     updatePatient,
+    deletePatient, // ✨ 7. Expor a nova action
     fetchAllPatients, // ✨ 5. Expor a nova action
   }
 })

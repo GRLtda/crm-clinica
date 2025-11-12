@@ -75,13 +75,12 @@ async function handleDelete(patientId) {
   if (confirm('Tem certeza que deseja excluir este paciente? Esta ação não pode ser desfeita.')) {
     // A lógica de exclusão foi removida daqui pois não foi solicitada alteração nela
     // Mantendo o foco na formatação do telefone
-    // const { success } = await patientsStore.deletePatient(patientId)
-    // if (success) {
-    //   toast.success('Paciente excluído com sucesso!')
-    // } else {
-    //   toast.error(patientsStore.error || 'Não foi possível excluir o paciente.')
-    // }
-    toast.info('Lógica de exclusão não implementada neste exemplo.') // Mensagem temporária
+    const { success } = await patientsStore.deletePatient(patientId)
+    if (success) {
+      toast.success('Paciente excluído com sucesso!')
+    } else {
+      toast.error(patientsStore.error || 'Não foi possível excluir o paciente.')
+    }
   }
   actionsMenuOpenFor.value = null
 }
