@@ -14,6 +14,10 @@ import InProgressAppointmentView from '../views/pages/atendimentos/InProgressApp
 import AjudaView from '../views/pages/ajuda/AjudaView.vue'
 import MarketingView from '../views/pages/marketing/MarketingView.vue'
 
+import MessagesTab from '../components/pages/marketing/tabs/MessagesTab.vue'
+import TemplatesTab from '../components/pages/marketing/tabs/TemplatesTab.vue'
+import ConnectionTab from '../components/pages/marketing/tabs/ConnectionTab.vue'
+import LogsTab from '../components/pages/marketing/tabs/LogsTab.vue'
 
 const dashboardRoutes = [
   {
@@ -25,7 +29,7 @@ const dashboardRoutes = [
         path: '',
         name: 'inicio',
         component: Inicio,
-        meta: { title: 'Resumo', layout: { noPadding: true }},
+        meta: { title: 'Resumo', layout: { noPadding: true } },
       },
       {
         path: 'configuracoes',
@@ -33,7 +37,12 @@ const dashboardRoutes = [
         component: SettingsView,
         meta: { title: 'Configurações' },
       },
-      { path: 'pacientes', name: 'pacientes', component: PatientsListView, meta: { title: 'Pacientes' } },
+      {
+        path: 'pacientes',
+        name: 'pacientes',
+        component: PatientsListView,
+        meta: { title: 'Pacientes' },
+      },
       {
         path: 'pacientes/novo',
         name: 'novo-paciente',
@@ -46,7 +55,7 @@ const dashboardRoutes = [
         component: PatientDetailView,
         meta: { title: 'Detalhes do Paciente' },
       },
-            {
+      {
         path: 'ajuda',
         name: 'ajuda',
         component: AjudaView,
@@ -68,6 +77,31 @@ const dashboardRoutes = [
         name: 'marketing',
         component: MarketingView,
         meta: { title: 'Marketing' },
+      },
+
+      {
+        path: 'marketing/mensagens',
+        name: 'marketing-mensagens',
+        component: MessagesTab,
+        meta: { title: 'Mensagens Automáticas' },
+      },
+      {
+        path: 'marketing/modelos',
+        name: 'marketing-modelos',
+        component: TemplatesTab,
+        meta: { title: 'Modelos de Mensagem' },
+      },
+      {
+        path: 'marketing/conexao',
+        name: 'marketing-conexao',
+        component: ConnectionTab,
+        meta: { title: 'Conexão WhatsApp' },
+      },
+      {
+        path: 'marketing/logs',
+        name: 'marketing-logs',
+        component: LogsTab,
+        meta: { title: 'Histórico de Envios' },
       },
     ],
   },
