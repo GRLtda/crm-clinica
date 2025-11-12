@@ -208,16 +208,17 @@ onUnmounted(() => {
             class="btn-secondary"
             :disabled="event.originalEvent.status === 'Cancelado'"
           >
-            <CalendarPlus :size="16" />
-            Reagendar
+            <RefreshCw :size="16" />
+            Retorno
           </button>
           <button
             @click="handleRebook"
             class="btn-secondary"
             :disabled="event.originalEvent.status === 'Cancelado'"
           >
-            <RefreshCw :size="16" />
-            Retorno
+
+            <CalendarPlus :size="16" />
+            Reagendar
           </button>
         </div>
 
