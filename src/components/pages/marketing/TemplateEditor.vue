@@ -123,13 +123,13 @@ async function handleSave() {
       <div class="editor-column config-column">
         <FormInput
           v-model="templateName"
-          label="Nome do Modelo *"
+          label="Nome do Modelo"
           placeholder="Ex: Lembrete Consulta 24h"
           required
         />
 
         <div class="form-group">
-          <label class="form-label">Conteúdo da Mensagem *</label>
+          <label class="form-label">Conteúdo da Mensagem <span style="color: #ef4444;">*</span></label>
           <textarea
             v-model="templateContent"
             placeholder="Digite sua mensagem aqui... Use *negrito*, _itálico_ ou ~riscado~. Insira variáveis usando a aba ao lado."

@@ -29,6 +29,7 @@ import {
   Pill,
   LoaderCircle,
   Menu,
+  X
 } from 'lucide-vue-next'
 import { useToast } from 'vue-toastification'
 

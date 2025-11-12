@@ -97,9 +97,14 @@ async function handleStatusChange(appointment, newStatus) {
 }
 
 function goToAppointmentPage(appointment) {
-  router.push({ name: 'InProgressAppointment', params: { id: appointment._id } })
+  router.push({
+    name: 'atendimento-em-andamento', // Nome da rota (como corrigimos antes)
+    params: {
+      appointmentId: appointment._id,
+      patientId: appointment.patient._id
+    }
+  })
 }
-
 function rebookAppointment(appointment) {
   // Lógica para reagendar
   console.log('Reagendar:', appointment)
@@ -299,7 +304,7 @@ onMounted(() => {
     :click-event="activePopover.event"
     @close="closePopover"
     @start="goToAppointmentPage(activePopover.appointment)"
-    @view="goToAppointmentPage(activeSocket.appointment)"
+    @view="goToAppointmentPage(activePopover.appointment)"
   />
 
   <CreateAppointmentModal v-if="isModalOpen" @close="isModalOpen = false" />
