@@ -14,9 +14,10 @@ import { useCrmTemplatesStore } from './crmTemplates' // Importa a store de temp
 const triggerTypeDescriptions = {
   APPOINTMENT_3_MINS_BEFORE: 'Lembrete 1 Minuto Antes', // Apenas para teste, geralmente não usado
   APPOINTMENT_1_DAY_BEFORE: 'Lembrete 1 Dia Antes',
-  APPOINTMENT_2_DAYS_BEFORE: 'Lembrete 2 Dias Antes',
+  APPOINTMENT_2_HOURS_BEFORE: 'Lembrete 2 Horas Antes',
   PATIENT_BIRTHDAY: 'Mensagem de Aniversário',
   ANAMNESIS_ASSIGNMENT: 'Envio de Anamnese',
+  APPOINTMENT_CONFIRMATION: 'Confirmação de Agendamento'
 }
 
 export const useCrmSettingsStore = defineStore('crmSettings', () => {

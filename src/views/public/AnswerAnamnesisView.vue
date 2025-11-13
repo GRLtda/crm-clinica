@@ -351,6 +351,7 @@ async function handleSubmit() {
               </div>
             </div>
             <button type="submit" class="submit-button">Enviar Respostas</button>
+            <p class="lpgd">Ao clicar em 'Enviar Respostas', declaro, sob minha responsabilidade, que todas as informações prestadas neste formulário são verdadeiras e completas, e autorizo seu uso exclusivamente para fins de atendimento clínico, conforme a Lei nº 13.709/2018 (LGPD).</p>
           </form>
         </div>
       </main>
@@ -476,6 +477,10 @@ h2 {
 p {
   color: var(--cinza-texto);
   text-align: center;
+}
+.lpgd {
+  font-size: 0.8rem;
+  margin-top: 1rem;
 }
 .question-block {
   margin-bottom: 2.5rem;
