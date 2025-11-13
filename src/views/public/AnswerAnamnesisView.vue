@@ -355,9 +355,6 @@ async function handleSubmit() {
           </form>
         </div>
       </main>
-      <footer class="page-footer">
-        <p>Plataforma segura por <strong>Front Clinica</strong></p>
-      </footer>
     </template>
 
     <div v-else class="loading-state">

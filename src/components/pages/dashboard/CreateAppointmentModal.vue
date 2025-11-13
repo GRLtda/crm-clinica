@@ -103,7 +103,7 @@ const appointmentData = ref({
   sendReminder: true,
   remindersSent: {
     oneDayBefore: true,
-    threeHoursBefore: false,
+    twoHoursBefore: false,
   },
 })
 
@@ -462,9 +462,10 @@ async function handleSubmit() {
     const payload = {
       startTime: startTime.toISOString(),
       endTime: endTime.toISOString(),
-      // Manter o 'status' original (ex: 'Agendado'),
-      // a menos que queiramos forçar um 'Reagendado'
       // status: 'Agendado'
+      // 👇 CORREÇÃO: Adicionando lembretes ao payload de update
+      sendReminder: appointmentData.value.sendReminder,
+      reminderEnabled: appointmentData.value.remindersSent,
     }
 
     // Chama a nova ação 'updateAppointment' da store
@@ -476,12 +477,15 @@ async function handleSubmit() {
       toast.error('Erro ao remarcar o agendamento.')
     }
   } else {
+    // --- MODO CRIAR (NOVO/REAGENDAR) ---
     const payload = {
       patient: appointmentData.value.patient,
       startTime: startTime.toISOString(),
       endTime: endTime.toISOString(),
       sendReminder: appointmentData.value.sendReminder,
       isReturn: isRescheduleMode.value,
+      // 👇 CORREÇÃO: Adicionando o objeto 'reminderEnabled' ao payload
+      reminderEnabled: appointmentData.value.remindersSent,
     }
 
     const { success } = await appointmentsStore.createAppointment(payload)
@@ -642,7 +646,7 @@ async function handleSubmit() {
                 <label class="checkbox-label">
                   <input
                     type="checkbox"
-                    v-model="appointmentData.remindersSent.threeHoursBefore"
+                    v-model="appointmentData.remindersSent.twoHoursBefore"
                     :disabled="!appointmentData.sendReminder"
                   />
                   <span>Enviar 2 horas antes</span>
