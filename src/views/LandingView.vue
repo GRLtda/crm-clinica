@@ -1,60 +1,32 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import AppHeader from '@/components/global/AppHeader.vue'
-import { ChevronRight, Check, X, Monitor, KeyRound, Rocket, Gem, Building } from 'lucide-vue-next'
+import { RouterLink } from 'vue-router'
+// 💡 Importei os ícones necessários
+import { Building, Check, Zap, Clock, LifeBuoy, X, KeyRound, Monitor, ChevronRight } from 'lucide-vue-next'
 
+// 🎯 Foco apenas no plano Empresarial
 const planos = ref([
-  // {
-  //   name: 'Essencial',
-  //   icon: Rocket,
-  //   price: 'R$ 99',
-  //   period: '/mês',
-  //   description: 'Perfeito para clínicas que estão começando.',
-  //   featured: false,
-  //   buttonText: 'Começar agora',
-  //   benefits: ['Gestão de Pacientes', 'Agenda Online'],
-  //   limitations: ['Prontuário Eletrônico', 'Faturamento e Cobranças'],
-  // },
-  // {
-  //   name: 'Profissional',
-  //   icon: Gem,
-  //   price: 'R$ 199',
-  //   period: '/mês',
-  //   description: 'Ideal para clínicas em fase de crescimento.',
-  //   featured: true,
-  //   buttonText: 'Escolher plano',
-  //   benefits: [
-  //     'Tudo do plano Essencial',
-  //     'Prontuário Eletrônico',
-  //     'Faturamento e Cobranças',
-  //     'Até 5 Usuários',
-  //   ],
-  //   limitations: ['APIs e Integrações'],
-  // },
   {
     name: 'Empresarial',
     icon: Building,
-    price: 'Contato',
+    price: 'Sob Consulta', // Trocado de 'Contato' para 'Sob Consulta'
     period: '',
-    description: 'Para clínicas com múltiplas unidades e necessidades.',
-    featured: false,
+    description: 'Para clínicas com múltiplas unidades e necessidades complexas.',
+    featured: true, // Deixei como 'featured' para dar mais destaque
     buttonText: 'Fale conosco',
     benefits: [
-      'Tudo do plano Profissional',
-      'APIs e Integrações',
-      'Suporte Dedicado',
+      'Gestão Completa de Pacientes',
+      'Agenda Online Avançada',
+      'Prontuário Eletrônico Personalizável',
       'Usuários Ilimitados',
     ],
-    limitations: [],
+    limitations: [], // Sem limitações
   },
 ])
 
 // Lógica para o efeito 3D
 const platformImageWrapper = ref(null)
-// Lógica para o carrossel
-const plansGrid = ref(null)
-const currentSlide = ref(0)
-let scrollTimeout = null
 
 function handleMouseMove(event) {
   if (!platformImageWrapper.value) return
@@ -76,39 +48,50 @@ function resetTilt() {
   platformImageWrapper.value.style.transition = 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)'
 }
 
-// Funções do Carrossel
-function updateCurrentSlide() {
-  if (!plansGrid.value) return
-  clearTimeout(scrollTimeout)
-  scrollTimeout = setTimeout(() => {
-    const scrollLeft = plansGrid.value.scrollLeft
-    const slideWidth = plansGrid.value.children[0].offsetWidth
-    const newSlide = Math.round(scrollLeft / slideWidth)
-    currentSlide.value = newSlide
-  }, 100)
+// 💡 --- NOVO CÓDIGO PARA FUNDO INTERATIVO --- 💡
+const mainElement = ref(null)
+
+/**
+ * Atualiza a posição do fundo com base no movimento do mouse.
+ */
+function handleMainMouseMove(event) {
+  if (!mainElement.value) return
+  const el = mainElement.value
+  const { left, top, width, height } = el.getBoundingClientRect()
+  const x = event.clientX - left
+  const y = event.clientY - top
+
+  const percentX = (x / width) * 100
+  const percentY = (y / height) * 100
+
+  el.style.setProperty('--bg-x', `${percentX}%`)
+  el.style.setProperty('--bg-y', `${percentY}%`)
+  el.style.transition = 'background 0.1s linear' // Transição rápida ao mover
 }
 
-function scrollToSlide(index) {
-  if (!plansGrid.value) return
-  plansGrid.value.scrollTo({
-    left: index * plansGrid.value.children[0].offsetWidth,
-    behavior: 'smooth',
-  })
-  currentSlide.value = index
+/**
+ * Reseta a posição do fundo quando o mouse sai.
+ */
+function resetMainBackground() {
+  if (!mainElement.value) return
+  const el = mainElement.value
+  el.style.setProperty('--bg-x', '50%')
+  el.style.setProperty('--bg-y', '40%') // Posição original
+  el.style.transition = 'background 0.6s cubic-bezier(0.23, 1, 0.32, 1)' // Transição suave ao sair
 }
+// 💡 --- FIM DO NOVO CÓDIGO --- 💡
 
-onMounted(() => {
-  plansGrid.value?.addEventListener('scroll', updateCurrentSlide)
-})
 
-onBeforeUnmount(() => {
-  plansGrid.value?.removeEventListener('scroll', updateCurrentSlide)
-})
+// 🔔 Lógica do carrossel removida (onMounted e onBeforeUnmount)
 </script>
 
 <template>
   <AppHeader class="header-slide-down" />
-  <main>
+  <main
+    ref="mainElement"
+    @mousemove="handleMainMouseMove"
+    @mouseleave="resetMainBackground"
+  >
     <section class="hero">
       <div class="container">
         <h1 class="hero-title animate-slide-up">Sua clínica no piloto automático</h1>
@@ -154,9 +137,12 @@ onBeforeUnmount(() => {
 
     <section class="plans-section">
       <div class="container-plans">
-        <h2 class="section-title">Planos flexíveis para sua necessidade</h2>
-        <p class="section-subtitle">Comece de graça e evolua conforme sua clínica cresce.</p>
-        <div class="plans-grid" ref="plansGrid">
+        <h2 class="section-title">Uma solução sob medida para sua clínica</h2>
+        <p class="section-subtitle">
+          Para clínicas que exigem o máximo de performance, personalização e um suporte dedicado.
+        </p>
+
+        <div class="plans-grid">
           <div
             v-for="plano in planos"
             :key="plano.name"
@@ -187,22 +173,60 @@ onBeforeUnmount(() => {
             <button :class="plano.featured ? 'btn-primary-featured' : 'btn-outline'">
               {{ plano.buttonText }}
             </button>
+
+            <div class="plan-footer-support">
+              <h4 class="footer-support-title">Um Atendimento que Realmente Funciona</h4>
+              <div class="footer-features-grid">
+                <div class="footer-feature-item">
+                  <Zap :size="20" class="feature-icon" />
+                  <div class="feature-text">
+                    <h5>Suporte Rápido</h5>
+                    <p>Respostas ágeis via chat e vídeo.</p>
+                  </div>
+                </div>
+                <div class="footer-feature-item">
+                  <Clock :size="20" class="feature-icon" />
+                  <div class="feature-text">
+                    <h5>24/7 Disponível</h5>
+                    <p>Plataforma e suporte sempre prontos.</p>
+                  </div>
+                </div>
+                <div class="footer-feature-item">
+                  <LifeBuoy :size="20" class="feature-icon" />
+                  <div class="feature-text">
+                    <h5>Atendimento Humano</h5>
+                    <p>Especialistas que entendem sua clínica.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="carousel-dots">
-          <button
-            v-for="(plano, index) in planos"
-            :key="index"
-            class="dot"
-            :class="{ active: currentSlide === index }"
-            @click="scrollToSlide(index)"
-            :aria-label="`Ir para o plano ${plano.name}`"
-          ></button>
         </div>
       </div>
     </section>
   </main>
+
+  <footer class="app-footer">
+    <div class="footer-container">
+      <div class="footer-copyright">
+        © {{ new Date().getFullYear() }}. Todos os direitos reservados.
+      </div>
+
+      <nav class="footer-links">
+        <RouterLink to="/termos">Termos de Uso</RouterLink>
+        <RouterLink to="/privacidade">Privacidade</RouterLink>
+      </nav>
+
+      <div class="footer-produced-by">
+        <span>Produzido por</span>
+        <a href="#" target="_blank" rel="noopener noreferrer" class="gr-logo">
+          <img src="@/assets/imgs/gr.svg" alt="Logo GR" class="gr-logo-svg" />
+        </a>
+      </div>
+    </div>
+  </footer>
 </template>
+
 
 <style scoped>
 /* ANIMAÇÕES DE ENTRADA */
@@ -247,9 +271,19 @@ onBeforeUnmount(() => {
 
 /* ESTILOS GERAIS */
 main {
+  /* 💡 Variáveis para o fundo interativo (posição inicial) 💡 */
+  --bg-x: 20%;
+  --bg-y: 10%;
+
   position: relative;
   overflow: hidden;
-  background: radial-gradient(ellipse at 50% 40%, #dbeafe 0%, var(--branco) 50%);
+  /* 💡 Fundo agora usa as variáveis CSS 💡 */
+  background: radial-gradient(
+    ellipse at var(--bg-x) var(--bg-y),
+    #dbeafe59 0%,
+    var(--branco) 50%
+  );
+  min-height: calc(100vh - 100px);
 }
 .hero,
 .plans-section,
@@ -391,10 +425,13 @@ main {
   font-size: 1.125rem;
   color: var(--cinza-texto);
   margin-bottom: 4rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
 }
 .plans-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  justify-content: center;
   gap: 2rem;
   text-align: left;
 }
@@ -406,6 +443,7 @@ main {
   flex-direction: column;
   background-color: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(10px);
+  width: 100%;
 }
 .plan-card.featured {
   background-color: var(--preto);
@@ -490,27 +528,83 @@ main {
 .btn-primary-featured:hover {
   background-color: var(--azul-escuro);
 }
+
 .carousel-dots {
-  display: none; /* Escondido por padrão no desktop */
+  display: none;
+}
+
+/* RODAPÉ DENTRO DO CARD */
+.plan-footer-support {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e5e7eb;
+}
+.featured .plan-footer-support {
+  border-top-color: #3f3f46;
+}
+.footer-support-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+.featured .footer-support-title {
+  color: var(--branco);
+}
+.footer-features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+.footer-feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  text-align: left;
+}
+.footer-feature-item .feature-icon {
+  color: var(--azul-principal);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+.featured .footer-feature-item .feature-icon {
+  color: var(--azul-principal);
+}
+.footer-feature-item h5 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem 0;
+}
+.featured .footer-feature-item h5 {
+  color: var(--branco);
+}
+.footer-feature-item p {
+  font-size: 0.875rem;
+  color: var(--cinza-texto);
+  line-height: 1.5;
+  margin: 0;
+}
+.featured .footer-feature-item p {
+  color: #a1a1aa;
 }
 
 /* --- AJUSTES DE RESPONSIVIDADE --- */
 
-/* TABLETS (até 1024px) */
-@media (max-width: 1024px) {
-  .plans-grid {
-    grid-template-columns: 1fr;
-    max-width: 500px;
-    margin: 0 auto;
-  }
-}
-
 /* CELULARES (até 768px) */
 @media (max-width: 768px) {
-  .hero { padding: 8rem 0 5rem 0; }
-  .hero-title { font-size: 2.5rem; }
-  .hero-subtitle { font-size: 1.125rem; }
-  .hero-actions { flex-direction: column; align-items: center; }
+  .hero {
+    padding: 8rem 0 5rem 0;
+  }
+  .hero-title {
+    font-size: 2.5rem;
+  }
+  .hero-subtitle {
+    font-size: 1.125rem;
+  }
+  .hero-actions {
+    flex-direction: column;
+    align-items: center;
+  }
   .hero-actions .btn-primary,
   .hero-actions .btn-secondary {
     width: 100%;
@@ -518,52 +612,132 @@ main {
     justify-content: center;
   }
 
-  .platform-section { padding: 4rem 0; }
-  .platform-container { flex-direction: column; text-align: center; }
-  .platform-content { display: flex; flex-direction: column; align-items: center; }
+  .platform-section {
+    padding: 4rem 0;
+  }
+  .platform-container {
+    flex-direction: column;
+    text-align: center;
+  }
+  .platform-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
 
-  .plans-section { padding: 4rem 0; }
-  .section-title { font-size: 2rem; }
+  .plans-section {
+    padding: 4rem 0;
+  }
+  .section-title {
+    font-size: 2rem;
+  }
 
-  /* --- LÓGICA DO CARROSSEL --- */
+  /* Ajuste de responsividade para o novo grid do footer */
+  .footer-features-grid {
+    grid-template-columns: 1fr; /* Stacks na vertical */
+    gap: 1.5rem;
+  }
+  .footer-feature-item {
+    gap: 1rem; /* Um pouco mais de espaço no mobile */
+  }
+
   .plans-grid {
     display: flex;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 2rem;
-    margin: 0 -1rem;
-    padding-left: 1rem;
-    padding-right: 1rem;
+    justify-content: center;
+    padding-bottom: 0;
+    margin: 0;
     max-width: none;
-    grid-template-columns: none; /* Reseta o grid */
-  }
-  .plans-grid::-webkit-scrollbar {
-    display: none;
+    grid-template-columns: none;
   }
   .plan-card {
-    flex: 0 0 90%;
-    scroll-snap-align: center;
+    width: 100%;
     max-width: 400px;
   }
-  .carousel-dots {
-    display: flex;
-    justify-content: center;
-    gap: 0.75rem;
-    margin-top: 1.5rem;
+}
+
+/* 🌟 ESTILOS DO FOOTER 🌟 */
+.app-footer {
+  width: 100%;
+  padding: 2rem 1.5rem;
+  background-color: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  position: relative;
+  z-index: 10;
+}
+
+.footer-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  text-align: center;
+}
+
+.footer-copyright {
+  font-size: 0.875rem;
+  color: var(--cinza-texto);
+}
+
+.footer-links {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.footer-links a {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--cinza-texto);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.footer-links a:hover {
+  color: var(--azul-principal);
+}
+
+/* 💡 ESTILO ATUALIZADO (MAIS VISÍVEL) 💡 */
+.footer-produced-by {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--cinza-texto); /* 🎨 Cor mais visível */
+  font-size: 0.875rem;
+  /* 🎨 Opacidade removida */
+}
+
+.gr-logo {
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Estilo para o seu SVG/IMG */
+.gr-logo .gr-logo-svg {
+  height: 20px; /* Ajuste a altura conforme necessário */
+  width: auto;
+  margin-left: 0.25rem;
+}
+
+/* Responsividade do Novo Footer */
+@media (min-width: 768px) {
+  .footer-container {
+    flex-direction: row;
+    justify-content: space-between;
   }
-  .dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background-color: #d1d5db;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-    transition: background-color 0.3s ease;
+
+  .footer-copyright {
+    order: 2; /* Copyright no meio */
   }
-  .dot.active {
-    background-color: var(--azul-principal);
+
+  .footer-links {
+    order: 1; /* Links na esquerda */
+  }
+
+  .footer-produced-by {
+    order: 3; /* Logo na direita */
   }
 }
 </style>

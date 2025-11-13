@@ -43,93 +43,142 @@ const toItem = computed(() => Math.min(props.currentPage * props.limit, props.to
 </script>
 
 <template>
-  <nav class="pagination-container" aria-label="Paginação">
-    <button
-      @click="$emit('page-change', currentPage - 1)"
-      :disabled="currentPage === 1"
-      class="btn-nav btn-prev"
-    >
-      <ChevronLeft :size="16" />
-      <span class="btn-nav-text">Anterior</span>
-    </button>
-
-    <div class="pagination-summary desktop-summary">
-      Mostrando <strong>{{ fromItem }}</strong>-<strong>{{ toItem }}</strong> de
-      <strong>{{ totalItems }}</strong> pacientes
+  <div class="pagination-container">
+    <div class="summary-desktop">
+      <span class="text-sm text-gray-600">{{ summaryText }}</span>
     </div>
 
-    <div class="page-numbers desktop-only">
-      <template v-for="(page, index) in pageNumbers" :key="index">
-        <button
-          v-if="page !== '...'"
-          @click="$emit('page-change', page)"
-          :class="['btn-page', { active: page === currentPage }]"
-        >
-          {{ page }}
-        </button>
-        <span v-else class="dots">...</span>
-      </template>
+    <div class="nav-desktop">
+      <button
+        @click="changePage(currentPage - 1)"
+        :disabled="isFirstPage"
+        class="btn-nav"
+      >
+        <ChevronLeft class="h-5 w-5" />
+        <span>Anterior</span>
+      </button>
+
+      <div class="page-numbers">
+        <template v-for="(page, index) in pageNumbers" :key="index">
+          <span v-if="page === '...'" class="dots">...</span>
+          <button
+            v-else
+            @click="changePage(page)"
+            :class="['btn-page', { active: page === currentPage }]"
+          >
+            {{ page }}
+          </button>
+        </template>
+      </div>
+
+      <button
+        @click="changePage(currentPage + 1)"
+        :disabled="isLastPage"
+        class="btn-nav"
+      >
+        <span>Próximo</span>
+        <ChevronRight class="h-5 w-5" />
+      </button>
     </div>
 
-    <div class="pagination-summary mobile-summary">
-      <strong>{{ fromItem }}</strong>-<strong>{{ toItem }}</strong> de
-      <strong>{{ totalItems }}</strong>
-    </div>
+    <div class="empty-desktop"></div>
 
-    <button
-      @click="$emit('page-change', currentPage + 1)"
-      :disabled="currentPage === totalPages"
-      class="btn-nav btn-next"
-    >
-      <span class="btn-nav-text">Próxima</span>
-      <ChevronRight :size="16" />
-    </button>
-  </nav>
+    <div class="nav-mobile">
+      <button
+        @click="changePage(currentPage - 1)"
+        :disabled="isFirstPage"
+        class="btn-nav"
+      >
+        <ChevronLeft class="h-5 w-5" />
+      </button>
+
+      <span class="mobile-summary text-sm text-gray-600">
+        Página {{ currentPage }} / {{ totalPages }}
+      </span>
+
+      <button
+        @click="changePage(currentPage + 1)"
+        :disabled="isLastPage"
+        class="btn-nav"
+      >
+        <ChevronRight class="h-5 w-5" />
+      </button>
+    </div>
+  </div>
 </template>
 
 <style scoped>
+/* Container principal */
 .pagination-container {
-  position: relative; /* Posição relativa para o sumário mobile */
   display: flex;
-  justify-content: space-between;
+  justify-content: space-between; /* 3 colunas: Esquerda, Centro, Direita */
   align-items: center;
   padding: 1rem 1.5rem;
-  background-color: #f9fafb;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--cinza-borda);
+  background-color: #f9fafb; /* 🎨 Cor de fundo um pouco mais escura */
+  width: 100%;
 }
 
-.pagination-summary {
-  font-size: 0.875rem;
+/* --- Layout Desktop (3 Colunas) --- */
+.summary-desktop {
+  display: flex;
+  flex: 1;
+  justify-content: flex-start; /* Alinha sumário à esquerda */
   color: var(--cinza-texto);
-  white-space: nowrap;
+}
+
+.nav-desktop {
+  display: flex;
+  flex: 1;
+  justify-content: center; /* 🎯 Centraliza a navegação */
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.empty-desktop {
+  display: flex;
+  flex: 1;
+  /* Este slot fica vazio para balancear o flex: 1 do sumário */
 }
 
 .page-numbers {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  /* Centraliza os números da página */
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  gap: 0.5rem;
+  margin: 0 0.5rem; /* Espaço entre números e botões de navegação */
 }
 
+/* --- Navegação Mobile --- */
+.nav-mobile {
+  display: none; /* Escondido no Desktop */
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mobile-summary {
+  color: var(--cinza-texto);
+  font-weight: 500;
+}
+
+/* --- Estilos Gerais de Botões --- */
 .btn-nav,
 .btn-page {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--cinza-borda);
+  border-radius: 0.375rem;
+  /* Botões ficam brancos para contrastar com o novo fundo */
   background-color: var(--branco);
+  color: var(--cinza-texto-escuro);
   font-weight: 500;
-  border-radius: 0.5rem;
   cursor: pointer;
   transition: all 0.2s ease;
-  z-index: 1; /* Garante que os botões fiquem sobre o sumário centralizado */
 }
 .btn-nav {
   padding: 0.5rem 1rem;
+  gap: 0.25rem; /* Espaço entre ícone e texto */
 }
 .btn-page {
   width: 36px;
@@ -158,49 +207,23 @@ const toItem = computed(() => Math.min(props.currentPage * props.limit, props.to
   color: var(--cinza-texto);
 }
 
-/* Esconde o sumário mobile por padrão */
-.mobile-summary {
-  display: none;
-}
-
 /* ✨ INÍCIO DOS ESTILOS RESPONSIVOS ✨ */
 @media (max-width: 768px) {
   .pagination-container {
     padding: 1rem; /* Menor padding no mobile */
+    /* A cor de fundo #f9fafb é herdada */
   }
 
   /* Esconde os elementos de desktop */
-  .desktop-only,
-  .desktop-summary {
+  .summary-desktop,
+  .nav-desktop,
+  .empty-desktop {
     display: none;
   }
 
-  /* Mostra o sumário mobile e o centraliza */
-  .mobile-summary {
-    display: block;
-    text-align: center;
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 0;
-  }
-
-  /* Garante que os botões fiquem nas pontas */
-  .btn-prev {
-    margin-right: auto;
-  }
-  .btn-next {
-    margin-left: auto;
-  }
-}
-
-@media (max-width: 400px) {
-  /* Em telas muito pequenas, esconde o texto dos botões */
-  .btn-nav-text {
-    display: none;
-  }
-  .btn-nav svg {
-    margin: 0; /* Remove a margem do ícone quando o texto some */
+  /* Mostra a navegação mobile */
+  .nav-mobile {
+    display: flex;
   }
 }
 </style>
