@@ -3,7 +3,17 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import AppHeader from '@/components/global/AppHeader.vue'
 import { RouterLink } from 'vue-router'
 // 💡 Importei os ícones necessários
-import { Building, Check, Zap, Clock, LifeBuoy, X, KeyRound, Monitor, ChevronRight } from 'lucide-vue-next'
+import {
+  Building,
+  Check,
+  Zap,
+  Clock,
+  LifeBuoy,
+  X,
+  KeyRound,
+  Monitor,
+  ChevronRight,
+} from 'lucide-vue-next'
 
 // 🎯 Foco apenas no plano Empresarial
 const planos = ref([
@@ -81,17 +91,12 @@ function resetMainBackground() {
 }
 // 💡 --- FIM DO NOVO CÓDIGO --- 💡
 
-
 // 🔔 Lógica do carrossel removida (onMounted e onBeforeUnmount)
 </script>
 
 <template>
   <AppHeader class="header-slide-down" />
-  <main
-    ref="mainElement"
-    @mousemove="handleMainMouseMove"
-    @mouseleave="resetMainBackground"
-  >
+  <main ref="mainElement" @mousemove="handleMainMouseMove" @mouseleave="resetMainBackground">
     <section class="hero">
       <div class="container">
         <h1 class="hero-title animate-slide-up">Sua clínica no piloto automático</h1>
@@ -170,9 +175,13 @@ function resetMainBackground() {
               </li>
             </ul>
 
-            <button :class="plano.featured ? 'btn-primary-featured' : 'btn-outline'">
+            <a
+              href="https://wa.me/5515991136994?text=Estou%20interessado%20em%20iniciar%20um%20projeto%20com%20a%20GR%F0%9F%9A%80"
+              target="_blank"
+              :class="plano.featured ? 'btn-primary-featured' : 'btn-outline'"
+            >
               {{ plano.buttonText }}
-            </button>
+            </a>
 
             <div class="plan-footer-support">
               <h4 class="footer-support-title">Um Atendimento que Realmente Funciona</h4>
@@ -219,14 +228,13 @@ function resetMainBackground() {
 
       <div class="footer-produced-by">
         <span>Produzido por</span>
-        <a href="#" target="_blank" rel="noopener noreferrer" class="gr-logo">
+        <a href="https://grltda.vercel.app" target="_blank" rel="noopener noreferrer" class="gr-logo">
           <img src="@/assets/imgs/gr.svg" alt="Logo GR" class="gr-logo-svg" />
         </a>
       </div>
     </div>
   </footer>
 </template>
-
 
 <style scoped>
 /* ANIMAÇÕES DE ENTRADA */
@@ -278,11 +286,7 @@ main {
   position: relative;
   overflow: hidden;
   /* 💡 Fundo agora usa as variáveis CSS 💡 */
-  background: radial-gradient(
-    ellipse at var(--bg-x) var(--bg-y),
-    #dbeafe59 0%,
-    var(--branco) 50%
-  );
+  background: radial-gradient(ellipse at var(--bg-x) var(--bg-y), #dbeafe59 0%, var(--branco) 50%);
   min-height: calc(100vh - 100px);
 }
 .hero,
@@ -508,6 +512,8 @@ main {
   font-weight: 600;
   border-radius: 2rem;
   cursor: pointer;
+  display: block;
+  text-align: center;
   transition: all 0.3s ease;
 }
 .btn-outline:hover {
@@ -523,6 +529,8 @@ main {
   font-weight: 600;
   border-radius: 2rem;
   cursor: pointer;
+  display: block;
+  text-align: center;
   transition: all 0.3s ease;
 }
 .btn-primary-featured:hover {
