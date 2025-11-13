@@ -136,13 +136,13 @@ function handleCancelClick() {
 }
 
 function handleReschedule() {
-  console.log('DEBUG (DetailsModal): Emitindo @edit (reagendar) com:', props.event.originalEvent)
+  // console.log('DEBUG (DetailsModal): Emitindo @edit (reagendar) com:', props.event.originalEvent)
   emit('edit', { ...props.event.originalEvent, _mode: 'reschedule' })
   emit('close')
 }
 
 function handleRebook() {
-  console.log('DEBUG (DetailsModal): Emitindo @edit (remarcar) com:', props.event.originalEvent)
+  // console.log('DEBUG (DetailsModal): Emitindo @edit (remarcar) com:', props.event.originalEvent)
   emit('edit', { ...props.event.originalEvent, _mode: 'rebook' })
   emit('close')
 }
