@@ -2,7 +2,9 @@
 import { ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { getInvitationDetails } from '@/api/employees'
+// Importar as duas APIs de convite
+import { getInvitationDetails } from '@/api/employees' // Convite de funcionário
+import { verifyInvitationToken } from '@/api/auth' // Convite de registro
 import { useToast } from 'vue-toastification'
 import AuthCard from '@/components/pages/autenticacao/AuthCard.vue'
 import FormInput from '@/components/global/FormInput.vue'
@@ -23,25 +25,50 @@ const errorMessage = ref(null)
 const registrationSuccess = ref(false)
 
 // Estado para o fluxo de convite
-const isInvitation = ref(false)
-const invitationToken = ref(null)
+const isStaffInvitation = ref(false) // TRUE apenas se for convite de FUNCIONÁRIO
+const invitationToken = ref(null) // Token a ser enviado no POST /register (de qlqr tipo)
+const emailIsDisabled = ref(false)
+const phoneIsDisabled = ref(false)
 
 const imageUrl = new URL('@/assets/clinic2.webp', import.meta.url).href
 
 // Busca os dados do convite ao carregar a página
 onMounted(async () => {
-  const token = route.query.invitationToken
-  if (token) {
-    invitationToken.value = token
+  const newUserToken = route.query.token // Pega ?token=
+  const staffInviteToken = route.query.invitationToken // Pega ?invitationToken=
+
+  if (newUserToken) {
+    // --- FLUXO 1: Novo Registro por Convite (?token=) ---
+    invitationToken.value = newUserToken
     try {
-      const response = await getInvitationDetails(token)
+      const response = await verifyInvitationToken(newUserToken)
       if (response.data) {
         email.value = response.data.email
-        isInvitation.value = true
+        phone.value = response.data.phone || '' // Preenche o telefone se ele vier
+        emailIsDisabled.value = true
+        phoneIsDisabled.value = !!response.data.phone // Desativa fone se ele veio
+        isStaffInvitation.value = false // É um registro normal, não um convite de staff
+        toast.info(`Bem-vindo(a)! Complete seu cadastro.`)
+      }
+    } catch (error) {
+      console.error('Erro ao verificar convite de registro:', error)
+      toast.error(error.response?.data?.message || 'Convite inválido ou expirado!')
+      router.push('/register') // Limpa a URL
+    }
+  } else if (staffInviteToken) {
+    // --- FLUXO 2: Convite de Staff (?invitationToken=) ---
+    invitationToken.value = staffInviteToken
+    try {
+      const response = await getInvitationDetails(staffInviteToken)
+      if (response.data) {
+        email.value = response.data.email
+        emailIsDisabled.value = true
+        phoneIsDisabled.value = false // Staff pode preencher o próprio fone
+        isStaffInvitation.value = true // É um convite de staff
         toast.info(`Bem-vindo(a)! Complete seu cadastro para a clínica.`)
       }
     } catch (error) {
-      console.error('Erro ao buscar detalhes do convite:', error)
+      console.error('Erro ao buscar detalhes do convite de staff:', error)
       toast.error('Seu link de convite é inválido ou já expirou!')
       router.push('/register') // Limpa a URL
     }
@@ -69,23 +96,31 @@ async function handleRegister() {
     password: password.value,
   }
 
+  // O token (seja de staff ou registro) é obrigatório e será enviado aqui
   if (invitationToken.value) {
     payload.invitationToken = invitationToken.value
+  } else {
+    // Se não tiver token NENHUM, o backend vai rejeitar (conforme novas regras)
+    errorMessage.value = 'Registro permitido apenas através de um convite válido.'
+    return
   }
 
-  const { success } = await authStore.register(payload)
+  const { success, error } = await authStore.register(payload)
 
   if (success) {
     registrationSuccess.value = true
   } else {
-    errorMessage.value = authStore.error || 'Não foi possível criar a conta. Verifique os dados.'
+    errorMessage.value =
+      error.response?.data?.message || 'Não foi possível criar a conta. Verifique os dados.'
   }
 }
 
 function handleRegistrationComplete() {
-  if (isInvitation.value) {
+  if (isStaffInvitation.value) {
+    // Se for convite de FUNCIONÁRIO, vai para o app
     router.push('/app')
   } else {
+    // Se for registro (com convite de ?token), vai para o onboarding
     router.push('/onboarding/clinic')
   }
 }
@@ -112,7 +147,7 @@ function handleRegistrationComplete() {
           name="name"
           placeholder="Seu nome completo"
           autocomplete="name"
-          required="true"
+          :required="true"
         />
         <FormInput
           v-model="email"
@@ -121,8 +156,8 @@ function handleRegistrationComplete() {
           name="email"
           placeholder="seuemail@exemplo.com"
           autocomplete="email"
-          required="true"
-          :disabled="isInvitation"
+          :required="true"
+          :disabled="emailIsDisabled"
         />
         <FormInput
           v-model="phone"
@@ -132,9 +167,10 @@ function handleRegistrationComplete() {
           placeholder="(11) 99999-9999"
           autocomplete="tel"
           phone-mask
-          required="true"
+          :required="true"
+          :disabled="phoneIsDisabled"
         />
-        <PasswordInput v-model="password" label="Senha" required="true" />
+        <PasswordInput v-model="password" label="Senha" :required="true" />
 
         <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
         <button type="submit" class="auth-button">Criar conta</button>
@@ -209,7 +245,6 @@ function handleRegistrationComplete() {
   background-color: var(--azul-escuro);
 }
 
-/* Estilos do formulário (sem alterações) */
 .error-message {
   color: #ef4444;
   font-size: 0.875rem;

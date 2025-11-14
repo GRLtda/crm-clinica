@@ -1,5 +1,9 @@
 import apiClient from './index'
 
+export const verifyInvitationToken = (token) => {
+  return apiClient.get(`/auth/verify-invitation/${token}`)
+}
+
 // Função para buscar os dados do usuário logado
 export const getMe = () => {
   return apiClient.get('/auth/me')
