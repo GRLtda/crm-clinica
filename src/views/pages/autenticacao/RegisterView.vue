@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue' // ✨ 'computed' foi adicionado
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 // Importar as duas APIs de convite
@@ -9,7 +9,7 @@ import { useToast } from 'vue-toastification'
 import AuthCard from '@/components/pages/autenticacao/AuthCard.vue'
 import FormInput from '@/components/global/FormInput.vue'
 import PasswordInput from '@/components/global/PasswordInput.vue'
-import { CheckCircle2 } from 'lucide-vue-next'
+import { CheckCircle2, Building2 } from 'lucide-vue-next' // ✨ Importei o Building2
 import confetti from 'canvas-confetti'
 
 const router = useRouter()
@@ -19,32 +19,37 @@ const toast = useToast()
 
 const name = ref('')
 const email = ref('')
+const plan = ref('')
 const phone = ref('')
 const password = ref('')
 const errorMessage = ref(null)
 const registrationSuccess = ref(false)
 
 // Estado para o fluxo de convite
-const isStaffInvitation = ref(false) // TRUE apenas se for convite de FUNCIONÁRIO
-const invitationToken = ref(null) // Token a ser enviado no POST /register (de qlqr tipo)
+const isStaffInvitation = ref(false)
+const invitationToken = ref(null)
 const emailIsDisabled = ref(false)
 const phoneIsDisabled = ref(false)
 
 const imageUrl = new URL('@/assets/clinic2.webp', import.meta.url).href
 
-// Busca os dados do convite ao carregar a página
+const formattedPlanName = computed(() => {
+  if (!plan.value) return ''
+  return plan.value.charAt(0).toUpperCase() + plan.value.slice(1).toLowerCase()
+})
+
 onMounted(async () => {
   const newUserToken = route.query.token // Pega ?token=
   const staffInviteToken = route.query.invitationToken // Pega ?invitationToken=
 
   if (newUserToken) {
-    // --- FLUXO 1: Novo Registro por Convite (?token=) ---
     invitationToken.value = newUserToken
     try {
       const response = await verifyInvitationToken(newUserToken)
       if (response.data) {
         email.value = response.data.email
         phone.value = response.data.phone || '' // Preenche o telefone se ele vier
+        plan.value = response.data.plan
         emailIsDisabled.value = true
         phoneIsDisabled.value = !!response.data.phone // Desativa fone se ele veio
         isStaffInvitation.value = false // É um registro normal, não um convite de staff
@@ -56,7 +61,6 @@ onMounted(async () => {
       router.push('/register') // Limpa a URL
     }
   } else if (staffInviteToken) {
-    // --- FLUXO 2: Convite de Staff (?invitationToken=) ---
     invitationToken.value = staffInviteToken
     try {
       const response = await getInvitationDetails(staffInviteToken)
@@ -129,17 +133,22 @@ function handleRegistrationComplete() {
 <template>
   <div>
     <div v-if="registrationSuccess" class="success-screen">
-      <div class="success-content">
-        <CheckCircle2 class="success-icon" :size="64" />
-        <h1 class="title">Eba! Conta criada!</h1>
-        <p class="message">Seja bem-vindo(a)! Estamos felizes em ter você conosco.</p>
-        <button @click="handleRegistrationComplete" class="confirm-button">Continuar</button>
-      </div>
-    </div>
+       </div>
 
     <AuthCard :image-url="imageUrl" v-if="!registrationSuccess">
       <template #title>Crie sua conta</template>
 
+      <div v-if="plan" class="plan-info">
+        <div class="plan-title-wrapper">
+          <Building2 class="plan-icon" :size="20" />
+          <h4 class="plan-title">
+            Plano: <span class="plan-name">{{ formattedPlanName }}</span>
+          </h4>
+        </div>
+        <p class="plan-description">
+          Seu cadastro será concluído com os benefícios do plano selecionado.
+        </p>
+      </div>
       <form @submit.prevent="handleRegister">
         <FormInput
           v-model="name"
@@ -271,5 +280,48 @@ function handleRegistrationComplete() {
   color: var(--azul-principal);
   font-weight: 600;
   text-decoration: none;
+}
+
+/* ✨ NOVOS ESTILOS (Formais) PARA O PLANO ✨ */
+.plan-info {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: #f0fdf4; /* Fundo verde-compra sutil */
+  border-radius: 0.75rem;
+  border: 1px solid #bbf7d0; /* Contorno verde-compra sutil */
+  width: 100%;
+  text-align: left;
+}
+
+.plan-title-wrapper {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.plan-icon {
+  color: #16a34a; /* Ícone verde para combinar com o tema */
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+}
+
+.plan-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--cinza-titulo, #1f2937); /* Cor do texto "Plano:" */
+  margin: 0;
+}
+
+/* ✨ NOVO ESTILO ADICIONADO PARA O NOME DO PLANO ✨ */
+.plan-name {
+  color: #16a34a; /* Cor verde-compra, igual ao ícone */
+  font-weight: 700; /* Destaque no nome do plano */
+}
+
+.plan-description {
+  font-size: 0.875rem;
+  color: var(--cinza-texto, #4b5563);
+  line-height: 1.5;
+  margin: 0;
 }
 </style>
