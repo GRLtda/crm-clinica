@@ -4,12 +4,20 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import AuthCard from '@/components/pages/autenticacao/AuthCard.vue'
 import FormInput from '@/components/global/FormInput.vue'
+import PasswordInput from '@/components/global/PasswordInput.vue'
+// ✨ Ícones Atualizados ✨
+import {
+  LifeBuoy,
+  Zap,
+  BadgeDollarSign,
+  HeartHandshake,
+} from 'lucide-vue-next'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
-// --- ✨ ESTADO DE MÚLTIPLAS ETAPAS ---
-const step = ref('login') // 'login', 'forgot', 'reset'
+// --- ✨ ESTADO DE MÚLTIPLAS ETAPAS (com 'contact') ---
+const step = ref('login') // 'login', 'forgot', 'reset', 'contact'
 const isLoading = ref(false)
 const errorMessage = ref(null)
 const notificationMessage = ref(null) // Para mensagens de sucesso/info
@@ -25,6 +33,8 @@ const token = ref('')
 const newPassword = ref('')
 
 const imageUrl = new URL('@/assets/clinic1.webp', import.meta.url).href
+const whatsappLink =
+  'https://wa.me/5515991136994?text=Estou%20interessado%20em%20iniciar%20um%20projeto%20com%20a%20GR%F0%9F%9A%80'
 
 // --- FUNÇÕES DE NAVEGAÇÃO DE ETAPA ---
 function goToStep(stepName) {
@@ -47,56 +57,45 @@ async function handleLogin() {
   isLoading.value = false
 
   if (success) {
-    if (user && user.clinic) {
-      router.push('/app')
-    } else {
-      router.push('/onboarding/clinic')
-    }
+    // Redireciona para o 'redirect' da URL ou para o dashboard
+    const redirectPath = router.currentRoute.value.query.redirect || '/app'
+    router.push(redirectPath)
   } else {
-    errorMessage.value = 'Email ou senha inválidos. Tente novamente.'
+    errorMessage.value = 'Email ou senha inválidos. Verifique seus dados.'
   }
 }
 
-// Etapa 2: Solicitar Código
+// Etapa 2: Esqueceu a senha
 async function handleForgotPassword() {
   errorMessage.value = null
   notificationMessage.value = null
   isLoading.value = true
 
-  const { success, message, error } = await authStore.requestPasswordReset(emailOrPhone.value)
+  const { success, error } = await authStore.requestPasswordReset(emailOrPhone.value)
   isLoading.value = false
 
   if (success) {
-    // A API sempre retorna sucesso (por segurança), então mostramos a msg da API.
-    notificationMessage.value = message // "Se um usuário for encontrado..."
-    step.value = 'reset' // Avança para a etapa de inserir o código
+    notificationMessage.value = 'Código enviado! Verifique seu email ou telefone.'
+    goToStep('reset')
   } else {
-    // Ex: Erro de Rate Limit (429)
     errorMessage.value = error
   }
 }
 
-// Etapa 3: Redefinir Senha
+// Etapa 3: Resetar a senha
 async function handleResetPassword() {
   errorMessage.value = null
-  notificationMessage.value = null
   isLoading.value = true
-
-  const { success, user, error } = await authStore.performPasswordReset({
-    token: token.value,
+  const { success, error } = await authStore.performPasswordReset({
+    code: token.value,
     newPassword: newPassword.value,
   })
   isLoading.value = false
 
   if (success) {
-    // Logado com sucesso! Redireciona com base na clínica.
-    if (user && user.clinic) {
-      router.push('/app')
-    } else {
-      router.push('/onboarding/clinic')
-    }
+    // API já logou o usuário, apenas redirecionamos
+    router.push('/app')
   } else {
-    // Ex: Código inválido
     errorMessage.value = error
   }
 }
@@ -104,15 +103,7 @@ async function handleResetPassword() {
 
 <template>
   <AuthCard :image-url="imageUrl">
-    <div v-if="notificationMessage" class="notification-message">
-      {{ notificationMessage }}
-    </div>
-    <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
-
-    <template v-if="step === 'login'" #title>Bem-vindo de volta!</template>
-    <template v-else-if="step === 'forgot'" #title>Redefinir Senha</template>
-    <template v-else-if="step === 'reset'" #title>Verifique seu WhatsApp</template>
-
+    <template v-if="step === 'login'" #title>Acesse sua conta</template>
     <div v-if="step === 'login'">
       <form @submit.prevent="handleLogin">
         <FormInput
@@ -122,93 +113,226 @@ async function handleResetPassword() {
           name="email"
           placeholder="seuemail@exemplo.com"
           autocomplete="email"
-          required="true"
+          :required="true"
         />
-        <FormInput
-          v-model="password"
-          label="Senha"
-          type="password"
-          name="password"
-          placeholder="Sua senha"
-          autocomplete="current-password"
-          required="true"
-        />
+        <PasswordInput v-model="password" label="Senha" :required="true" :show-validation="false" />
+
         <div class="forgot-password-link">
-          <a @click.prevent="goToStep('forgot')" href="#" class="link">Esqueci minha senha</a>
+          <a @click.prevent="goToStep('forgot')" href="#" class="link">Esqueceu a senha?</a>
         </div>
+
+        <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
         <button type="submit" class="auth-button" :disabled="isLoading">
           {{ isLoading ? 'Entrando...' : 'Entrar' }}
         </button>
       </form>
     </div>
 
-    <div v-else-if="step === 'forgot'">
+    <template v-if="step === 'forgot'" #title>Recuperar senha</template>
+    <div v-if="step === 'forgot'">
       <p class="step-description">
-        Digite seu email ou telefone cadastrado. Se encontrarmos sua conta, enviaremos um código de
-        6 dígitos para o seu WhatsApp.
+        Digite seu email ou telefone e enviaremos um código de verificação para redefinir sua senha.
       </p>
       <form @submit.prevent="handleForgotPassword">
         <FormInput
           v-model="emailOrPhone"
           label="Email ou Telefone"
-          type="text"
           name="emailOrPhone"
           placeholder="seuemail@exemplo.com"
-          autocomplete="email"
-          required="true"
+          :required="true"
         />
+        <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
         <button type="submit" class="auth-button" :disabled="isLoading">
-          {{ isLoading ? 'Enviando...' : 'Enviar Código' }}
+          {{ isLoading ? 'Enviando...' : 'Enviar código' }}
         </button>
       </form>
     </div>
 
-    <div v-else-if="step === 'reset'">
+    <template v-if="step === 'reset'" #title>Redefinir senha</template>
+    <div v-if="step === 'reset'">
       <p class="step-description">
-        Enviamos um código de 6 dígitos. Insira-o abaixo junto com sua nova senha.
+        Digite o código de 6 dígitos que enviamos e sua nova senha.
       </p>
       <form @submit.prevent="handleResetPassword">
+        <div v-if="notificationMessage" class="notification-message">
+          {{ notificationMessage }}
+        </div>
         <FormInput
           v-model="token"
-          label="Código de 6 dígitos"
-          type="text"
+          label="Código de Verificação"
           name="token"
           placeholder="123456"
-          autocomplete="one-time-token"
-          required="true"
-          maxlength="6"
+          :required="true"
         />
-        <FormInput
-          v-model="newPassword"
-          label="Nova Senha"
-          type="password"
-          name="newPassword"
-          placeholder="Sua nova senha forte"
-          autocomplete="new-password"
-          required="true"
-        />
+        <PasswordInput v-model="newPassword" label="Nova Senha" :required="true" />
+        <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
         <button type="submit" class="auth-button" :disabled="isLoading">
-          {{ isLoading ? 'Redefinindo...' : 'Redefinir Senha e Entrar' }}
+          {{ isLoading ? 'Salvando...' : 'Salvar e Entrar' }}
         </button>
       </form>
     </div>
 
-    <template v-if="step === 'login'" #footer>
-      Não tem uma conta? <router-link to="/register" class="link">Cadastre-se</router-link>
-    </template>
-    <template v-else-if="step === 'forgot'" #footer>
-      Lembrou a senha? <a @click.prevent="goToStep('login')" href="#" class="link">Voltar ao Login</a>
-    </template>
-    <template v-else-if="step === 'reset'" #footer>
-      Não recebeu?
-      <a @click.prevent="goToStep('forgot')" href="#" class="link">Tentar novamente</a>
+    <template v-if="step === 'contact'" #title>
+      <div class="contact-title-wrapper">
+        <div class="icon-wrapper">
+          <LifeBuoy :size="32" />
+        </div>
+        <span>Fale com um especialista</span>
+      </div>
     </template>
 
-    </AuthCard>
+    <div v-if="step === 'contact'" class="contact-content">
+      <p class="step-description contact-description">
+        Para garantir o melhor atendimento, nosso cadastro é feito através de uma
+        consultoria inicial.
+      </p>
+
+      <hr class="divider" />
+
+      <ul class="features-list">
+        <li>
+          <Zap :size="20" class="feature-icon" />
+          <div class="feature-text">
+            <strong>Resposta Rápida</strong>
+            <p>Inicie seu projeto hoje mesmo, sem longas esperas.</p>
+          </div>
+        </li>
+        <li>
+          <BadgeDollarSign :size="20" class="feature-icon" />
+          <div class="feature-text">
+            <strong>Valor Acessível</strong>
+            <p>Planos justos e transparentes para sua clínica decolar.</p>
+          </div>
+        </li>
+        <li>
+          <HeartHandshake :size="20" class="feature-icon" />
+          <div class="feature-text">
+            <strong>Suporte Humanizado</strong>
+            <p>Converse diretamente com nossa equipe, sem robôs.</p>
+          </div>
+        </li>
+      </ul>
+
+      <a :href="whatsappLink" target="_blank" class="auth-button contact-button">
+        Entrar em contato
+      </a>
+    </div>
+    <template v-if="step === 'login'" #footer>
+      Não tem uma conta?
+      <a @click.prevent="goToStep('contact')" href="#" class="link">Entre em Contato</a>
+    </template>
+    <template v-if="step === 'forgot' || step === 'contact'" #footer>
+      Já tem uma conta?
+      <a @click.prevent="goToStep('login')" href="#" class="link">Voltar ao Login</a>
+    </template>
+    <template v-else-if="step === 'reset'" #footer>
+      Não recebeu o código?
+      <a @click.prevent="goToStep('forgot')" href="#" class="link">Tentar novamente</a>
+    </template>
+  </AuthCard>
 </template>
 
 <style scoped>
-/* --- ✨ NOVOS ESTILOS ADICIONADOS --- */
+/* --- ESTILOS ADICIONADOS/MODIFICADOS PARA CONTATO --- */
+.contact-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+/* ✨ Novo estilo para alinhar Título e Ícone ✨ */
+.contact-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 1rem; /* 16px de espaço entre o ícone e o texto */
+  width: 100%; /* Garante que o alinhamento do AuthCard funcione */
+}
+
+/* ✨ Nova regra para diminuir o texto do título ✨ */
+.contact-title-wrapper span {
+  font-size: 1.5rem; /* 24px (o padrão do h2 era 1.75rem / 28px) */
+  font-weight: 700; /* Mantém o peso da fonte do título */
+  line-height: 1.3; /* Ajusta a altura da linha */
+  color: var(--preto-principal);
+}
+
+/* Estilo do Wrapper do Ícone (margem removida) */
+.icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 1rem;
+  background-color: #eef2ff;
+  color: var(--azul-principal);
+  flex-shrink: 0; /* Impede que o ícone seja espremido */
+}
+
+/* Descrição da etapa de contato */
+.contact-description {
+  text-align: center;
+  margin-bottom: 1.25rem;
+  margin-top: 1.5rem; /* Adicionado espaço que o ícone ocupava */
+}
+
+/* Divisória */
+.divider {
+  width: 100%;
+  border: none;
+  border-top: 1px solid var(--cinza-borda);
+  margin-bottom: 1.25rem;
+}
+
+.features-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem 0;
+  width: 100%; /* Ocupa toda a largura */
+  color: var(--cinza-texto-escuro);
+}
+.features-list li {
+  display: flex;
+  align-items: flex-start; /* Alinha o ícone ao topo do texto */
+  text-align: left;
+  margin-bottom: 1rem;
+}
+
+.feature-icon {
+  color: var(--azul-principal);
+  margin-right: 0.75rem;
+  flex-shrink: 0; /* Impede que o ícone encolha */
+  margin-top: 0.125rem; /* Ajuste fino de alinhamento */
+}
+
+.feature-text {
+  display: flex;
+  flex-direction: column;
+}
+.feature-text strong {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--preto-principal);
+  line-height: 1.4;
+}
+.feature-text p {
+  font-size: 0.875rem;
+  color: var(--cinza-texto);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.contact-button {
+  text-decoration: none;
+  display: inline-block;
+  padding: 0.875rem; /* Garante o mesmo padding do auth-button */
+  width: 100%; /* Ocupa 100% da largura */
+  box-sizing: border-box; /* Garante que o padding não estoure a largura */
+  margin-top: 0; /* Remove a margem do auth-button */
+}
+/* -------------------------------------- */
+
 .step-description {
   font-size: 0.95rem;
   color: var(--cinza-texto);
@@ -234,7 +358,6 @@ async function handleResetPassword() {
   margin-bottom: 1rem;
   font-size: 0.875rem;
 }
-/* ---------------------------------- */
 
 .error-message {
   color: #ef4444;
@@ -255,17 +378,19 @@ async function handleResetPassword() {
   transition: background-color 0.3s ease;
   margin-top: 1rem;
 }
-.auth-button:hover {
-  background-color: var(--azul-escuro);
-}
 .auth-button:disabled {
   background-color: var(--cinza-claro);
   cursor: not-allowed;
+}
+.auth-button:hover:not(:disabled) {
+  background-color: var(--azul-escuro);
 }
 .link {
   color: var(--azul-principal);
   font-weight: 600;
   text-decoration: none;
-  cursor: pointer;
+}
+.link:hover {
+  text-decoration: underline;
 }
 </style>

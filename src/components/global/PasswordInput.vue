@@ -6,6 +6,7 @@ const props = defineProps({
   modelValue: { type: String, required: true },
   label: String,
   required: { type: Boolean, default: false },
+  showValidation: { type: Boolean, default: true },
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -65,7 +66,11 @@ function handleInput(event) {
       </button>
     </div>
 
-    <div class="feedback-wrapper" :class="{ visible: modelValue.length > 0 }">
+    <div
+      v-if="props.showValidation"
+      class="feedback-wrapper"
+      :class="{ visible: modelValue.length > 0 }"
+    >
       <Transition name="fade-content">
         <div v-if="modelValue.length > 0">
           <div class="strength-meter">

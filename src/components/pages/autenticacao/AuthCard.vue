@@ -61,7 +61,7 @@ defineProps({
 }
 
 .content-title {
-  margin-bottom: 2.5rem;
+  margin-bottom: 1.0rem;
   font-size: 2rem;
   font-weight: 700;
   text-align: left;
