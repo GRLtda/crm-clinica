@@ -19,6 +19,15 @@ const routes = [
     name: 'register',
     component: RegisterView,
     meta: { public: true, title: 'Cadastro' },
+    beforeEnter: (to, from, next) => {
+      const hasToken = to.query.token || to.query.invitationToken
+
+      if (!hasToken) {
+        next({ name: 'landing' })
+      } else {
+        next()
+      }
+    },
   },
   {
     path: '/onboarding/clinic',
@@ -44,36 +53,66 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition
+    } else {
+      return { top: 0 }
+    }
+  },
 })
 
-// --- GUARDA DE NAVEGAÇÃO GLOBAL ATUALIZADO ---
+// --- GUARDAS GLOBAIS (afterEach e beforeEach) ---
+
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
   const isAuthenticated = authStore.isAuthenticated
   const hasClinic = authStore.hasClinic
 
-  const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
-  const isAuthPage = to.name === 'login' || to.name === 'register'
-
-  if (requiresAuth && !isAuthenticated) {
-    next({ name: 'login' })
-  } else if (isAuthenticated && isAuthPage) {
-    next({ name: 'inicio' })
-  } else if (isAuthenticated && !hasClinic && to.name !== 'clinic-wizard') {
-    next({ name: 'clinic-wizard' })
-  } else if (isAuthenticated && hasClinic && to.name === 'clinic-wizard') {
-    // Esta é a linha que agora vai funcionar e te protegerá
-    next({ name: 'inicio' })
-  } else {
-    next()
+  if (to.meta.public) {
+    return next()
   }
+
+  if (to.meta.requiresAuth && !isAuthenticated) {
+    return next({ name: 'login', query: { redirect: to.fullPath } })
+  }
+
+  if ((to.name === 'login' || to.name === 'register') && isAuthenticated) {
+    return next({ name: 'dashboard' })
+  }
+
+  // 4. Se a rota exige uma clínica (a maioria das rotas 'requiresAuth')
+  if (to.meta.requiresAuth && !to.meta.public) {
+    // E o usuário está autenticado MAS não tem clínica
+    if (isAuthenticated && !hasClinic) {
+      // E ele NÃO ESTÁ indo para o wizard
+      if (to.name !== 'clinic-wizard') {
+        // Força ele a ir para o wizard
+        return next({ name: 'clinic-wizard' })
+      }
+    }
+
+    // E o usuário está autenticado E TEM clínica
+    if (isAuthenticated && hasClinic) {
+      // Mas está tentando acessar o wizard
+      if (to.name === 'clinic-wizard') {
+        // Redireciona para o dashboard
+        return next({ name: 'dashboard' })
+      }
+    }
+  }
+
+  // 5. Se nenhuma regra anterior barrou, permite a navegação
+  next()
 })
 
-// --- SEO TÍTULO DA PÁGINA E ÍCONES DINÂMICOS ---
+
 router.afterEach((to) => {
+  // Esta função é executada após cada mudança de rota
+  // Usamos 'nextTick' para garantir que o DOM seja atualizado
+  // antes de tentarmos mudar o título do documento.
   nextTick(() => {
-    // ✨ INÍCIO DA ALTERAÇÃO ✨
-    // Função para criar ou atualizar uma meta tag
+    // Função auxiliar para definir meta tags
     const setMetaTag = (name, content) => {
       let element = document.querySelector(`meta[name="${name}"]`);
       if (!element) {
@@ -112,11 +151,20 @@ router.afterEach((to) => {
 
     // ✨ Atualiza o título da página (usado como nome do app na tela de início)
     if (pageTitle && clinicName && to.meta.requiresAuth) {
-      document.title = `${clinicName} - ${pageTitle}`
+      document.title = `${pageTitle} | ${clinicName}`
     } else if (pageTitle) {
       document.title = `${pageTitle} | ${defaultAppName}`
+    } else if (clinicName) {
+      document.title = clinicName
     } else {
-      document.title = clinicName || defaultAppName
+      document.title = defaultAppName
+    }
+
+    // ✨ Atualiza o nome do app na tela de início (iOS)
+    if (clinicName) {
+      setMetaTag('apple-mobile-web-app-title', clinicName);
+    } else {
+      setMetaTag('apple-mobile-web-app-title', defaultAppName);
     }
   })
 })
