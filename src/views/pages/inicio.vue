@@ -43,19 +43,33 @@ const weekAppointments = computed(() => appointmentsStore.appointments)
 const weekStart = computed(() => startOfWeek(selectedDate.value, { weekStartsOn: 1 }))
 const weekEnd = computed(() => endOfWeek(selectedDate.value, { weekStartsOn: 1 }))
 
+// --- ✨ LÓGICA DE HORÁRIO DO CALENDÁRIO ATUALIZADA ✨ ---
+
+// Helper para converter "HH:mm" para minutos (mais robusto)
 const timeToMinutes = (timeStr) => {
-  if (!timeStr || !timeStr.includes(':')) return 0
+  if (!timeStr || !timeStr.includes(':')) return null
   const [hours, minutes] = timeStr.split(':').map(Number)
-  if (isNaN(hours) || isNaN(minutes)) return 0
+  if (isNaN(hours) || isNaN(minutes)) return null
   return hours * 60 + minutes
 }
 
-// Calcula o iní­cio e fim da exibição do calendário
+// ✨ NOVO HELPER: Converter minutos para "HH:mm"
+const minutesToTime = (totalMinutes) => {
+  if (isNaN(totalMinutes) || totalMinutes === Infinity || totalMinutes === -Infinity) {
+    return '00:00'
+  }
+  const hours = Math.floor(totalMinutes / 60)
+    .toString()
+    .padStart(2, '0')
+  const minutes = (totalMinutes % 60).toString().padStart(2, '0')
+  return `${hours}:${minutes}`
+}
+
+// Calcula o iní­cio e fim da exibição do calendário (atualizado)
 const calendarTimeRange = computed(() => {
   const defaultRange = { from: 0 * 60, to: 24 * 60 } // Padrão: 00:00 - 24:00
   const clinic = authStore.user?.clinic
 
-  // Se a clínica não existir ou permitir agendamentos fora do horário, usa o padrão
   if (!clinic || clinic.allowAppointmentsOutsideWorkingHours === true) {
     return defaultRange
   }
@@ -65,33 +79,117 @@ const calendarTimeRange = computed(() => {
     return defaultRange
   }
 
-  // Filtra apenas os dias que estão abertos e têm horários definidos
   const openDays = workingHours.filter((day) => day.isOpen && day.startTime && day.endTime)
 
   if (openDays.length === 0) {
-    return defaultRange // Se nenhum dia está configurado como aberto
+    return defaultRange
   }
 
   try {
-    // Mapeia todos os horários de início e fim para minutos
-    const startTimes = openDays.map((day) => timeToMinutes(day.startTime))
-    const endTimes = openDays.map((day) => timeToMinutes(day.endTime))
+    // Mapeia horários, filtrando nulos/inválidos
+    const startTimes = openDays
+      .map((day) => timeToMinutes(day.startTime))
+      .filter((t) => t !== null)
+    const endTimes = openDays
+      .map((day) => timeToMinutes(day.endTime))
+      .filter((t) => t !== null)
 
-    // Encontra o horário mais cedo de abertura e o mais tarde de fechamento
-    const minStart = Math.min(...startTimes)
-    const maxEnd = Math.max(...endTimes)
-
-    if (minStart === Infinity || maxEnd === -Infinity || isNaN(minStart) || isNaN(maxEnd)) {
+    if (startTimes.length === 0 || endTimes.length === 0) {
       return defaultRange
     }
 
-    // Retorna o intervalo mais amplo
+    const minStart = Math.min(...startTimes)
+    const maxEnd = Math.max(...endTimes)
+
+    if (minStart === Infinity || maxEnd === -Infinity) {
+      return defaultRange
+    }
+
     return { from: minStart, to: maxEnd }
   } catch (error) {
     console.error('Erro ao calcular o intervalo de tempo do calendário:', error)
     return defaultRange
   }
 })
+
+const closedTimeEvents = computed(() => {
+  const clinic = authStore.user?.clinic
+  if (!clinic || clinic.allowAppointmentsOutsideWorkingHours) {
+    return []
+  }
+
+  const workingHours = clinic.workingHours
+  if (!workingHours || !Array.isArray(workingHours)) {
+    return []
+  }
+
+  const { from: globalMinStart, to: globalMaxEnd } = calendarTimeRange.value
+  // Se o range já é 24h (ou padrão), não faz sentido bloquear
+  if (globalMinStart === 0 && globalMaxEnd === 24 * 60) {
+    return []
+  }
+
+  const events = []
+  const weekStartDate = weekStart.value // Começa na Segunda (weekStartsOn: 1)
+  // Mapeia os dias da semana baseado na ordem do weekStart (iniciando em Segunda)
+  const dayMapping = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+
+  for (let i = 0; i < 7; i++) {
+    const currentDate = addDays(weekStartDate, i)
+    const dayName = dayMapping[i] // 'Segunda' para i=0, 'Domingo' para i=6
+    const dateString = format(currentDate, 'yyyy-MM-dd')
+
+    const dayConfig = workingHours.find((wh) => wh.day === dayName)
+
+    if (!dayConfig || !dayConfig.isOpen) {
+      events.push({
+        _id: `closed-${dateString}-full`,
+        start: `${dateString} ${minutesToTime(globalMinStart)}`,
+        end: `${dateString} ${minutesToTime(globalMaxEnd)}`,
+        class: 'clinic-closed-event',
+      })
+      continue // Próximo dia
+    }
+
+    // Caso 2: Dia "Aberto", verificar gaps
+    const dayStartMinutes = timeToMinutes(dayConfig.startTime)
+    const dayEndMinutes = timeToMinutes(dayConfig.endTime)
+
+    if (dayStartMinutes === null || dayEndMinutes === null) {
+      events.push({
+        _id: `closed-${dateString}-invalid`,
+        start: `${dateString} ${minutesToTime(globalMinStart)}`,
+        end: `${dateString} ${minutesToTime(globalMaxEnd)}`,
+        class: 'clinic-closed-event',
+      })
+      continue
+    }
+
+    // Gap antes de abrir
+    if (dayStartMinutes > globalMinStart) {
+      events.push({
+        _id: `closed-${dateString}-before`,
+        start: `${dateString} ${minutesToTime(globalMinStart)}`,
+        end: `${dateString} ${minutesToTime(dayStartMinutes)}`,
+        class: 'clinic-closed-event',
+      })
+    }
+
+    // Gap depois de fechar
+    if (dayEndMinutes < globalMaxEnd) {
+      events.push({
+        _id: `closed-${dateString}-after`,
+        start: `${dateString} ${minutesToTime(dayEndMinutes)}`,
+        end: `${dateString} ${minutesToTime(globalMaxEnd)}`,
+        class: 'clinic-closed-event',
+      })
+    }
+  }
+
+  return events
+})
+
+// --- ✨ [FIM DAS MUDANÇAS] ✨ ---
 
 const calendarHeader = computed(() => {
   if (calendarView.value === 'day') {
@@ -235,10 +333,14 @@ const formattedEvents = computed(() => {
       title: appt.patient.name,
       class: `clinic-event status--${status}`,
       originalEvent: appt,
-      duration: duration, // Duração em minutos
-      status: status, // Status limpo
+      duration: duration,
+      status: status,
     }
   })
+})
+
+const allCalendarEvents = computed(() => {
+  return [...formattedEvents.value, ...closedTimeEvents.value]
 })
 
 function formatTime(dateString) {
@@ -264,6 +366,9 @@ function handleCellClick(date) {
 }
 
 function handleEventClick(event) {
+  if (event.class && event.class.includes('clinic-closed-event')) {
+    return
+  }
   selectedEventForDetails.value = event
   isDetailsModalOpen.value = true
 }
@@ -285,6 +390,9 @@ function openModal(date) {
 }
 
 function onEventClick(event) {
+  if (event.class && event.class.includes('clinic-closed-event')) {
+    return
+  }
   console.log('DEBUG (inicio.vue): onEventClick. Evento selecionado:', event)
   selectedEventForDetails.value = event
   isDetailsModalOpen.value = true
@@ -387,10 +495,11 @@ function handleReschedule(appointmentToReschedule) {
         @ready="handleCalendarReady"
         class="vuecal--full-height-delete"
         :selected-date="selectedDate"
-        :events="formattedEvents"
-        :active-view="calendarView" :disable-views="['years', 'year', 'month']"
+        :events="allCalendarEvents" :active-view="calendarView" :disable-views="['years', 'year', 'month']"
         hide-view-selector
-        :time-from="calendarTimeRange.from" :time-to="calendarTimeRange.to" :time-step="30"
+        :time-from="calendarTimeRange.from"
+        :time-to="calendarTimeRange.to"
+        :time-step="30"
         :snap-to-time="15"
         :min-cell-width="120"
         locale="pt-br"
@@ -408,8 +517,12 @@ function handleReschedule(appointmentToReschedule) {
         </template>
 
         <template #event="{ event }">
+          <div v-if="event.class === 'clinic-closed-event'" class="closed-event-content">
+            {{ event.title }}
+          </div>
+
           <div
-            v-if="event.duration <= 30"
+            v-else-if="event.duration <= 30"
             class="custom-event-content-short"
             :title="`${event.title} (${event.status})`"
           >
@@ -486,6 +599,30 @@ function handleReschedule(appointmentToReschedule) {
   transform: scale(0.98);
   z-index: 10;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.256);
+}
+.vuecal__event.clinic-closed-event {
+  background-color: #fef2f2; /* Vermelho bem claro */
+  color: #b91c1c79; /* Vermelho escuro */
+  border: 1px solid #fecaca;
+  border-radius: 0 !important;
+  opacity: 0.8;
+  cursor: not-allowed;
+  z-index: 1; /* Fica por baixo dos eventos normais */
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 5px,
+    rgba(239, 68, 68, 0.1) 5px,
+    rgba(239, 68, 68, 0.1) 10px
+  );
+}
+.vuecal__event.clinic-closed-event:hover {
+  transform: none;
+  box-shadow: none;
+  opacity: 0.8;
+}
+.vuecal__event.clinic-closed-event::before {
+  display: none; /* Esconde a barra lateral */
 }
 .vuecal__event.clinic-event {
   background-color: #eef2ff;
@@ -769,6 +906,19 @@ function handleReschedule(appointmentToReschedule) {
   }
 }
 
+.closed-event-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  font-weight: 500;
+  font-size: 0.8rem;
+  color: inherit;
+  opacity: 0.9;
+  padding: 4px;
+  box-sizing: border-box;
+}
 .custom-event-content-short,
 .custom-event-content-long {
   height: 100%;
