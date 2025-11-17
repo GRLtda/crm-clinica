@@ -11,6 +11,13 @@ const props = defineProps({
 
 const emit = defineEmits(['page-change'])
 
+const changePage = (page) => {
+  if (page < 1 || page > props.totalPages || page === '...') {
+    return
+  }
+  emit('page-change', page)
+}
+
 const pageNumbers = computed(() => {
   if (props.totalPages <= 7) {
     return Array.from({ length: props.totalPages }, (_, i) => i + 1)
@@ -40,6 +47,16 @@ const pageNumbers = computed(() => {
 
 const fromItem = computed(() => (props.currentPage - 1) * props.limit + 1)
 const toItem = computed(() => Math.min(props.currentPage * props.limit, props.totalItems))
+
+const isFirstPage = computed(() => props.currentPage === 1)
+const isLastPage = computed(() => props.currentPage === props.totalPages)
+
+const summaryText = computed(() => {
+  if (props.totalItems === 0) {
+    return 'Nenhum item encontrado'
+  }
+  return `Mostrando ${fromItem.value} a ${toItem.value} de ${props.totalItems} resultados`
+})
 </script>
 
 <template>
