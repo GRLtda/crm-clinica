@@ -54,7 +54,6 @@ const isLoadingData = ref(true)
 
 const isMobile = ref(false)
 const isKeyboardOpen = ref(false)
-// ✨ NOVO ESTADO PARA GUARDAR O ESTILO DINÂMICO DA TOOLBAR ✨
 const mobileToolbarStyle = ref({})
 
 const currentRecord = computed(() => recordsStore.currentRecord)
@@ -212,13 +211,7 @@ onMounted(async () => {
     saveStatus.value = 'saved'
     lastSaved.value = new Date(currentRecord.value.updatedAt)
   } else {
-    const defaultRecordContent = `
-      <h2>Queixa Principal:</h2><p></p>
-      <h2>Histórico da Doença Atual (HDA):</h2><p></p>
-      <h2>Histórico Médico Pregresso (HMP):</h2><p></p>
-      <h2>Exame Físico:</h2><p></p>
-      <h2>Condutas/Plano Terapêutico:</h2><p></p>
-    `
+    const defaultRecordContent = ``
     editor.value.commands.setContent(defaultRecordContent)
     saveStatus.value = 'idle'
   }
@@ -440,7 +433,7 @@ const menuItems = [
               </div>
             </div>
 
-            <EditorToolbar :editor="editor" />
+            <EditorToolbar v-if="!isViewMode" :editor="editor" />
 
             <div v-if="isViewMode" class="view-mode-header">
               <FileText :size="22" stroke-width="2.5" />
@@ -778,7 +771,7 @@ const menuItems = [
 }
 
 .editor-top-bar {
-  display: flex;
+  display: none;
   justify-content: flex-end;
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid #e5e7eb;
