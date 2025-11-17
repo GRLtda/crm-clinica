@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed, onUnmounted, nextTick } from 'vue'
 import { useAppointmentsStore } from '@/stores/appointments'
+import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import { Clock, ChevronLeft, ChevronRight, ArrowRight, LoaderCircle } from 'lucide-vue-next'
 import CreateAppointmentModal from '@/components/pages/dashboard/CreateAppointmentModal.vue'
@@ -21,6 +22,7 @@ import { ptBR } from 'date-fns/locale'
 import { useToast } from 'vue-toastification'
 
 const appointmentsStore = useAppointmentsStore()
+const authStore = useAuthStore()
 const router = useRouter()
 const toast = useToast()
 
@@ -40,6 +42,56 @@ const weekAppointments = computed(() => appointmentsStore.appointments)
 
 const weekStart = computed(() => startOfWeek(selectedDate.value, { weekStartsOn: 1 }))
 const weekEnd = computed(() => endOfWeek(selectedDate.value, { weekStartsOn: 1 }))
+
+const timeToMinutes = (timeStr) => {
+  if (!timeStr || !timeStr.includes(':')) return 0
+  const [hours, minutes] = timeStr.split(':').map(Number)
+  if (isNaN(hours) || isNaN(minutes)) return 0
+  return hours * 60 + minutes
+}
+
+// Calcula o iní­cio e fim da exibição do calendário
+const calendarTimeRange = computed(() => {
+  const defaultRange = { from: 0 * 60, to: 24 * 60 } // Padrão: 00:00 - 24:00
+  const clinic = authStore.user?.clinic
+
+  // Se a clínica não existir ou permitir agendamentos fora do horário, usa o padrão
+  if (!clinic || clinic.allowAppointmentsOutsideWorkingHours === true) {
+    return defaultRange
+  }
+
+  const workingHours = clinic.workingHours
+  if (!workingHours || !Array.isArray(workingHours) || workingHours.length === 0) {
+    return defaultRange
+  }
+
+  // Filtra apenas os dias que estão abertos e têm horários definidos
+  const openDays = workingHours.filter((day) => day.isOpen && day.startTime && day.endTime)
+
+  if (openDays.length === 0) {
+    return defaultRange // Se nenhum dia está configurado como aberto
+  }
+
+  try {
+    // Mapeia todos os horários de início e fim para minutos
+    const startTimes = openDays.map((day) => timeToMinutes(day.startTime))
+    const endTimes = openDays.map((day) => timeToMinutes(day.endTime))
+
+    // Encontra o horário mais cedo de abertura e o mais tarde de fechamento
+    const minStart = Math.min(...startTimes)
+    const maxEnd = Math.max(...endTimes)
+
+    if (minStart === Infinity || maxEnd === -Infinity || isNaN(minStart) || isNaN(maxEnd)) {
+      return defaultRange
+    }
+
+    // Retorna o intervalo mais amplo
+    return { from: minStart, to: maxEnd }
+  } catch (error) {
+    console.error('Erro ao calcular o intervalo de tempo do calendário:', error)
+    return defaultRange
+  }
+})
 
 const calendarHeader = computed(() => {
   if (calendarView.value === 'day') {
@@ -338,9 +390,7 @@ function handleReschedule(appointmentToReschedule) {
         :events="formattedEvents"
         :active-view="calendarView" :disable-views="['years', 'year', 'month']"
         hide-view-selector
-        :time-from="0 * 60"
-        :time-to="24 * 60"
-        :time-step="30"
+        :time-from="calendarTimeRange.from" :time-to="calendarTimeRange.to" :time-step="30"
         :snap-to-time="15"
         :min-cell-width="120"
         locale="pt-br"
