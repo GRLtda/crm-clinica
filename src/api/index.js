@@ -1,4 +1,7 @@
 import axios from 'axios'
+import { ref } from 'vue'
+
+export const isGlobalOffline = ref(false)
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
@@ -6,5 +9,24 @@ const apiClient = axios.create({
     'Content-Type': 'application/json',
   },
 })
+
+apiClient.interceptors.response.use(
+  (response) => {
+    if (isGlobalOffline.value) {
+        isGlobalOffline.value = false
+    }
+    return response
+  },
+  (error) => {
+    if (error.code === 'ERR_NETWORK' || !error.response) {
+      console.error('⚠️ Conexão perdida com a API.')
+      isGlobalOffline.value = true
+    } else {
+      isGlobalOffline.value = false
+    }
+
+    return Promise.reject(error)
+  }
+)
 
 export default apiClient

@@ -34,7 +34,7 @@ const newPassword = ref('')
 
 const imageUrl = new URL('@/assets/clinic1.webp', import.meta.url).href
 const whatsappLink =
-  'https://wa.me/5515991136994?text=Estou%20interessado%20em%20iniciar%20um%20projeto%20com%20a%20GR%F0%9F%9A%80'
+  'https://wa.me/5515991136994'
 
 // --- FUNÇÕES DE NAVEGAÇÃO DE ETAPA ---
 function goToStep(stepName) {
