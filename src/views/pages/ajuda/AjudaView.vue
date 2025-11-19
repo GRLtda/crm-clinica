@@ -30,7 +30,7 @@ const faqs = ref([
         id: 'a1',
         question: 'Como marcar um novo atendimento?',
         answer:
-          'Você pode marcar um novo atendimento diretamente da tela de "Resumo" ou da tela de "Atendimentos", clicando no botão "Agendar Atendimento". Uma janela modal se abrirá para que você preencha os detalhes.',
+          'Você pode marcar um novo atendimento diretamente da tela de "Calendário" ou da tela de "Atendimentos", clicando no botão "Agendar Atendimento". Uma janela modal se abrirá para que você preencha os detalhes.',
       },
       {
         id: 'a2',

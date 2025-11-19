@@ -5,7 +5,7 @@ import { RouterLink } from 'vue-router'
 import UserDropdown from '@/components/global/UserDropdown.vue'
 import ClinicDropdown from '@/components/global/ClinicDropdown.vue'
 import {
-  LayoutDashboard,
+  CalendarSearch,
   Calendar,
   Users,
   LifeBuoy,
@@ -15,14 +15,14 @@ import {
   Megaphone
 } from 'lucide-vue-next'
 
-const emit = defineEmits(['close']) // ✨ Definir o evento que o componente pode emitir
+const emit = defineEmits(['close'])
 
 const authStore = useAuthStore()
 const isUserDropdownOpen = ref(false)
 const isClinicDropdownOpen = ref(false)
 
 const mainNavLinks = [
-  { icon: LayoutDashboard, text: 'Resumo', to: '/app' },
+  { icon: CalendarSearch , text: 'Calendário', to: '/app' },
   { icon: Calendar, text: 'Atendimentos', to: '/app/atendimentos' },
   { icon: Users, text: 'Pacientes', to: '/app/pacientes' },
   { icon: Megaphone, text: 'Marketing', to: '/app/marketing' },
