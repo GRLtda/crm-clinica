@@ -3,11 +3,9 @@ import { ref, onMounted, computed } from 'vue'
 import { useEmployeesStore } from '@/stores/employees'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from 'vue-toastification'
-// ✨ 1. Importar o ícone XCircle
 import {
   UserPlus,
   MoreHorizontal,
-  Pencil,
   Trash2,
   UserCog,
   UserCheck,
@@ -74,7 +72,6 @@ async function handleDelete(employeeId) {
   }
 }
 
-// ✨ 2. NOVA FUNÇÃO para cancelar o convite
 async function handleCancelInvite(inviteId) {
   if (confirm('Tem certeza que deseja cancelar este convite?')) {
     const { success } = await employeesStore.cancelPendingInvitation(inviteId)
@@ -112,7 +109,25 @@ function isOwner(employee) {
 
     <div class="section-container">
       <h3 class="section-title"><UserCheck :size="20" /> Equipe Ativa</h3>
-      <div v-if="employeesStore.isLoading" class="state-cell">Carregando...</div>
+
+      <ul v-if="employeesStore.isLoading" class="item-list">
+        <li v-for="n in 3" :key="n" class="list-item">
+          <div class="item-main-info">
+            <div class="skeleton skeleton-avatar"></div>
+            <div class="item-details" style="width: 100%">
+              <div class="skeleton skeleton-text" style="width: 40%"></div>
+              <div class="skeleton skeleton-text" style="width: 60%"></div>
+            </div>
+          </div>
+          <div class="item-role">
+            <div class="skeleton skeleton-badge"></div>
+          </div>
+          <div class="item-actions">
+            <div class="skeleton skeleton-icon"></div>
+          </div>
+        </li>
+      </ul>
+
       <ul v-else-if="employeesStore.activeEmployees.length > 0" class="item-list">
         <li v-for="employee in employeesStore.activeEmployees" :key="employee._id" class="list-item">
           <div class="item-main-info">
@@ -161,6 +176,7 @@ function isOwner(employee) {
           </div>
         </li>
       </ul>
+
       <div v-else class="empty-state">
         <div class="icon-wrapper"><Users :size="48" /></div>
         <h3 class="empty-title">Sua equipe começa aqui</h3>
@@ -176,7 +192,25 @@ function isOwner(employee) {
 
     <div class="section-container">
       <h3 class="section-title"><Clock :size="20" /> Convites Pendentes</h3>
-      <div v-if="employeesStore.isLoading" class="state-cell">Carregando...</div>
+
+      <ul v-if="employeesStore.isLoading" class="item-list">
+        <li v-for="n in 2" :key="n" class="list-item">
+          <div class="item-main-info">
+            <div class="skeleton skeleton-avatar"></div>
+            <div class="item-details" style="width: 100%">
+              <div class="skeleton skeleton-text" style="width: 70%"></div>
+            </div>
+          </div>
+          <div class="item-role">
+            <div class="skeleton skeleton-badge"></div>
+          </div>
+          <div class="item-actions pending-actions">
+             <div class="skeleton skeleton-text" style="width: 80px; margin-right: 10px"></div>
+             <div class="skeleton skeleton-icon"></div>
+          </div>
+        </li>
+      </ul>
+
       <ul v-else-if="employeesStore.pendingInvitations.length > 0" class="item-list">
         <li
           v-for="invite in employeesStore.pendingInvitations"
@@ -204,15 +238,16 @@ function isOwner(employee) {
               <XCircle :size="20" />
             </button>
           </div>
-          </li>
+        </li>
       </ul>
+
       <div v-else class="empty-list-card">Nenhum convite pendente no momento.</div>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* Cabeçalho */
+/* --- STYLES EXISTENTES (Mantidos) --- */
 .header-actions {
   display: flex;
   justify-content: space-between;
@@ -243,7 +278,6 @@ function isOwner(employee) {
   background-color: var(--azul-escuro);
 }
 
-/* Seções */
 .section-container {
   margin-bottom: 2.5rem;
 }
@@ -266,7 +300,6 @@ function isOwner(employee) {
   border: 1px solid #e5e7eb;
 }
 
-/* Lista de Itens */
 .item-list {
   list-style: none;
   padding: 0;
@@ -361,25 +394,21 @@ function isOwner(employee) {
   flex-shrink: 0;
 }
 
-/* ✨ 4. NOVOS ESTILOS ✨ */
 .pending-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 0.75rem;
-  /* Garante que ocupe o mesmo espaço das ações de "demitir" */
   width: 150px;
 }
 
 .btn-cancel-invite {
-  color: #ef4444; /* Vermelho para cancelar */
+  color: #ef4444;
 }
 .btn-cancel-invite:hover {
   background-color: #fee2e2;
 }
-/* ✨ FIM DOS NOVOS ESTILOS ✨ */
 
-/* Convites Pendentes */
 .list-item.is-pending {
   background-color: #f9fafb;
 }
@@ -401,7 +430,6 @@ function isOwner(employee) {
   white-space: nowrap;
 }
 
-/* Ações Dropdown */
 .actions-wrapper {
   position: relative;
 }
@@ -466,7 +494,6 @@ function isOwner(employee) {
   transform: translateY(-5px);
 }
 
-/* Novo Empty State */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -496,7 +523,6 @@ function isOwner(employee) {
   line-height: 1.6;
 }
 
-/* Responsividade */
 @media (max-width: 768px) {
   .header-actions {
     flex-direction: column;
@@ -509,39 +535,83 @@ function isOwner(employee) {
   }
   .list-item {
     display: grid;
-    grid-template-columns: 1fr auto; /* Coluna flexível para info, coluna automática para ações */
+    grid-template-columns: 1fr auto;
     grid-template-rows: auto auto;
     gap: 0.75rem 1rem;
     padding: 1rem;
     align-items: center;
   }
   .item-main-info {
-    grid-column: 1 / -1; /* Ocupa a primeira linha inteira */
+    grid-column: 1 / -1;
   }
   .item-role {
-    grid-column: 1; /* Ocupa a primeira coluna da segunda linha */
+    grid-column: 1;
     width: auto;
     text-align: left;
   }
   .item-actions {
-    grid-column: 2; /* Ocupa a segunda coluna da segunda linha */
+    grid-column: 2;
     width: auto;
     justify-content: flex-end;
   }
 
-  /* ✨ 5. AJUSTE RESPONSIVO ✨ */
   .pending-actions {
-    justify-content: flex-end; /* Garante que o botão fique à direita */
+    justify-content: flex-end;
     gap: 0.5rem;
-    width: auto; /* Remove a largura fixa no mobile */
+    width: auto;
   }
   .pending-text {
-    display: none; /* Esconde o texto no mobile para dar espaço ao botão */
+    display: none;
   }
-  /* ✨ FIM DO AJUSTE RESPONSIVO ✨ */
-
   .section-title {
     font-size: 1.125rem;
+  }
+}
+
+/* --- NOVOS ESTILOS DE SKELETON --- */
+.skeleton {
+  background-color: #e5e7eb;
+  border-radius: 0.375rem;
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.skeleton-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.skeleton-text {
+  height: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+.skeleton-text:last-child {
+  margin-bottom: 0;
+}
+
+.skeleton-badge {
+  height: 24px;
+  width: 100px;
+  border-radius: 99px;
+  margin: 0 auto; /* Centraliza no desktop */
+}
+
+.skeleton-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+/* Ajuste Skeleton Mobile */
+@media (max-width: 768px) {
+  .skeleton-badge {
+    margin: 0; /* Alinha a esquerda no mobile */
   }
 }
 </style>

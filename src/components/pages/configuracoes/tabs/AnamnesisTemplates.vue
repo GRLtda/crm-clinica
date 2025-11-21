@@ -79,7 +79,20 @@ async function handleDelete(templateId) {
       </button>
     </div>
 
-    <div v-if="anamnesisStore.isLoading">Carregando modelos...</div>
+    <div v-if="anamnesisStore.isLoading" class="templates-grid">
+      <div v-for="n in 6" :key="n" class="template-card">
+        <div class="template-info">
+          <div class="skeleton skeleton-text" style="width: 70%; height: 1.5rem; margin-bottom: 0.5rem;"></div>
+          <div class="skeleton skeleton-text" style="width: 40%; height: 1rem;"></div>
+        </div>
+
+        <div class="template-actions">
+          <div class="skeleton skeleton-circle"></div>
+          <div class="skeleton skeleton-circle"></div>
+          <div class="skeleton skeleton-circle"></div>
+        </div>
+      </div>
+    </div>
 
     <div v-else-if="templates.length > 0" class="templates-grid">
       <div v-for="template in templates" :key="template._id" class="template-card">
@@ -145,6 +158,30 @@ async function handleDelete(templateId) {
 </template>
 
 <style scoped>
+/* --- ESTILOS DO SKELETON --- */
+.skeleton {
+  background-color: #e5e7eb;
+  border-radius: 0.375rem;
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.skeleton-text {
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* --- ESTILOS ORIGINAIS ABAIXO --- */
 .header-actions {
   display: flex;
   justify-content: space-between;

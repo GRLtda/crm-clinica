@@ -477,23 +477,23 @@ onBeforeRouteLeave((to, from, next) => {
     }
     .logo-uploader p { text-align: center; }
 
-    /* Endereço em 1 coluna */
     .grid-address {
         grid-template-columns: 1fr;
-        gap: 0.75rem; /* Ajuste o espaçamento */
+        gap: 0.75rem;
     }
 
-    /* 🧱 ALTERAÇÃO CRÍTICA AQUI: Removendo o max-width fixo e forçando span 1 */
-    .span-2-uniform, .col-small-uniform {
+    .span-2-uniform,
+    .col-small-uniform {
         grid-column: span 1;
-        max-width: 100%; /* Isso garante que a largura fixa seja sobrescrita */
+        max-width: 100% !important;
+        width: 100%;
     }
 
-    /* Garante que os form-groups internos também ocupem a largura total */
     :deep(.form-group.col-small-uniform),
     :deep(.form-group.span-2-uniform),
     :deep(.form-group) {
-        max-width: 100%;
+        max-width: 100% !important;
+        width: 100% !important;
     }
 
     .footer-actions {
