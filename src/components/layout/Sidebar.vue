@@ -5,6 +5,7 @@ import { RouterLink } from 'vue-router'
 import UserDropdown from '@/components/global/UserDropdown.vue'
 import ClinicDropdown from '@/components/global/ClinicDropdown.vue'
 import {
+  LayoutDashboard,
   CalendarSearch,
   Calendar,
   Users,
@@ -22,7 +23,8 @@ const isUserDropdownOpen = ref(false)
 const isClinicDropdownOpen = ref(false)
 
 const mainNavLinks = [
-  { icon: CalendarSearch , text: 'Calendário', to: '/app' },
+  { icon: LayoutDashboard, text: 'Resumo', to: '/app' },
+  { icon: CalendarSearch, text: 'Calendário', to: '/app/calendario' },
   { icon: Calendar, text: 'Atendimentos', to: '/app/atendimentos' },
   { icon: Users, text: 'Pacientes', to: '/app/pacientes' },
   { icon: Megaphone, text: 'Marketing', to: '/app/marketing' },

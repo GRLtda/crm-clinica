@@ -4,7 +4,8 @@
 import DefaultLayout from '../layouts/DefaultLayout.vue'
 
 // Views do Dashboard
-import Inicio from '../views/pages/inicio.vue'
+import Calendario from '../views/pages/calendario.vue'
+import ResumoView from '../views/pages/ResumoView.vue'
 import SettingsView from '../views/pages/configuracoes/SettingsView.vue'
 import PatientsListView from '../views/pages/pacientes/PatientsListView.vue'
 import CreatePatientView from '../views/pages/pacientes/CreatePatientView.vue'
@@ -26,10 +27,16 @@ const dashboardRoutes = [
     meta: { requiresAuth: true },
     children: [
       {
-        path: '',
-        name: 'inicio',
-        component: Inicio,
+        path: 'calendario',
+        name: 'calendario',
+        component: Calendario,
         meta: { title: 'Calendário', layout: { noPadding: true } },
+      },
+      {
+        path: '',
+        name: 'resumo-dashboard',
+        component: ResumoView,
+        meta: { title: 'Visão Geral', layout: { noPadding: true } },
       },
       {
         path: 'configuracoes',

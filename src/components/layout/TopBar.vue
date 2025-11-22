@@ -1,10 +1,8 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-// ✨ 1. Importar o ícone de LoaderCircle
 import { Search, Plus, Menu, User, Calendar, Settings, LoaderCircle } from 'lucide-vue-next'
 
-// ✨ 2. Importar todas as stores que têm estado de loading
 import { useAppointmentsStore } from '@/stores/appointments'
 import { usePatientsStore } from '@/stores/patients'
 import { useRecordsStore } from '@/stores/records'
@@ -19,7 +17,6 @@ const router = useRouter()
 const searchQuery = ref('')
 const isSearchFocused = ref(false)
 
-// ✨ 3. Instanciar as stores
 const appointmentsStore = useAppointmentsStore()
 const patientsStore = usePatientsStore()
 const recordsStore = useRecordsStore()
@@ -27,7 +24,6 @@ const anamnesisStore = useAnamnesisStore()
 const employeesStore = useEmployeesStore()
 const dashboardStore = useDashboardStore()
 
-// ✨ 4. Criar um 'computed' para o loading global
 const isGlobalLoading = computed(() => {
   return appointmentsStore.isLoading ||
          patientsStore.isLoading ||
@@ -37,7 +33,6 @@ const isGlobalLoading = computed(() => {
          dashboardStore.isLoading;
 })
 
-// Lista de atalhos do site
 const allShortcuts = ref([
   { name: 'Agendar Atendimento', icon: Calendar, action: () => emit('open-schedule-modal') },
   { name: 'Adicionar Paciente', icon: User, path: '/app/pacientes/novo' },
@@ -45,7 +40,6 @@ const allShortcuts = ref([
   { name: 'Configurações', icon: Settings, path: '/app/configuracoes' },
 ])
 
-// Filtra os atalhos com base na pesquisa
 const filteredShortcuts = computed(() => {
   if (!searchQuery.value) {
     return allShortcuts.value
@@ -55,7 +49,6 @@ const filteredShortcuts = computed(() => {
   )
 })
 
-// Executa a ação do atalho (abrir modal ou navegar)
 function executeShortcut(shortcut) {
   isSearchFocused.value = false
   searchQuery.value = ''

@@ -1,39 +1,38 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { getClinicSummary } from '@/api/clinics'; // Importa a nova função
+import { getDashboardSummary } from '@/api/summary';
 
 export const useDashboardStore = defineStore('dashboard', () => {
-  const stats = ref({
-    totalPatients: 0,
-    appointmentsToday: [], 
-    nextAppointment: null,
+  const summary = ref({
+    stats: {
+      pendingAnamnesis: 0,
+      appointmentsToday: 0,
+      totalPatients: 0,
+      birthdaysMonth: 0
+    },
+    alerts: [],
+    feed: []
   });
+
   const isLoading = ref(false);
+  const error = ref(null);
 
-  async function fetchDashboardStats(params = {}) {
+  async function fetchDashboardStats() {
     isLoading.value = true;
+    error.value = null;
     try {
-      // Faz uma única chamada para o novo endpoint de sumário
-      const response = await getClinicSummary(params);
-      const summary = response.data;
+      const response = await getDashboardSummary();
+      // Assume que a resposta da API já vem no formato { stats:..., alerts:..., feed:... }
+      // Se vier dentro de 'data', ajuste para response.data
+      summary.value = response.data || response;
 
-      // Atualiza o estado com os dados recebidos
-      stats.value.totalPatients = summary.totalPatients;
-      stats.value.appointmentsToday = summary.todaysAppointments;
-
-      // A lógica para encontrar o próximo agendamento continua a mesma,
-      // mas agora usa a lista 'todaysAppointments' da resposta.
-      const now = new Date();
-      stats.value.nextAppointment = summary.todaysAppointments
-        .filter(appt => new Date(appt.startTime) > now)
-        .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))[0];
-
-    } catch (error) {
-      console.error("Erro ao buscar estatísticas do dashboard:", error);
+    } catch (err) {
+      console.error("Erro ao buscar estatísticas do dashboard:", err);
+      error.value = "Falha ao carregar dados do dashboard.";
     } finally {
       isLoading.value = false;
     }
   }
 
-  return { stats, isLoading, fetchDashboardStats };
+  return { summary, isLoading, error, fetchDashboardStats };
 });
