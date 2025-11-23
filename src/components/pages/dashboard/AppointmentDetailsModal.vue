@@ -171,7 +171,7 @@ onUnmounted(() => {
           <div class="patient-avatar">{{ patient.name.charAt(0) }}</div>
           <div class="patient-details">
             <div class="name-with-status">
-              <h3 class="patient-name">{{ patient.name }}</h3>
+              <h3 class="patient-name" @click="goToPatient">{{ patient.name }}</h3>
               <span :class="badgeClass" :style="badgeStyle">{{ displayText }}</span>
             </div>
             <div class="patient-contact">
@@ -390,6 +390,12 @@ onUnmounted(() => {
   font-size: 1.25rem;
   font-weight: 600;
   margin-bottom: 0;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.patient-details .patient-name:hover {
+  color: var(--azul-principal);
 }
 
 .status-badge {
