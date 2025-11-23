@@ -43,59 +43,7 @@ export const useCrmStore = defineStore('crm', () => {
   }
 
   // Modificado para usar isLoadingQrImage
-  async function n() {
-    if (isFetchingQrCodeApi) {
-      return
-    }
-    isFetchingQrCodeApi = true
-    isLoadingQrImage.value = true // Indica que estamos buscando/carregando
-    try {
-      const response = await initiateWhatsAppConnection() //
-
-      const apiStatus = response.data.status ? response.data.status.toLowerCase() : ''
-      if (
-        (apiStatus === 'qrcode' ||
-          apiStatus === 'qrcode_pending') &&
-        (response.data.qrcodeImage || response.data.qr)
-      ) {
-
-        const newQrBase64 = response.data.qrcodeImage || response.data.qr
-        const img = new Image();
-        img.onload = () => {
-          qrCode.value = newQrBase64 // Atualiza o QR code principal
-          if (status.value !== 'qrcode') {
-            // Define o status para 'qrcode' (visível) após a imagem carregar
-            status.value = 'qrcode'
-          }
-          isLoadingQrImage.value = false // Carregamento da imagem concluído
-        };
-        img.onerror = () => {
-          toast.error('Falha ao carregar a imagem do QR Code.');
-          isLoadingQrImage.value = false;
-          // Mantém o status como qrcode_pending para tentar de novo
-          status.value = 'qrcode_pending' //
-          if (currentPollingIntervalDuration !== 4000) {
-            startPolling(4000); // Garante que o polling continue
-          }
-        };
-        img.src = newQrBase64; // Inicia o carregamento
-
-      } else {
-        // Se a API não retornou QR code, indica que não está mais carregando
-        isLoadingQrImage.value = false //
-      }
-    } catch (error) {
-      toast.error('Falha ao obter QR Code da API.')
-      isLoadingQrImage.value = false // Falha no carregamento
-      if (status.value !== 'disconnected') {
-        status.value = 'disconnected'
-      }
-      qrCode.value = null // Limpa QR em caso de erro na API
-      stopPolling()
-    } finally {
-      isFetchingQrCodeApi = false
-    }
-  }
+  // Função fetchQrCode removida pois o /status já retorna o QR Code
 
   async function checkStatus() {
 
@@ -180,9 +128,7 @@ export const useCrmStore = defineStore('crm', () => {
           if (currentPollingIntervalDuration !== 4000) {
             startPolling(4000)
           }
-          if (!isFetchingQrCodeApi) {
-            fetchQrCode()
-          }
+          // fetchQrCode removido - o QR code virá pelo checkStatus
           break;
 
         default:
@@ -261,11 +207,7 @@ export const useCrmStore = defineStore('crm', () => {
           // Se for qrcode_pending (ou qrcode direto), polling para QR
           isLoadingQrImage.value = true // Assume que vai carregar
           startPolling(4000)
-          // Se o status já veio como pendente, tenta buscar o QR imediatamente
-          if (initialStatusFromInitiate === 'qrcode_pending' && !isFetchingQrCodeApi) {
-            fetchQrCode();
-          }
-          // Se veio 'qrcode' direto com a base64 (pouco provável no initiate), o checkStatus cuidará disso
+          // fetchQrCode removido
         }
       }
 
