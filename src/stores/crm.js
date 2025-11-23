@@ -84,7 +84,15 @@ export const useCrmStore = defineStore('crm', () => {
             toast.success(response.data.message || 'WhatsApp conectado!')
           }
 
-          connections.value = [{ id: 1, name: 'WhatsApp Principal', number: 'Desconhecido', status: 'connected' }]
+          connections.value = [
+            {
+              id: 1,
+              name: response.data.name || 'WhatsApp Principal',
+              number: response.data.number || 'Desconhecido',
+              profileImage: response.data.profileImage || null,
+              status: 'connected'
+            }
+          ]
           stopPolling() // Para o polling quando conectado
           initializingDisconnectRetryCount = 0 // Reseta contagem
           break;
@@ -174,7 +182,13 @@ export const useCrmStore = defineStore('crm', () => {
         status.value = 'connected'
         toast.info('WhatsApp já está conectado.')
         connections.value = [
-          { id: 1, name: 'WhatsApp Principal', number: 'Desconhecido', status: 'connected' },
+          {
+            id: 1,
+            name: statusResponse.data.name || 'WhatsApp Principal',
+            number: statusResponse.data.number || 'Desconhecido',
+            profileImage: statusResponse.data.profileImage || null,
+            status: 'connected'
+          },
         ]
         // Não inicia polling aqui
       }

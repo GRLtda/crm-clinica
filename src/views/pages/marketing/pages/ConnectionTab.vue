@@ -1,6 +1,6 @@
 <script setup>
-import { onMounted, onUnmounted, computed } from 'vue'
-import { Smartphone, CheckCircle, XCircle, Loader, Wifi, QrCode, LogOut } from 'lucide-vue-next'
+import { onMounted, onUnmounted, computed, ref, watch } from 'vue'
+import { Smartphone, CheckCircle, XCircle, Loader, Wifi, QrCode, LogOut, ShieldCheck, Lock } from 'lucide-vue-next'
 import { useCrmStore } from '@/stores/crm'
 
 const crmStore = useCrmStore()
@@ -10,6 +10,26 @@ const qrCode = computed(() => crmStore.qrCode)
 const isLoading = computed(() => crmStore.isLoading) // Loading geral da store
 const connections = computed(() => crmStore.connections)
 const isLoadingQrImage = computed(() => crmStore.isLoadingQrImage) // Pega o novo estado
+
+const isTransitioning = ref(false)
+const lastQrCode = ref('')
+
+// Persiste o último QR Code válido para a animação
+watch(qrCode, (newQr) => {
+  if (newQr) {
+    lastQrCode.value = newQr
+  }
+})
+
+watch(status, (newStatus, oldStatus) => {
+  // Só anima se não vier de 'disconnected' (evita animação ao recarregar a página já conectado)
+  if (newStatus === 'connected' && oldStatus !== 'disconnected') {
+    isTransitioning.value = true
+    setTimeout(() => {
+      isTransitioning.value = false
+    }, 2000) // 2 segundos de transição
+  }
+})
 
 async function initiateConnection() {
   await crmStore.initiateOrResetConnection()
@@ -23,6 +43,23 @@ async function getInitialStatus() {
   await crmStore.getInitialStatus()
 }
 
+function formatPhoneNumber(jid) {
+  if (!jid) return 'Número desconhecido';
+  // Remove o sufixo @s.whatsapp.net
+  const number = jid.replace('@s.whatsapp.net', '');
+  
+  // Formatação simples para números brasileiros (ex: 5515991136994 -> +55 (15) 99113-6994)
+  // Verifica se começa com 55 e tem tamanho suficiente
+  if (number.startsWith('55') && number.length >= 12) {
+    const ddd = number.substring(2, 4);
+    const prefix = number.substring(4, number.length - 4);
+    const suffix = number.substring(number.length - 4);
+    return `+55 (${ddd}) ${prefix}-${suffix}`;
+  }
+  
+  return number;
+}
+
 onMounted(() => {
   getInitialStatus()
 })
@@ -34,7 +71,60 @@ onUnmounted(() => {
 
 <template>
   <div class="connection-tab">
-    <div class="connection-grid">
+    
+    <!-- VIEW CONECTADO -->
+    <div v-if="status === 'connected' && !isTransitioning" class="connected-view">
+      <div class="profile-card">
+        <div class="profile-header">
+          <div class="profile-image-wrapper">
+            <img
+              v-if="connections[0]?.profileImage"
+              :src="connections[0].profileImage"
+              alt="Perfil WhatsApp"
+              class="profile-image"
+            />
+            <div v-else class="profile-image-placeholder">
+              <Smartphone :size="32" />
+            </div>
+            <div class="status-badge">
+              <span class="pulse-dot"></span>
+              Online
+            </div>
+          </div>
+          
+          <div class="profile-info">
+            <h3 class="profile-number">
+              {{ formatPhoneNumber(connections[0]?.number) }}
+            </h3>
+            <p class="profile-status">Sessão Ativa</p>
+          </div>
+        </div>
+
+        <button
+          @click="logoutConnection"
+          :disabled="isLoading"
+          class="btn-disconnect-action"
+        >
+          <LogOut :size="18" />
+          <span>{{ isLoading ? 'Desconectando...' : 'Desconectar Sessão' }}</span>
+        </button>
+      </div>
+
+      <!-- Painel de Segurança -->
+      <div class="security-panel">
+        <div class="security-icon">
+          <ShieldCheck :size="24" />
+        </div>
+        <div class="security-content">
+          <h4>Conexão Segura</h4>
+          <p>Esta área é protegida com criptografia de ponta a ponta. Seus dados e conversas estão seguros contra acessos indevidos.</p>
+        </div>
+        <Lock :size="16" class="lock-icon" />
+      </div>
+    </div>
+
+    <!-- VIEW DESCONECTADO / CONECTANDO -->
+    <div v-else class="connection-grid">
       <div class="connection-card add-connection">
         <h2>Adicionar Nova Conexão</h2>
         <p>
@@ -63,42 +153,37 @@ onUnmounted(() => {
           <span>Inicializando... Aguarde enquanto preparamos a conexão.</span>
         </div>
 
-        <div v-if="status === 'qrcode_pending' || status === 'qrcode'" class="qr-code-section">
-           <p class="qr-instruction">Escaneie o QR Code abaixo com o WhatsApp:</p>
+        <div v-if="status === 'qrcode_pending' || status === 'qrcode' || isTransitioning" class="qr-code-section">
+           <p class="qr-instruction" v-if="!isTransitioning">Escaneie o QR Code abaixo com o WhatsApp:</p>
+           <p class="qr-instruction success-text" v-else>Conectado com sucesso!</p>
+           
            <div class="qr-code-wrapper">
                  <img
-                   v-if="qrCode"
-                   :src="qrCode"
+                   v-if="qrCode || (isTransitioning && lastQrCode)"
+                   :src="qrCode || lastQrCode"
                    alt="QR Code WhatsApp"
-                   :class="{ 'fade-out': isLoadingQrImage && qrCode }" />
+                   :class="{ 'fade-out': isLoadingQrImage && qrCode, 'qr-blur': isTransitioning }" />
+                 
                  <div v-if="isLoadingQrImage" class="qr-placeholder loading-overlay">
                     <Loader :size="24" class="animate-spin" /> Carregando QR Code...
                  </div>
-                 <div v-else-if="!qrCode && !isLoadingQrImage" class="qr-placeholder">
+                 <div v-else-if="!qrCode && !isLoadingQrImage && !isTransitioning" class="qr-placeholder">
                      Aguardando QR code...
                  </div>
+
+                 <!-- Overlay de Sucesso -->
+                 <div v-if="isTransitioning" class="success-overlay">
+                    <CheckCircle :size="48" class="success-icon" />
+                 </div>
            </div>
-           <p class="connection-info small">Aguardando leitura. Mantenha esta página aberta.</p>
+           <p class="connection-info small" v-if="!isTransitioning">Aguardando leitura. Mantenha esta página aberta.</p>
          </div>
-
-
-        <div v-if="status === 'connected'" class="status-display connected">
-          <CheckCircle :size="24" />
-          <span>WhatsApp conectado com sucesso!</span>
-          <button
-            @click="logoutConnection"
-            :disabled="isLoading"
-            class="btn-secondary btn-disconnect"
-          >
-            <LogOut :size="16" />
-            <span>{{ isLoading ? 'Desconectando...' : 'Desconectar' }}</span>
-          </button>
-        </div>
       </div>
 
-      <div class="connection-card active-connections">
+      <!-- Lista de conexões ativas (só aparece se NÃO estiver conectado na principal, o que é raro nesse fluxo, mas mantido por compatibilidade) -->
+      <div class="connection-card active-connections" v-if="connections.length > 0 && !isTransitioning">
         <h2>Conexões Ativas</h2>
-        <div v-if="connections.length > 0" class="connections-list">
+        <div class="connections-list">
           <div v-for="conn in connections" :key="conn.id" class="connection-item">
             <div class="connection-details">
               <Wifi
@@ -107,7 +192,7 @@ onUnmounted(() => {
               />
               <div>
                 <span class="connection-name">{{ conn.name }}</span>
-                <span class="connection-number">{{ conn.number }}</span> </div>
+                <span class="connection-number">{{ formatPhoneNumber(conn.number) }}</span> </div>
             </div>
             <span class="connection-status" :class="`status--${conn.status}`">
               {{ conn.status === 'connected' ? 'Conectado' : 'Desconectado' }}
@@ -123,43 +208,199 @@ onUnmounted(() => {
             </button>
           </div>
         </div>
-        <div v-else class="empty-list">Nenhuma conexão ativa no momento.</div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* Estilos permanecem os mesmos dos arquivos fornecidos */
-.qr-code-wrapper {
-  position: relative; /* Necessário para o overlay */
+.connection-tab {
+  width: 100%;
 }
 
-.qr-code-wrapper img {
-  transition: opacity 0.3s ease-in-out; /* Adiciona transição suave */
-}
-
-.qr-code-wrapper img.fade-out {
-  opacity: 0.3; /* Esmaece a imagem antiga durante o loading */
-}
-
-.qr-placeholder.loading-overlay {
-  position: absolute; /* Sobrepõe a imagem antiga */
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(243, 244, 246, 0.8); /* Fundo semi-transparente */
-  display: flex; /* Reaplicar flex para centralizar */
+/* --- VIEW CONECTADO --- */
+.connected-view {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: var(--cinza-texto);
-  font-size: 0.875rem;
-  gap: 0.5rem;
-  border-radius: 0.5rem; /* Para combinar com o wrapper */
-  z-index: 1; /* Garante que fique por cima */
+  gap: 2rem;
+  max-width: 500px;
+  margin: 2rem auto; /* Centraliza na tela */
+  animation: fadeIn 0.5s ease-out;
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.profile-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 1.5rem;
+  padding: 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+  width: 100%;
+}
+
+.profile-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.profile-image-wrapper {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+
+.profile-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid #fff;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.profile-image-placeholder {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  border: 4px solid #fff;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.status-badge {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  background-color: #10b981;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  border: 3px solid #fff;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  background-color: white;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.2); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.profile-info {
+  text-align: center;
+}
+
+.profile-number {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 0.25rem 0;
+  letter-spacing: -0.025em;
+}
+
+.profile-status {
+  color: #6b7280;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.btn-disconnect-action {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.875rem;
+  background-color: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-disconnect-action:hover:not(:disabled) {
+  background-color: #fecaca;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.1);
+}
+
+.btn-disconnect-action:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.security-panel {
+  background-color: #eff6ff;
+  border: 1px solid #dbeafe;
+  border-radius: 1rem;
+  padding: 1.25rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  position: relative;
+  width: 100%;
+}
+
+.security-icon {
+  color: #2563eb;
+  padding: 0.5rem;
+  background-color: #dbeafe;
+  border-radius: 0.5rem;
+}
+
+.security-content h4 {
+  color: #1e40af;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem 0;
+}
+
+.security-content p {
+  color: #1e3a8a;
+  font-size: 0.85rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.lock-icon {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  color: #93c5fd;
+}
+
+/* --- VIEW DESCONECTADO (GRID) --- */
 .connection-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -172,6 +413,8 @@ onUnmounted(() => {
   border-radius: 1rem;
   padding: 2rem;
   border: 1px solid #e5e7eb;
+  max-width: 500px;
+  margin: 0 auto;
   box-shadow:
     0 4px 6px -1px rgb(0 0 0 / 0.05),
     0 2px 4px -2px rgb(0 0 0 / 0.05);
@@ -188,6 +431,58 @@ onUnmounted(() => {
   color: var(--cinza-texto);
   margin-bottom: 1.5rem;
   line-height: 1.6;
+}
+
+.qr-code-wrapper {
+  position: relative; 
+  width: 100%;
+  max-width: 250px;
+  aspect-ratio: 1;
+  height: auto;
+  margin: 0 auto;
+  background-color: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+}
+
+.qr-code-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: opacity 0.3s ease-in-out; 
+}
+
+.qr-code-wrapper img.fade-out {
+  opacity: 0.3; 
+}
+
+.qr-placeholder.loading-overlay {
+  position: absolute; 
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(243, 244, 246, 0.8); 
+  display: flex; 
+  align-items: center;
+  justify-content: center;
+  color: var(--cinza-texto);
+  font-size: 0.875rem;
+  gap: 0.5rem;
+  border-radius: 0.5rem; 
+  z-index: 1; 
+}
+
+.qr-placeholder {
+  color: var(--cinza-texto);
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .btn-primary {
@@ -212,32 +507,13 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
-.btn-secondary {
-  background: var(--branco);
-  border: 1px solid #d1d5db;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  font-weight: 600;
-  transition: background-color 0.2s;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.btn-secondary:hover:not(:disabled) {
-  background-color: #f9fafb;
-}
-.btn-secondary:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
 .btn-primary.btn-connect {
   width: 100%;
   justify-content: center;
   padding: 0.875rem;
   margin-bottom: 1rem;
 }
+
 .connection-info {
   font-size: 0.8rem;
   color: #9ca3af;
@@ -267,20 +543,13 @@ onUnmounted(() => {
   background-color: #f0f9ff;
   color: #0284c7;
 }
-.status-display.connected {
-  background-color: #f0fdf4;
-  color: #16a34a;
-}
+
 .animate-spin {
   animation: spin 1s linear infinite;
 }
 @keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .qr-code-section {
@@ -290,39 +559,6 @@ onUnmounted(() => {
   font-weight: 500;
   color: #374151;
   margin-bottom: 1rem;
-}
-.qr-code-wrapper {
-  width: 250px;
-  height: 250px;
-  margin: 0 auto;
-  background-color: #f3f4f6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.5rem;
-  border: 1px solid #e5e7eb;
-  overflow: hidden;
-}
-
-.qr-placeholder {
-  color: var(--cinza-texto);
-  font-size: 0.875rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.btn-secondary.btn-disconnect {
-  background-color: #fee2e2;
-  color: #dc2626;
-  border: 1px solid #fecaca;
-  padding: 0.6rem 1.25rem;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  margin-top: 1rem;
-}
-.btn-secondary.btn-disconnect:hover:not(:disabled) {
-  background-color: #fecaca;
 }
 
 .connections-list {
@@ -416,11 +652,52 @@ onUnmounted(() => {
     grid-template-columns: 1fr;
   }
   .qr-code-wrapper {
-    width: 200px;
-    height: 200px;
+    max-width: 200px;
   }
   .connection-card {
     padding: 1.5rem;
   }
+}
+
+.qr-blur {
+  filter: blur(4px);
+  opacity: 0.6;
+}
+
+.success-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.success-icon {
+  color: #10b981;
+  background-color: white;
+  border-radius: 50%;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  animation: scaleIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.success-text {
+  color: #10b981;
+  font-weight: 600;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 </style>
