@@ -4,7 +4,8 @@ import {
   initiateWhatsAppConnection,
   checkWhatsAppStatus,
   logoutWhatsAppConnection,
-
+  sendMessage,
+  sendTestMessage,
 } from '@/api/crm'
 import { useToast } from 'vue-toastification'
 
@@ -42,7 +43,7 @@ export const useCrmStore = defineStore('crm', () => {
   }
 
   // Modificado para usar isLoadingQrImage
-  async function fetchQrCode() {
+  async function n() {
     if (isFetchingQrCodeApi) {
       return
     }
@@ -51,34 +52,31 @@ export const useCrmStore = defineStore('crm', () => {
     try {
       const response = await initiateWhatsAppConnection() //
 
-      // 👇 *** CORREÇÃO APLICADA AQUI *** 👇
-      // Antes: if (response.data.status === 'qrcode' && response.data.qrCode) {
-      // Agora: Verifica se o status é 'qrcode' OU 'qrcode_pending'
+      const apiStatus = response.data.status ? response.data.status.toLowerCase() : ''
       if (
-        (response.data.status === 'qrcode' ||
-          response.data.status === 'qrcode_pending') &&
-        response.data.qrCode
+        (apiStatus === 'qrcode' ||
+          apiStatus === 'qrcode_pending') &&
+        (response.data.qrcodeImage || response.data.qr)
       ) {
-        // 👆 *** FIM DA CORREÇÃO *** 👆
 
-        const newQrBase64 = response.data.qrCode
+        const newQrBase64 = response.data.qrcodeImage || response.data.qr
         const img = new Image();
         img.onload = () => {
           qrCode.value = newQrBase64 // Atualiza o QR code principal
           if (status.value !== 'qrcode') {
-             // Define o status para 'qrcode' (visível) após a imagem carregar
-             status.value = 'qrcode'
+            // Define o status para 'qrcode' (visível) após a imagem carregar
+            status.value = 'qrcode'
           }
           isLoadingQrImage.value = false // Carregamento da imagem concluído
         };
         img.onerror = () => {
-           toast.error('Falha ao carregar a imagem do QR Code.');
-           isLoadingQrImage.value = false;
-           // Mantém o status como qrcode_pending para tentar de novo
-           status.value = 'qrcode_pending' //
-           if (currentPollingIntervalDuration !== 4000) {
-              startPolling(4000); // Garante que o polling continue
-           }
+          toast.error('Falha ao carregar a imagem do QR Code.');
+          isLoadingQrImage.value = false;
+          // Mantém o status como qrcode_pending para tentar de novo
+          status.value = 'qrcode_pending' //
+          if (currentPollingIntervalDuration !== 4000) {
+            startPolling(4000); // Garante que o polling continue
+          }
         };
         img.src = newQrBase64; // Inicia o carregamento
 
@@ -90,7 +88,7 @@ export const useCrmStore = defineStore('crm', () => {
       toast.error('Falha ao obter QR Code da API.')
       isLoadingQrImage.value = false // Falha no carregamento
       if (status.value !== 'disconnected') {
-         status.value = 'disconnected'
+        status.value = 'disconnected'
       }
       qrCode.value = null // Limpa QR em caso de erro na API
       stopPolling()
@@ -99,110 +97,116 @@ export const useCrmStore = defineStore('crm', () => {
     }
   }
 
-async function checkStatus() {
+  async function checkStatus() {
 
-  try {
-    const response = await checkWhatsAppStatus()
-    const newApiStatus = response.data.status
-    const previousInternalStatus = status.value
+    try {
+      const response = await checkWhatsAppStatus()
+      const newApiStatus = response.data.status ? response.data.status.toLowerCase() : 'disconnected'
+      const previousInternalStatus = status.value
 
-    // Lógica para lidar com desconexão durante inicialização (mantida)
-    if (
-      previousInternalStatus === 'initializing' &&
-      newApiStatus === 'disconnected' &&
-      initializingDisconnectRetryCount < 3 // Tenta 3 vezes antes de desistir
-    ) {
-      initializingDisconnectRetryCount++
-      return // Continua esperando, não atualiza o status ainda
-    }
-    // Reseta a contagem se o status mudou ou não é mais desconectado
-    if (previousInternalStatus === 'initializing' && newApiStatus !== 'disconnected') {
-      initializingDisconnectRetryCount = 0
-    }
+      // Lógica para lidar com desconexão durante inicialização (mantida)
+      if (
+        previousInternalStatus === 'initializing' &&
+        newApiStatus === 'disconnected' &&
+        initializingDisconnectRetryCount < 3 // Tenta 3 vezes antes de desistir
+      ) {
+        initializingDisconnectRetryCount++
+        return // Continua esperando, não atualiza o status ainda
+      }
+      // Reseta a contagem se o status mudou ou não é mais desconectado
+      if (previousInternalStatus === 'initializing' && newApiStatus !== 'disconnected') {
+        initializingDisconnectRetryCount = 0
+      }
 
-    status.value = newApiStatus
+      status.value = newApiStatus
 
-    switch (newApiStatus) {
-      case 'connected':
+      // Se a resposta trouxer o QR Code, atualiza imediatamente
+      if (response.data.qrcodeImage || response.data.qr) {
+        qrCode.value = response.data.qrcodeImage || response.data.qr
+        isLoadingQrImage.value = false
+      }
+
+      switch (newApiStatus) {
+        case 'connected':
+          qrCode.value = null // Limpa QR code
+          isLoadingQrImage.value = false // Garante que não está carregando imagem
+
+          // Só mostra toast se o status anterior não era 'connected'
+          if (previousInternalStatus !== 'connected') {
+            toast.success(response.data.message || 'WhatsApp conectado!')
+          }
+
+          connections.value = [{ id: 1, name: 'WhatsApp Principal', number: 'Desconhecido', status: 'connected' }]
+          stopPolling() // Para o polling quando conectado
+          initializingDisconnectRetryCount = 0 // Reseta contagem
+          break;
+
+        case 'disconnected':
+          qrCode.value = null // Limpa QR code
+          isLoadingQrImage.value = false // Garante que não está carregando imagem
+
+          // Lógica anterior ajustada para incluir a checagem do getInitialStatus
+          if (
+            previousInternalStatus !== 'initializing' ||
+            initializingDisconnectRetryCount >= 3 ||
+            previousInternalStatus === 'disconnected' // <-- Chave para o getInitialStatus funcionar
+          ) {
+            // Só mostra toast se o status realmente mudou
+            if (previousInternalStatus !== 'disconnected') {
+              toast.info(response.data.message || 'WhatsApp desconectado.')
+            }
+            connections.value = [] // Limpa a lista de conexões
+            stopPolling() // Para o polling quando desconectado
+            initializingDisconnectRetryCount = 0 // Reseta contagem
+          }
+          break;
+
+        case 'creating_qr':
+        case 'initializing':
+          qrCode.value = null // Limpa QR code
+          isLoadingQrImage.value = false // Garante que não está carregando imagem
+          initializingDisconnectRetryCount = 0 // Reseta contagem
+          if (currentPollingIntervalDuration !== 2000) {
+            startPolling(2000)
+          }
+          break;
+
+        case 'qrcode_pending':
+        case 'qrcode':
+          initializingDisconnectRetryCount = 0 // Reseta contagem
+          status.value = 'qrcode_pending'; // Define como pendente primeiro
+          isLoadingQrImage.value = !qrCode.value; // Loading se não tiver QR
+
+          if (currentPollingIntervalDuration !== 4000) {
+            startPolling(4000)
+          }
+          if (!isFetchingQrCodeApi) {
+            fetchQrCode()
+          }
+          break;
+
+        default:
+          isLoadingQrImage.value = false // Garante limpeza
+          initializingDisconnectRetryCount = 0 // Reseta contagem
+          if (currentPollingIntervalDuration !== 5000) {
+            startPolling(5000)
+          }
+      }
+
+    } catch (error) {
+      initializingDisconnectRetryCount = 0 // Reseta contagem no erro
+      isLoadingQrImage.value = false // Garante que não está carregando imagem
+      if (error.response?.status !== 404) {
+        toast.error('Erro ao verificar status da conexão.')
+      }
+      if (status.value !== 'disconnected') {
+        status.value = 'disconnected'
         qrCode.value = null // Limpa QR code
-        isLoadingQrImage.value = false // Garante que não está carregando imagem
-
-        // Só mostra toast se o status anterior não era 'connected'
-        if (previousInternalStatus !== 'connected') {
-          toast.success(response.data.message || 'WhatsApp conectado!')
-        }
-
-        connections.value = [ { id: 1, name: 'WhatsApp Principal', number: 'Desconhecido', status: 'connected' }]
-        stopPolling() // Para o polling quando conectado
-        initializingDisconnectRetryCount = 0 // Reseta contagem
-        break;
-
-      case 'disconnected':
-        qrCode.value = null // Limpa QR code
-        isLoadingQrImage.value = false // Garante que não está carregando imagem
-
-        // Lógica anterior ajustada para incluir a checagem do getInitialStatus
-        if (
-          previousInternalStatus !== 'initializing' ||
-          initializingDisconnectRetryCount >= 3 ||
-          previousInternalStatus === 'disconnected' // <-- Chave para o getInitialStatus funcionar
-        ) {
-             // Só mostra toast se o status realmente mudou
-             if (previousInternalStatus !== 'disconnected') {
-                toast.info(response.data.message || 'WhatsApp desconectado.')
-             }
-             connections.value = [] // Limpa a lista de conexões
-             stopPolling() // Para o polling quando desconectado
-             initializingDisconnectRetryCount = 0 // Reseta contagem
-        }
-        break;
-
-      case 'creating_qr':
-      case 'initializing':
-        qrCode.value = null // Limpa QR code
-        isLoadingQrImage.value = false // Garante que não está carregando imagem
-        initializingDisconnectRetryCount = 0 // Reseta contagem
-        if (currentPollingIntervalDuration !== 2000) {
-          startPolling(2000)
-        }
-        break;
-
-      case 'qrcode_pending':
-      case 'qrcode':
-        initializingDisconnectRetryCount = 0 // Reseta contagem
-        status.value = 'qrcode_pending'; // Define como pendente primeiro
-        isLoadingQrImage.value = !qrCode.value; // Loading se não tiver QR
-
-        if (currentPollingIntervalDuration !== 4000) {
-          startPolling(4000)
-        }
-        if (!isFetchingQrCodeApi) {
-          fetchQrCode()
-        }
-        break;
-
-      default:
-         isLoadingQrImage.value = false // Garante limpeza
-         initializingDisconnectRetryCount = 0 // Reseta contagem
-         if (currentPollingIntervalDuration !== 5000) {
-           startPolling(5000)
-         }
+        connections.value = [] // Limpa conexões
+      }
+      stopPolling() // Para o polling em caso de erro
     }
-
-  } catch (error) {
-    initializingDisconnectRetryCount = 0 // Reseta contagem no erro
-    isLoadingQrImage.value = false // Garante que não está carregando imagem
-    if (error.response?.status !== 404) {
-      toast.error('Erro ao verificar status da conexão.')
-    }
-    if (status.value !== 'disconnected') {
-       status.value = 'disconnected'
-       qrCode.value = null // Limpa QR code
-       connections.value = [] // Limpa conexões
-    }
-    stopPolling() // Para o polling em caso de erro
   }
-}
 
 
   async function initiateOrResetConnection() {
@@ -217,9 +221,10 @@ async function checkStatus() {
     try {
       // 1. Verifica o status atual ANTES de tentar iniciar
       const statusResponse = await checkWhatsAppStatus()
+      const currentStatus = statusResponse.data.status ? statusResponse.data.status.toLowerCase() : 'disconnected'
 
       // Se já estiver conectado, apenas atualiza o estado e informa
-      if (statusResponse.data.status === 'connected') {
+      if (currentStatus === 'connected') {
         status.value = 'connected'
         toast.info('WhatsApp já está conectado.')
         connections.value = [
@@ -228,34 +233,40 @@ async function checkStatus() {
         // Não inicia polling aqui
       }
       // Se já existe um QR pendente ou sendo criado, apenas ajusta o polling
-      else if (statusResponse.data.status === 'qrcode_pending' || statusResponse.data.status === 'qrcode') {
-          status.value = 'qrcode_pending' // Define como pendente
-          isLoadingQrImage.value = true // Assume que vai carregar um novo QR
-          startPolling(4000) // Inicia polling para QR code
-          // O fetchQrCode será chamado pelo checkStatus dentro do startPolling
-      } else if (statusResponse.data.status === 'creating_qr' || statusResponse.data.status === 'initializing') {
-          status.value = statusResponse.data.status // Mantém o status da API
-          startPolling(2000) // Inicia polling rápido
+      else if (currentStatus === 'qrcode_pending' || currentStatus === 'qrcode') {
+        status.value = 'qrcode_pending' // Define como pendente
+        isLoadingQrImage.value = true // Assume que vai carregar um novo QR
+        startPolling(4000) // Inicia polling para QR code
+        // O fetchQrCode será chamado pelo checkStatus dentro do startPolling
+      } else if (currentStatus === 'creating_qr' || currentStatus === 'initializing') {
+        status.value = currentStatus // Mantém o status da API
+        startPolling(2000) // Inicia polling rápido
       }
       // Se estiver desconectado ou em outro estado, TENTA iniciar uma nova conexão
       else {
-          const initiateResponse = await initiateWhatsAppConnection()
-          const initialStatusFromInitiate = initiateResponse.data.status;
-          status.value = initialStatusFromInitiate; // Atualiza o status com a resposta do initiate
+        const initiateResponse = await initiateWhatsAppConnection()
+        const initialStatusFromInitiate = initiateResponse.data.status ? initiateResponse.data.status.toLowerCase() : 'initializing';
+        status.value = initialStatusFromInitiate; // Atualiza o status com a resposta do initiate
 
-          // Se a resposta for criando/inicializando, polling rápido
-          if (initialStatusFromInitiate === 'creating_qr' || initialStatusFromInitiate === 'initializing') {
-             startPolling(2000)
-          } else {
-             // Se for qrcode_pending (ou qrcode direto), polling para QR
-             isLoadingQrImage.value = true // Assume que vai carregar
-             startPolling(4000)
-             // Se o status já veio como pendente, tenta buscar o QR imediatamente
-             if (initialStatusFromInitiate === 'qrcode_pending' && !isFetchingQrCodeApi) {
-                 fetchQrCode();
-             }
-             // Se veio 'qrcode' direto com a base64 (pouco provável no initiate), o checkStatus cuidará disso
+        // Se a resposta trouxer o QR Code, atualiza imediatamente
+        if (initiateResponse.data.qrcodeImage || initiateResponse.data.qr) {
+          qrCode.value = initiateResponse.data.qrcodeImage || initiateResponse.data.qr
+          isLoadingQrImage.value = false
+        }
+
+        // Se a resposta for criando/inicializando, polling rápido
+        if (initialStatusFromInitiate === 'creating_qr' || initialStatusFromInitiate === 'initializing') {
+          startPolling(2000)
+        } else {
+          // Se for qrcode_pending (ou qrcode direto), polling para QR
+          isLoadingQrImage.value = true // Assume que vai carregar
+          startPolling(4000)
+          // Se o status já veio como pendente, tenta buscar o QR imediatamente
+          if (initialStatusFromInitiate === 'qrcode_pending' && !isFetchingQrCodeApi) {
+            fetchQrCode();
           }
+          // Se veio 'qrcode' direto com a base64 (pouco provável no initiate), o checkStatus cuidará disso
+        }
       }
 
     } catch (error) {
@@ -300,7 +311,7 @@ async function checkStatus() {
     try {
       await checkStatus() // Chama a função que busca o status da API
     } catch (e) {
-      if(status.value !== 'disconnected') {
+      if (status.value !== 'disconnected') {
         status.value = 'disconnected' // Garante que o status seja 'disconnected'
         qrCode.value = null
         isLoadingQrImage.value = false
@@ -308,6 +319,34 @@ async function checkStatus() {
       }
     } finally {
       isLoading.value = false // Finaliza o loading geral
+    }
+  }
+
+  async function sendWhatsappMessage(payload) {
+    try {
+      isLoading.value = true
+      const response = await sendMessage(payload)
+      toast.success('Mensagem enviada com sucesso!')
+      return response.data
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erro ao enviar mensagem.')
+      throw error
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function sendWhatsappTestMessage(payload) {
+    try {
+      isLoading.value = true
+      const response = await sendTestMessage(payload)
+      toast.success('Mensagem de teste enviada!')
+      return response.data
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erro ao enviar teste.')
+      throw error
+    } finally {
+      isLoading.value = false
     }
   }
 
@@ -323,5 +362,7 @@ async function checkStatus() {
     logoutConnection,
     getInitialStatus, // ✨ Expor a nova action ✨
     stopPolling, // Expor stopPolling se necessário em outros lugares
+    sendWhatsappMessage,
+    sendWhatsappTestMessage,
   }
 })

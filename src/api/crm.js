@@ -13,6 +13,22 @@ export const logoutWhatsAppConnection = () => {
   return apiClient.post('/crm/logout')
 }
 
+/**
+ * Envia uma mensagem avulsa.
+ * Rota: POST /api/crm/send-message
+ */
+export const sendMessage = (data) => {
+  return apiClient.post('/crm/send-message', data)
+}
+
+/**
+ * Envia uma mensagem de teste (Template).
+ * Rota: POST /api/crm/send-test
+ */
+export const sendTestMessage = (data) => {
+  return apiClient.post('/crm/send-test', data)
+}
+
 // --- 🚀 NOVAS Funções para Modelos de Mensagem ---
 
 /**
