@@ -103,7 +103,7 @@ const appointmentData = ref({
   sendReminder: true,
   remindersSent: {
     oneDayBefore: true,
-    twoHoursBefore: false,
+    twoHoursBefore: true,
   },
 })
 
