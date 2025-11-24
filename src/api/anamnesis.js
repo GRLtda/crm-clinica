@@ -51,3 +51,10 @@ export const updateAnamnesisResponse = (patientId, responseId, payload) => {
   // 'payload' é o objeto { answers: [...] }
   return apiClient.put(`/patients/${patientId}/anamnesis/${responseId}`, payload)
 }
+
+// Busca todas as anamneses pendentes da clínica com paginação
+export const getPendingAnamneses = (page = 1, limit = 20) => {
+  return apiClient.get('/anamnesis/pending', {
+    params: { page, limit }
+  })
+}

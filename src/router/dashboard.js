@@ -14,6 +14,7 @@ import AppointmentsView from '../views/pages/atendimentos/AppointmentsView.vue'
 import InProgressAppointmentView from '../views/pages/atendimentos/InProgressAppointmentView.vue'
 import AjudaView from '../views/pages/ajuda/AjudaView.vue'
 import MarketingView from '../views/pages/marketing/MarketingView.vue'
+import PendingAnamnesesView from '../views/pages/PendingAnamnesesView.vue'
 
 import MessagesTab from '../views/pages/marketing/pages/MessagesTab.vue'
 import TemplatesTab from '../views/pages/marketing/pages/TemplatesTab.vue'
@@ -109,6 +110,12 @@ const dashboardRoutes = [
         name: 'marketing-logs',
         component: LogsTab,
         meta: { title: 'Histórico de Envios' },
+      },
+      {
+        path: 'anamneses-pendentes',
+        name: 'anamneses-pendentes',
+        component: PendingAnamnesesView,
+        meta: { title: 'Anamneses Pendentes', layout: { noPadding: true } },
       },
     ],
   },

@@ -11,6 +11,7 @@ import {
   assignAnamnesis as apiAssignAnamnesis,
   getAnamnesisForPatient as apiGetForPatient,
   updateAnamnesisResponse as apiUpdateResponse,
+  getPendingAnamneses as apiGetPendingAnamneses,
 } from '@/api/anamnesis'
 import { useToast } from 'vue-toastification'
 
@@ -21,6 +22,13 @@ export const useAnamnesisStore = defineStore('anamnesis', () => {
   const publicTemplate = ref(null) // Para o formulário público
   const patientAnamneses = ref([]) // ✨ Sempre inicializado como um array
   const isLoading = ref(false)
+
+  // Estado para anamneses pendentes da clínica
+  const pendingAnamnesesList = ref([])
+  const pendingTotal = ref(0)
+  const pendingPage = ref(1)
+  const pendingPages = ref(1)
+  const pendingLimit = ref(20)
 
   // --- Ações para Templates de Anamnese ---
 
@@ -258,6 +266,29 @@ export const useAnamnesisStore = defineStore('anamnesis', () => {
     }
   }
 
+  // Busca todas as anamneses pendentes da clínica com paginação
+  async function fetchPendingAnamneses(page = 1, limit = 20) {
+    isLoading.value = true
+    try {
+      const response = await apiGetPendingAnamneses(page, limit)
+      pendingAnamnesesList.value = response.data.data || []
+      pendingTotal.value = response.data.total || 0
+      pendingPage.value = response.data.page || 1
+      pendingPages.value = response.data.pages || 1
+      pendingLimit.value = response.data.limit || 20
+      return { success: true }
+    } catch (error) {
+      console.error('Erro ao buscar anamneses pendentes:', error)
+      const errorMessage =
+        error.response?.data?.message || error.message || 'Erro desconhecido'
+      toast.error(`Erro ao buscar anamneses pendentes: ${errorMessage}`)
+      pendingAnamnesesList.value = []
+      return { success: false, error }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   // Computed properties
   const answeredAnamneses = computed(() =>
     // Esta linha agora é segura, pois 'patientAnamneses.value' é sempre um array
@@ -276,6 +307,13 @@ export const useAnamnesisStore = defineStore('anamnesis', () => {
     answeredAnamneses,
     pendingAnamneses,
 
+    // Estado de anamneses pendentes da clínica
+    pendingAnamnesesList,
+    pendingTotal,
+    pendingPage,
+    pendingPages,
+    pendingLimit,
+
     // Funções de Template
     fetchTemplates,
     createTemplate,
@@ -290,5 +328,6 @@ export const useAnamnesisStore = defineStore('anamnesis', () => {
     assignAnamnesisToPatient,
     fetchAnamnesisForPatient,
     updateAnamnesisResponse,
+    fetchPendingAnamneses,
   }
 })

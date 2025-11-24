@@ -163,7 +163,7 @@ function handleRefresh() {
       </header>
 
       <section class="stats-row">
-        <div class="stat-card">
+        <div class="stat-card clickable" @click="$router.push({ name: 'anamneses-pendentes' })">
           <div class="stat-icon-mini bg-orange">
             <ClipboardList :size="22" />
           </div>
@@ -361,6 +361,8 @@ function handleRefresh() {
   transition: transform 0.2s, box-shadow 0.2s;
 }
 .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+.stat-card.clickable { cursor: pointer; }
+.stat-card.clickable:hover { transform: translateY(-3px); box-shadow: 0 6px 12px -2px rgba(0,0,0,0.1); }
 .stat-icon-mini { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .bg-orange { background: #fff7ed; color: #f97316; }
 .bg-blue { background: #eff6ff; color: #3b82f6; }
