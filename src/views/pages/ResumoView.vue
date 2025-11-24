@@ -19,7 +19,8 @@ import {
   LoaderCircle,
   Clock,
   CalendarDays,
-  RefreshCw // ✨ Novo ícone importado
+  RefreshCw, // ✨ Novo ícone importado
+  ArrowRight // ✨ Ícone para indicar navegação
 } from 'lucide-vue-next'
 
 const dashboardStore = useDashboardStore()
@@ -170,6 +171,9 @@ function handleRefresh() {
           <div class="stat-text">
             <span class="stat-value">{{ summary.stats.pendingAnamnesis }}</span>
             <span class="stat-label">Anamneses Pendentes</span>
+          </div>
+          <div class="stat-nav-icon">
+            <ArrowRight :size="18" />
           </div>
         </div>
 
@@ -359,19 +363,36 @@ function handleRefresh() {
   background: var(--branco); border: 1px solid #f1f5f9; border-radius: 1rem; padding: 1rem 1.25rem;
   display: flex; align-items: center; gap: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);
   transition: transform 0.2s, box-shadow 0.2s;
+  position: relative;
 }
-.stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
 .stat-card.clickable { cursor: pointer; }
 .stat-card.clickable:hover { transform: translateY(-3px); box-shadow: 0 6px 12px -2px rgba(0,0,0,0.1); }
+.stat-card.clickable:hover .stat-nav-icon { opacity: 1; transform: translateX(0); }
 .stat-icon-mini { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .bg-orange { background: #fff7ed; color: #f97316; }
 .bg-blue { background: #eff6ff; color: #3b82f6; }
 .bg-green { background: #f0fdf4; color: #22c55e; }
 .bg-pink { background: #fdf2f8; color: #ec4899; }
 
-.stat-text { display: flex; flex-direction: column; }
+.stat-text { display: flex; flex-direction: column; flex-grow: 1; }
 .stat-value { font-size: 1.5rem; font-weight: 700; color: #1e293b; line-height: 1.1; margin-bottom: 2px; }
 .stat-label { font-size: 0.75rem; color: #64748b; font-weight: 500; text-transform: uppercase; letter-spacing: 0.02em; }
+
+/* ✨ Ícone de navegação no card */
+.stat-nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background-color: #fff7ed;
+  color: #f97316;
+  flex-shrink: 0;
+  opacity: 0.7;
+  transform: translateX(-4px);
+  transition: all 0.2s ease;
+}
 
 /* --- Main Split --- */
 .main-split { flex-grow: 1; min-height: 0; display: grid; grid-template-columns: 2.2fr 1fr; gap: 1.25rem; }

@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { useToast } from 'vue-toastification'
 import {
   ArrowLeft,
   ClipboardList,
@@ -34,6 +35,8 @@ const {
 onMounted(() => {
   anamnesisStore.fetchPendingAnamneses(1, 20)
 })
+
+const toast = useToast()
 
 function goBack() {
   router.back()
@@ -66,7 +69,7 @@ function copyLink(link) {
     navigator.clipboard.writeText(link)
       .then(() => {
         // You could add a toast notification here
-        console.log('Link copiado!')
+        toast.success(`Link copiado!`)
       })
       .catch(err => {
         console.error('Erro ao copiar link:', err)
@@ -74,10 +77,22 @@ function copyLink(link) {
   }
 }
 
+function goToPatient(patientId) {
+  if (patientId) {
+    router.push({ name: 'detalhes-paciente', params: { id: patientId } })
+  }
+}
+
 function changePage(newPage) {
   if (newPage >= 1 && newPage <= pendingPages.value) {
     anamnesisStore.fetchPendingAnamneses(newPage, pendingLimit.value)
+    // Scroll to top when changing pages
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
+}
+
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 const hasData = computed(() => pendingAnamnesesList.value.length > 0)
@@ -130,7 +145,7 @@ const showPagination = computed(() => pendingPages.value > 1)
       >
         <!-- Patient Info -->
         <div class="card-header">
-          <div class="patient-info">
+          <div class="patient-info clickable" @click="goToPatient(anamnesis.patientId)" title="Ver perfil do paciente">
             <div class="patient-avatar">
               {{ anamnesis.patientName?.charAt(0)?.toUpperCase() || 'P' }}
             </div>
@@ -385,6 +400,18 @@ const showPagination = computed(() => pendingPages.value > 1)
   display: flex;
   align-items: center;
   gap: 1rem;
+  transition: all 0.2s;
+}
+
+.patient-info.clickable {
+  cursor: pointer;
+  padding: 0.5rem;
+  margin: -0.5rem;
+  border-radius: 1rem;
+}
+
+.patient-info.clickable:hover {
+  background: rgba(59, 131, 246, 0.085);
 }
 
 .patient-avatar {
@@ -573,7 +600,6 @@ const showPagination = computed(() => pendingPages.value > 1)
   }
 
   .card-header {
-    flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
   }
