@@ -158,10 +158,10 @@ const showPagination = computed(() => pendingPages.value > 1)
             </div>
           </div>
 
-          <div class="status-badge">
+          <!-- <div class="status-badge">
             <Clock :size="14" />
             <span>{{ anamnesis.status }}</span>
-          </div>
+          </div> -->
         </div>
 
         <!-- Template Info -->
@@ -439,6 +439,10 @@ const showPagination = computed(() => pendingPages.value > 1)
   font-weight: 600;
   color: #1e293b;
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
 }
 
 .patient-phone {

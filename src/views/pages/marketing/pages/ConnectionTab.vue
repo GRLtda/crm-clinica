@@ -74,52 +74,79 @@ onUnmounted(() => {
     
     <!-- VIEW CONECTADO -->
     <div v-if="status === 'connected' && !isTransitioning" class="connected-view">
-      <div class="profile-card">
-        <div class="profile-header">
-          <div class="profile-image-wrapper">
-            <img
-              v-if="connections[0]?.profileImage"
-              :src="connections[0].profileImage"
-              alt="Perfil WhatsApp"
-              class="profile-image"
-            />
-            <div v-else class="profile-image-placeholder">
-              <Smartphone :size="32" />
-            </div>
-            <div class="status-badge">
+      <div class="premium-card">
+        <!-- Header com Gradiente -->
+        <div class="card-header-gradient">
+          <div class="header-content">
+            <div class="status-pill">
               <span class="pulse-dot"></span>
               Online
             </div>
           </div>
-          
-          <div class="profile-info">
-            <h3 class="profile-number">
-              {{ formatPhoneNumber(connections[0]?.number) }}
-            </h3>
-            <p class="profile-status">Sessão Ativa</p>
+        </div>
+
+        <!-- Conteúdo Principal -->
+        <div class="card-body">
+          <div class="profile-section">
+            <div class="profile-image-container">
+              <img
+                v-if="connections[0]?.profileImage"
+                :src="connections[0].profileImage"
+                alt="Perfil WhatsApp"
+                class="profile-image"
+              />
+              <div v-else class="profile-image-placeholder">
+                <Smartphone :size="40" />
+              </div>
+              <div class="check-badge">
+                <CheckCircle :size="16" />
+              </div>
+            </div>
+            
+            <div class="profile-text">
+              <h2 class="profile-name">{{ connections[0]?.username || connections[0]?.name || 'WhatsApp' }}</h2>
+              <p class="profile-number">{{ formatPhoneNumber(connections[0]?.number) }}</p>
+            </div>
+          </div>
+
+          <!-- Grid de Informações -->
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="info-label">Status</span>
+              <span class="info-value text-green">Ativo</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Ambiente</span>
+              <span class="info-value">Produção</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Tipo</span>
+              <span class="info-value">Multi-device</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Sessão</span>
+              <span class="info-value">{{ connections[0]?.name || 'Principal' }}</span>
+            </div>
+          </div>
+
+          <!-- Ações -->
+          <div class="actions-section">
+            <button
+              @click="logoutConnection"
+              :disabled="isLoading"
+              class="btn-disconnect-premium"
+            >
+              <LogOut :size="18" />
+              <span>{{ isLoading ? 'Desconectando...' : 'Desconectar Sessão' }}</span>
+            </button>
           </div>
         </div>
 
-        <button
-          @click="logoutConnection"
-          :disabled="isLoading"
-          class="btn-disconnect-action"
-        >
-          <LogOut :size="18" />
-          <span>{{ isLoading ? 'Desconectando...' : 'Desconectar Sessão' }}</span>
-        </button>
-      </div>
-
-      <!-- Painel de Segurança -->
-      <div class="security-panel">
-        <div class="security-icon">
-          <ShieldCheck :size="24" />
+        <!-- Footer de Segurança -->
+        <div class="card-footer">
+          <ShieldCheck :size="16" class="footer-icon" />
+          <span>Conexão criptografada de ponta a ponta</span>
         </div>
-        <div class="security-content">
-          <h4>Conexão Segura</h4>
-          <p>Esta área é protegida com criptografia de ponta a ponta. Seus dados e conversas estão seguros contra acessos indevidos.</p>
-        </div>
-        <Lock :size="16" class="lock-icon" />
       </div>
     </div>
 
@@ -215,7 +242,8 @@ onUnmounted(() => {
 
 <style scoped>
 .connection-tab {
-  width: 100%;
+  max-width: 500px;
+  margin: 2rem auto;
 }
 
 /* --- VIEW CONECTADO --- */
@@ -248,17 +276,75 @@ onUnmounted(() => {
   width: 100%;
 }
 
-.profile-header {
+/* --- VIEW CONECTADO --- */
+.connected-view {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.5rem;
+  justify-content: center;
+  padding: 2rem;
+  animation: fadeIn 0.5s ease-out;
+  width: 100%;
 }
 
-.profile-image-wrapper {
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.premium-card {
+  background: white;
+  border-radius: 1.5rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  max-width: 480px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+}
+
+.card-header-gradient {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  height: 100px;
   position: relative;
-  width: 120px;
-  height: 120px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 1rem;
+}
+
+.status-pill {
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(4px);
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.card-body {
+  padding: 0 2rem 2rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.profile-section {
+  margin-top: -50px; /* Puxa para cima do header */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.profile-image-container {
+  position: relative;
+  width: 100px;
+  height: 100px;
 }
 
 .profile-image {
@@ -266,8 +352,9 @@ onUnmounted(() => {
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
-  border: 4px solid #fff;
+  border: 4px solid white;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  background-color: white;
 }
 
 .profile-image-placeholder {
@@ -279,145 +366,112 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   color: #9ca3af;
-  border: 4px solid #fff;
+  border: 4px solid white;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
-.status-badge {
+.check-badge {
   position: absolute;
-  bottom: 5px;
-  right: 5px;
+  bottom: 2px;
+  right: 2px;
   background-color: #10b981;
   color: white;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.35rem 0.85rem;
-  border-radius: 999px;
-  border: 3px solid #fff;
+  border-radius: 50%;
+  padding: 2px;
+  border: 2px solid white;
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  justify-content: center;
 }
 
-.pulse-dot {
-  width: 8px;
-  height: 8px;
-  background-color: white;
-  border-radius: 50%;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.2); }
-  100% { opacity: 1; transform: scale(1); }
-}
-
-.profile-info {
+.profile-text {
   text-align: center;
 }
 
-.profile-number {
-  font-size: 1.5rem;
+.profile-name {
+  font-size: 1.25rem;
   font-weight: 700;
   color: #111827;
-  margin: 0 0 0.25rem 0;
-  letter-spacing: -0.025em;
-}
-
-.profile-status {
-  color: #6b7280;
-  font-size: 0.95rem;
   margin: 0;
 }
 
-.btn-disconnect-action {
+.profile-number {
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin: 0.25rem 0 0 0;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  background-color: #f9fafb;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  border: 1px solid #f3f4f6;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.info-label {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.info-value {
+  font-size: 0.9rem;
+  color: #374151;
+  font-weight: 500;
+}
+
+.text-green {
+  color: #059669;
+}
+
+.btn-disconnect-premium {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   padding: 0.875rem;
-  background-color: #fee2e2;
-  color: #dc2626;
-  border: 1px solid #fecaca;
+  background-color: white;
+  color: #ef4444;
+  border: 1px solid #fee2e2;
   border-radius: 0.75rem;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.95rem;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.btn-disconnect-action:hover:not(:disabled) {
-  background-color: #fecaca;
+.btn-disconnect-premium:hover:not(:disabled) {
+  background-color: #fef2f2;
+  border-color: #fecaca;
   transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.1);
 }
 
-.btn-disconnect-action:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.security-panel {
-  background-color: #eff6ff;
-  border: 1px solid #dbeafe;
-  border-radius: 1rem;
-  padding: 1.25rem;
+.card-footer {
+  background-color: #f8fafc;
+  padding: 1rem;
   display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  position: relative;
-  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-top: 1px solid #e5e7eb;
+  color: #64748b;
+  font-size: 0.8rem;
 }
 
-.security-icon {
-  color: #2563eb;
-  padding: 0.5rem;
-  background-color: #dbeafe;
-  border-radius: 0.5rem;
-}
-
-.security-content h4 {
-  color: #1e40af;
-  font-size: 0.95rem;
-  font-weight: 600;
-  margin: 0 0 0.25rem 0;
-}
-
-.security-content p {
-  color: #1e3a8a;
-  font-size: 0.85rem;
-  margin: 0;
-  line-height: 1.5;
-}
-
-.lock-icon {
-  position: absolute;
-  top: 1.25rem;
-  right: 1.25rem;
-  color: #93c5fd;
-}
-
-/* --- VIEW DESCONECTADO (GRID) --- */
-.connection-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 2rem;
-  align-items: start;
-}
-
-.connection-card {
-  background-color: var(--branco);
-  border-radius: 1rem;
-  padding: 2rem;
-  border: 1px solid #e5e7eb;
-  max-width: 500px;
-  margin: 0 auto;
-  box-shadow:
-    0 4px 6px -1px rgb(0 0 0 / 0.05),
-    0 2px 4px -2px rgb(0 0 0 / 0.05);
+.footer-icon {
+  color: #94a3b8;
 }
 
 .connection-card h2 {
