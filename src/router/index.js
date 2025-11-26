@@ -133,7 +133,7 @@ router.afterEach((to) => {
     const clinicName = clinic?.name
     const clinicLogo = clinic?.logoUrl
     const pageTitle = to.meta.title
-    const defaultAppName = 'Clínica CRM'
+    const defaultAppName = 'Agenda Doutor'
 
     // Elementos do <head> que vamos atualizar
     const favicon = document.getElementById('favicon')
