@@ -13,7 +13,7 @@ function toggleMobileMenu() {
 <template>
   <header class="app-header">
     <div class="container">
-      <router-link to="/" class="logo">ClínicaCRM</router-link>
+      <router-link to="/" class="logo">Agenda Doutor</router-link>
 
       <nav class="main-nav desktop-only">
         <router-link to="/">Soluções</router-link>
@@ -34,7 +34,7 @@ function toggleMobileMenu() {
     <Transition name="slide-fade">
       <div v-if="isMobileMenuOpen" class="mobile-nav-overlay">
         <div class="mobile-nav-header">
-          <router-link to="/" class="logo" @click="toggleMobileMenu">ClínicaCRM</router-link>
+          <router-link to="/" class="logo" @click="toggleMobileMenu">Agenda Doutor</router-link>
           <button @click="toggleMobileMenu" class="mobile-menu-toggle">
             <X :size="28" />
           </button>

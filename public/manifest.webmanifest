@@ -1,7 +1,7 @@
 {
-  "name": "Clínica CRM",
-  "short_name": "ClínicaCRM",
-  "description": "Gestão completa para sua clínica médica.",
+  "name": "Agenda Doutor",
+  "short_name": "Agenda Doutor",
+  "description": "Agenda Doutor - Agendamentos e consultas.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

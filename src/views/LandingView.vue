@@ -133,7 +133,7 @@ function resetMainBackground() {
           <div class="platform-image">
             <img
               src="https://placehold.co/600x400/FFF/31343C?text=Dashboard"
-              alt="Interface da plataforma do ClínicaCRM"
+              alt="Interface da plataforma do Agenda Doutor"
             />
           </div>
         </div>

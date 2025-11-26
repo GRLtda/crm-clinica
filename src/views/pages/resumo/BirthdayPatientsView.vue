@@ -153,11 +153,6 @@ const totalBirthdays = computed(() => birthdayPatients.value.length)
               </div>
             </div>
           </div>
-
-          <div class="birthday-badge">
-            <Cake :size="16" />
-            <span>Aniversariante</span>
-          </div>
         </div>
 
         <!-- Contact Info -->

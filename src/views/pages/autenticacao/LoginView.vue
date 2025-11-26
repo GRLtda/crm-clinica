@@ -30,7 +30,7 @@ const token = ref('')
 const newPassword = ref('')
 
 const imageUrl = new URL('@/assets/clinic1.webp', import.meta.url).href
-const whatsappLink = 'https://wa.me/5515991136994'
+const whatsappLink = 'https://wa.me/5511921923978'
 
 // --- FUNÇÕES ---
 function goToStep(stepName) {
