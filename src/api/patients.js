@@ -52,3 +52,9 @@ export const searchPatients = (query) => {
     },
   })
 }
+
+// Busca pacientes que fazem aniversário no mês atual
+export const getBirthdayPatients = () => {
+  return apiClient.get('/patients/birthdays/month')
+}
+

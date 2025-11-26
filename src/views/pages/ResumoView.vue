@@ -197,7 +197,7 @@ function handleRefresh() {
           </div>
         </div>
 
-        <div class="stat-card">
+        <div class="stat-card clickable" @click="$router.push({ name: 'aniversariantes' })">
           <div class="stat-icon-mini bg-pink">
             <Cake :size="22" />
           </div>

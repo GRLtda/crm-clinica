@@ -7,6 +7,7 @@ import {
   updatePatient as apiUpdatePatient,
   deletePatient as apiDeletePatient, // ✨ 2. Importar a função da API
   getAllPatients as apiGetAllPatients, // ✨ 1. Importar a nova função
+  getBirthdayPatients as apiGetBirthdayPatients,
 } from '@/api/patients'
 
 export const usePatientsStore = defineStore('patients', () => {
@@ -22,6 +23,9 @@ export const usePatientsStore = defineStore('patients', () => {
     pages: 1,
     limit: 10,
   })
+
+  // Estado para aniversariantes do mês
+  const birthdayPatients = ref([])
 
   // ACTIONS
 
@@ -151,6 +155,25 @@ export const usePatientsStore = defineStore('patients', () => {
     }
   }
 
+  // Busca pacientes que fazem aniversário no mês atual
+  async function fetchBirthdayPatients() {
+    isLoading.value = true
+    error.value = null
+    try {
+      const response = await apiGetBirthdayPatients()
+      // A resposta vem com paginação: { total, page, pages, limit, data: [...] }
+      birthdayPatients.value = response.data.data || []
+      return { success: true }
+    } catch (err) {
+      error.value = 'Erro ao carregar aniversariantes.'
+      birthdayPatients.value = []
+      console.error('Falha em fetchBirthdayPatients:', err)
+      return { success: false, error: error.value }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   // RETURN
   return {
     allPatients,
@@ -159,11 +182,13 @@ export const usePatientsStore = defineStore('patients', () => {
     pagination, // ✨ 4. Expor o estado da paginação
     isLoading,
     error,
+    birthdayPatients,
     createPatient,
     searchPatients,
     fetchPatientById,
     updatePatient,
     deletePatient, // ✨ 7. Expor a nova action
     fetchAllPatients, // ✨ 5. Expor a nova action
+    fetchBirthdayPatients,
   }
 })
