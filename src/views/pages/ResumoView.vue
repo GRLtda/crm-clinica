@@ -185,6 +185,9 @@ function handleRefresh() {
             <span class="stat-value">{{ summary.stats.appointmentsToday }}</span>
             <span class="stat-label">Atendimentos Hoje</span>
           </div>
+          <div class="stat-nav-icon">
+            <ArrowRight :size="18" />
+          </div>
         </div>
 
         <div class="stat-card clickable" @click="$router.push({ name: 'pacientes' })">
@@ -195,6 +198,9 @@ function handleRefresh() {
             <span class="stat-value">{{ summary.stats.totalPatients }}</span>
             <span class="stat-label">Total de Pacientes</span>
           </div>
+          <div class="stat-nav-icon">
+            <ArrowRight :size="18" />
+          </div>
         </div>
 
         <div class="stat-card clickable" @click="$router.push({ name: 'aniversariantes' })">
@@ -204,6 +210,9 @@ function handleRefresh() {
           <div class="stat-text">
             <span class="stat-value">{{ summary.stats.birthdaysMonth }}</span>
             <span class="stat-label">Aniversariantes do Mês</span>
+          </div>
+          <div class="stat-nav-icon">
+            <ArrowRight :size="18" />
           </div>
         </div>
       </section>
@@ -386,8 +395,8 @@ function handleRefresh() {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background-color: #fff7ed;
-  color: #f97316;
+  background-color: #edfbff;
+  color: #3b82f6;
   flex-shrink: 0;
   opacity: 0.7;
   transform: translateX(-4px);
