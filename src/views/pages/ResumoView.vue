@@ -177,7 +177,7 @@ function handleRefresh() {
           </div>
         </div>
 
-        <div class="stat-card">
+        <div class="stat-card clickable" @click="$router.push({ name: 'atendimentos' })">
           <div class="stat-icon-mini bg-blue">
             <Calendar :size="22" />
           </div>
@@ -187,7 +187,7 @@ function handleRefresh() {
           </div>
         </div>
 
-        <div class="stat-card">
+        <div class="stat-card clickable" @click="$router.push({ name: 'pacientes' })">
           <div class="stat-icon-mini bg-green">
             <Users :size="22" />
           </div>
