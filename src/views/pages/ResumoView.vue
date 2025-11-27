@@ -275,10 +275,10 @@ function handleRefresh() {
                 v-for="(alert, index) in summary.alerts"
                 :key="index"
                 class="alert-card"
-                :class="`alert-${alert.level}`"
+                :class="`alert-${alert.level || 'default'}`"
               >
                 <div class="alert-icon">
-                  <AlertTriangle v-if="alert.level === 'warning'" :size="18" />
+                  <AlertTriangle v-if="alert.level === 'warning' || alert.level === 'danger'" :size="18" />
                   <Info v-else :size="18" />
                 </div>
                 <p class="alert-message">{{ alert.message }}</p>
@@ -465,6 +465,8 @@ function handleRefresh() {
 }
 .alert-warning { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; }
 .alert-info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+.alert-danger { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+.alert-default { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
 .alert-icon { margin-top: 2px; flex-shrink: 0; }
 .alert-message { margin: 0; line-height: 1.4; font-weight: 500; }
 

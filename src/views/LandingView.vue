@@ -176,7 +176,7 @@ function resetMainBackground() {
             </ul>
 
             <a
-              href="https://wa.me/5515991136994?text=Estou%20interessado%20em%20iniciar%20um%20projeto%20com%20a%20GR%F0%9F%9A%80"
+              href="https://wa.me/5511921923978"
               target="_blank"
               :class="plano.featured ? 'btn-primary-featured' : 'btn-outline'"
             >
