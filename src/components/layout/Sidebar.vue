@@ -16,7 +16,14 @@ import {
   Megaphone
 } from 'lucide-vue-next'
 
-const emit = defineEmits(['close'])
+defineProps({
+  isCollapsed: {
+    type: Boolean,
+    default: false
+  }
+})
+
+const emit = defineEmits(['close', 'toggle-collapse'])
 
 const authStore = useAuthStore()
 const isUserDropdownOpen = ref(false)
@@ -37,10 +44,10 @@ const utilityNavLinks = [
 </script>
 
 <template>
-  <aside class="sidebar">
+  <aside class="sidebar" :class="{ 'is-collapsed': isCollapsed }">
     <div class="sidebar-header-wrapper" v-click-outside="() => (isClinicDropdownOpen = false)">
-      <ClinicDropdown v-if="isClinicDropdownOpen" />
-      <div class="sidebar-header" @click="isClinicDropdownOpen = !isClinicDropdownOpen">
+      <ClinicDropdown v-if="isClinicDropdownOpen && !isCollapsed" />
+      <div class="sidebar-header" @click="!isCollapsed && (isClinicDropdownOpen = !isClinicDropdownOpen)">
         <div class="clinic-logo">
           <img
             v-if="authStore.user?.clinic?.logoUrl"
@@ -50,8 +57,8 @@ const utilityNavLinks = [
           />
           <span v-else>{{ authStore.user?.clinic?.name?.charAt(0) || 'C' }}</span>
         </div>
-        <h1 class="clinic-name">{{ authStore.user?.clinic?.name || 'Sua Clínica' }}</h1>
-        <MoreHorizontal :size="20" class="options-icon desktop-only" />
+        <h1 v-show="!isCollapsed" class="clinic-name">{{ authStore.user?.clinic?.name || 'Sua Clínica' }}</h1>
+        <MoreHorizontal v-show="!isCollapsed" :size="20" class="options-icon desktop-only" />
 
         <button @click="$emit('close')" class="mobile-close-btn">
           <X :size="24" />
@@ -62,17 +69,17 @@ const utilityNavLinks = [
     <nav class="sidebar-nav">
       <ul class="nav-links">
         <li v-for="link in mainNavLinks" :key="link.text">
-          <RouterLink :to="link.to" class="nav-link">
+          <RouterLink :to="link.to" class="nav-link" :title="isCollapsed ? link.text : ''">
             <component :is="link.icon" :size="20" stroke-width="2" />
-            <span>{{ link.text }}</span>
+            <span v-show="!isCollapsed" class="nav-text">{{ link.text }}</span>
           </RouterLink>
         </li>
       </ul>
       <ul class="nav-links">
         <li v-for="link in utilityNavLinks" :key="link.text">
-          <RouterLink :to="link.to" class="nav-link">
+          <RouterLink :to="link.to" class="nav-link" :title="isCollapsed ? link.text : ''">
             <component :is="link.icon" :size="20" stroke-width="2" />
-            <span>{{ link.text }}</span>
+            <span v-show="!isCollapsed" class="nav-text">{{ link.text }}</span>
           </RouterLink>
         </li>
       </ul>
@@ -81,18 +88,18 @@ const utilityNavLinks = [
     <div class="sidebar-footer">
       <div
         class="user-profile"
-        @click="isUserDropdownOpen = !isUserDropdownOpen"
+        @click="!isCollapsed && (isUserDropdownOpen = !isUserDropdownOpen)"
         v-click-outside="() => (isUserDropdownOpen = false)"
       >
-        <UserDropdown v-if="isUserDropdownOpen" />
+        <UserDropdown v-if="isUserDropdownOpen && !isCollapsed" />
         <div class="user-avatar">
           {{ authStore.user?.name.charAt(0) || 'U' }}
         </div>
-        <div class="user-details">
+        <div v-show="!isCollapsed" class="user-details">
           <span class="user-name">{{ authStore.user?.name || 'Usuário' }}</span>
           <span class="user-email">{{ authStore.user?.email || 'email@exemplo.com' }}</span>
         </div>
-        <MoreHorizontal :size="20" class="options-icon" />
+        <MoreHorizontal v-show="!isCollapsed" :size="20" class="options-icon" />
       </div>
     </div>
   </aside>
@@ -103,40 +110,52 @@ const utilityNavLinks = [
   display: flex;
   flex-direction: column;
   width: 280px;
-  padding: 1.5rem;
-  background-color: #f7f8fa;
+  padding: 1rem;
+  background-color: #fafbfc;
   border-right: 1px solid #e5e7eb;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-x: hidden;
+}
+
+.sidebar.is-collapsed {
+  width: 72px;
+  padding: 1rem 0.5rem;
 }
 
 /* Cabeçalho */
 .sidebar-header-wrapper {
   position: relative;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 .sidebar-header {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem;
-  border-radius: 0.75rem;
+  border-radius: 0.5rem;
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
-.sidebar-header:hover {
+.sidebar:not(.is-collapsed) .sidebar-header:hover {
   background-color: #edf0f4;
 }
+.sidebar.is-collapsed .sidebar-header {
+  justify-content: center;
+  padding: 0.5rem;
+  cursor: default;
+}
 .clinic-logo {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
-  border-radius: 0.5rem;
+  border-radius: 0.375rem;
   background-color: var(--branco);
   color: var(--azul-principal);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   border: 1px solid #e5e7eb;
   overflow: hidden;
 }
@@ -147,13 +166,17 @@ const utilityNavLinks = [
 }
 .clinic-name {
   font-family: var(--fonte-titulo);
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--preto);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   flex-grow: 1;
+  transition: opacity 0.25s ease;
+}
+.sidebar.is-collapsed .clinic-name {
+  opacity: 0;
 }
 
 /* Navegação */
@@ -169,18 +192,32 @@ const utilityNavLinks = [
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.125rem;
 }
 .nav-link {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  border-radius: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
   text-decoration: none;
   color: #525866;
   font-weight: 500;
+  font-size: 0.875rem;
   transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+.sidebar.is-collapsed .nav-link {
+  justify-content: center;
+  padding: 0.625rem;
+}
+.nav-text {
+  transition: opacity 0.25s ease;
+  white-space: nowrap;
+}
+.sidebar.is-collapsed .nav-text {
+  opacity: 0;
 }
 .nav-link:hover {
   background-color: #edf0f4;
@@ -190,28 +227,34 @@ const utilityNavLinks = [
   background-color: var(--branco);
   color: var(--preto);
   font-weight: 600;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 /* Rodapé */
 .sidebar-footer {
   position: relative;
+  margin-top: 1rem;
 }
 .user-profile {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem;
-  border-radius: 0.75rem;
+  border-radius: 0.5rem;
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
-.user-profile:hover {
+.sidebar.is-collapsed .user-profile {
+  justify-content: center;
+  padding: 0.5rem;
+  cursor: default;
+}
+.sidebar:not(.is-collapsed) .user-profile:hover {
   background-color: #edf0f4;
 }
 .user-avatar {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
   border-radius: 50%;
   background-color: #eef2ff;
@@ -220,15 +263,20 @@ const utilityNavLinks = [
   align-items: center;
   justify-content: center;
   font-weight: 600;
+  font-size: 0.875rem;
 }
 .user-details {
   flex-grow: 1;
   overflow: hidden;
+  transition: opacity 0.25s ease;
+}
+.sidebar.is-collapsed .user-details {
+  opacity: 0;
 }
 .user-name {
   display: block;
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   color: var(--preto);
   white-space: nowrap;
   overflow: hidden;
@@ -236,7 +284,7 @@ const utilityNavLinks = [
 }
 .user-email {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   color: var(--cinza-texto);
   white-space: nowrap;
   overflow: hidden;
@@ -244,6 +292,11 @@ const utilityNavLinks = [
 }
 .options-icon {
   color: var(--cinza-texto);
+  flex-shrink: 0;
+  transition: opacity 0.25s ease;
+}
+.sidebar.is-collapsed .options-icon {
+  opacity: 0;
 }
 
 /* ✨ Estilos para o modo responsivo */
@@ -261,6 +314,24 @@ const utilityNavLinks = [
   }
   .mobile-close-btn {
     display: block;
+  }
+  /* Em mobile, sidebar sempre expandida quando visível */
+  .sidebar.is-collapsed {
+    width: 280px;
+    padding: 1rem;
+  }
+  .sidebar.is-collapsed .nav-link {
+    justify-content: flex-start;
+    padding: 0.5rem 0.75rem;
+  }
+  .sidebar.is-collapsed .nav-text,
+  .sidebar.is-collapsed .user-details,
+  .sidebar.is-collapsed .options-icon,
+  .sidebar.is-collapsed .clinic-name {
+    opacity: 1;
+  }
+  .sidebar.is-collapsed .sidebar-header {
+    justify-content: flex-start;
   }
 }
 </style>

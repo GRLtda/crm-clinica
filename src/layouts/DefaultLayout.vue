@@ -10,6 +10,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 const isMobileSidebarOpen = ref(false)
 const isAppointmentModalOpen = ref(false) // ✨ 3. Estado para o modal global
+const isSidebarCollapsed = ref(false) // Estado para controlar sidebar colapsada
 
 function removeManifest() {
   const manifestLink = document.querySelector('link[rel="manifest"]')
@@ -75,8 +76,10 @@ onUnmounted(() => {
   <div class="app-layout">
     <Sidebar
       class="sidebar-component"
-      :class="{ 'is-mobile-open': isMobileSidebarOpen }"
+      :class="{ 'is-mobile-open': isMobileSidebarOpen, 'is-collapsed': isSidebarCollapsed }"
+      :is-collapsed="isSidebarCollapsed"
       @close="isMobileSidebarOpen = false"
+      @toggle-collapse="isSidebarCollapsed = !isSidebarCollapsed"
     />
 
     <CreateAppointmentModal
@@ -92,7 +95,9 @@ onUnmounted(() => {
 
     <div class="main-panel">
       <TopBar
+        :is-sidebar-collapsed="isSidebarCollapsed"
         @toggle-sidebar="isMobileSidebarOpen = true"
+        @toggle-collapse="isSidebarCollapsed = !isSidebarCollapsed"
         @open-schedule-modal="isAppointmentModalOpen = true"
       />
 

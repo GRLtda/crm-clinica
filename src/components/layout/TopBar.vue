@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, Plus, Menu, User, Calendar, Settings, LoaderCircle } from 'lucide-vue-next'
+import { Search, Plus, Menu, User, Calendar, Settings, LoaderCircle, PanelLeftClose, PanelLeftOpen } from 'lucide-vue-next'
 
 import { useAppointmentsStore } from '@/stores/appointments'
 import { usePatientsStore } from '@/stores/patients'
@@ -10,8 +10,15 @@ import { useAnamnesisStore } from '@/stores/anamnesis'
 import { useEmployeesStore } from '@/stores/employees'
 import { useDashboardStore } from '@/stores/dashboard'
 
+defineProps({
+  isSidebarCollapsed: {
+    type: Boolean,
+    default: false
+  }
+})
+
 // Emite eventos para o DefaultLayout.vue
-const emit = defineEmits(['toggle-sidebar', 'open-schedule-modal'])
+const emit = defineEmits(['toggle-sidebar', 'open-schedule-modal', 'toggle-collapse'])
 const router = useRouter()
 
 const searchQuery = ref('')
@@ -72,6 +79,10 @@ function handleSearchSubmit() {
     <div class="top-bar-left">
       <button @click="$emit('toggle-sidebar')" class="hamburger-button">
         <Menu :size="24" />
+      </button>
+      <button @click="$emit('toggle-collapse')" class="collapse-button">
+        <PanelLeftClose v-if="!isSidebarCollapsed" :size="20" />
+        <PanelLeftOpen v-else :size="20" />
       </button>
     </div>
 
@@ -162,6 +173,25 @@ function handleSearchSubmit() {
   cursor: pointer;
   padding: 0.5rem;
   margin-left: -0.5rem;
+  color: var(--preto);
+}
+
+.collapse-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  margin-left: -0.5rem;
+  color: var(--cinza-texto);
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.collapse-button:hover {
+  background-color: #f3f4f6;
   color: var(--preto);
 }
 
@@ -315,6 +345,9 @@ function handleSearchSubmit() {
 @media (max-width: 1024px) {
   .hamburger-button {
     display: block;
+  }
+  .collapse-button {
+    display: none;
   }
   .top-bar-center {
     justify-content: center;
