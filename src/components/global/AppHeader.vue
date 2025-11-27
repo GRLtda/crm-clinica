@@ -22,8 +22,7 @@ function toggleMobileMenu() {
         <router-link to="/">Sobre</router-link>
       </nav>
       <div class="actions desktop-only">
-        <router-link to="/login" class="btn-login">Entrar</router-link>
-        <router-link to="/register" class="btn-cta">Criar Conta</router-link>
+        <router-link to="/login" class="btn-cta">Entrar</router-link>
       </div>
 
       <button @click="toggleMobileMenu" class="mobile-menu-toggle">
@@ -48,10 +47,7 @@ function toggleMobileMenu() {
           <router-link to="/" @click="toggleMobileMenu" style="--delay: 0.4s">Sobre</router-link>
         </nav>
         <div class="mobile-actions">
-          <router-link to="/login" class="btn-login" @click="toggleMobileMenu">Entrar</router-link>
-          <router-link to="/register" class="btn-cta" @click="toggleMobileMenu"
-            >Criar Conta</router-link
-          >
+          <router-link to="/login" class="btn-cta" @click="toggleMobileMenu">Entrar</router-link>
         </div>
       </div>
     </Transition>
