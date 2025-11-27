@@ -144,7 +144,7 @@ function handleSearchSubmit() {
   grid-template-columns: auto 1fr auto;
   align-items: center;
   height: 64px;
-  padding: 0 1.5rem;
+  padding: 0 1rem;
   background-color: #fafbfc; /* Mesma cor da sidebar */
   gap: 1rem;
   border-top-right-radius: 1rem; /* Border radius no canto superior direito */
