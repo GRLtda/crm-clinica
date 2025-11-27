@@ -32,7 +32,10 @@ function goBack() {
 function formatDate(dateString) {
   if (!dateString) return '--'
   try {
-    return format(new Date(dateString), "dd 'de' MMMM", { locale: ptBR })
+    const dateStr = dateString.toString().split('T')[0]
+    const [year, month, day] = dateStr.split('-').map(Number)
+    const date = new Date(year, month - 1, day)
+    return format(date, "dd 'de' MMMM", { locale: ptBR })
   } catch (e) {
     return dateString
   }
@@ -53,11 +56,13 @@ function formatPhone(phone) {
 function getAge(birthDate) {
   if (!birthDate) return null
   try {
+    const dateStr = birthDate.toString().split('T')[0]
+    const [year, month, day] = dateStr.split('-').map(Number)
+    
     const today = new Date()
-    const birth = new Date(birthDate)
-    let age = today.getFullYear() - birth.getFullYear()
-    const monthDiff = today.getMonth() - birth.getMonth()
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    let age = today.getFullYear() - year
+    const monthDiff = (today.getMonth() + 1) - month
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < day)) {
       age--
     }
     return age
@@ -76,7 +81,6 @@ function formatAddress(address) {
   if (!address) return '--'
   if (typeof address === 'string') return address
   
-  // Se for objeto, formata como string
   const parts = []
   if (address.street) parts.push(address.street)
   if (address.number) parts.push(address.number)
