@@ -74,13 +74,28 @@ onUnmounted(() => {
 
 <template>
   <div class="app-layout">
-    <Sidebar
-      class="sidebar-component"
-      :class="{ 'is-mobile-open': isMobileSidebarOpen, 'is-collapsed': isSidebarCollapsed }"
-      :is-collapsed="isSidebarCollapsed"
-      @close="isMobileSidebarOpen = false"
-      @toggle-collapse="isSidebarCollapsed = !isSidebarCollapsed"
-    />
+    <div class="unified-container">
+      <Sidebar
+        class="sidebar-component"
+        :class="{ 'is-mobile-open': isMobileSidebarOpen, 'is-collapsed': isSidebarCollapsed }"
+        :is-collapsed="isSidebarCollapsed"
+        @close="isMobileSidebarOpen = false"
+        @toggle-collapse="isSidebarCollapsed = !isSidebarCollapsed"
+      />
+
+      <div class="main-panel">
+        <TopBar
+          :is-sidebar-collapsed="isSidebarCollapsed"
+          @toggle-sidebar="isMobileSidebarOpen = true"
+          @toggle-collapse="isSidebarCollapsed = !isSidebarCollapsed"
+          @open-schedule-modal="isAppointmentModalOpen = true"
+        />
+
+        <main class="main-content" :class="{ 'no-padding': route.meta.layout?.noPadding }">
+          <RouterView />
+        </main>
+      </div>
+    </div>
 
     <CreateAppointmentModal
       v-if="isAppointmentModalOpen"
@@ -92,19 +107,6 @@ onUnmounted(() => {
       @click="isMobileSidebarOpen = false"
       class="sidebar-overlay"
     ></div>
-
-    <div class="main-panel">
-      <TopBar
-        :is-sidebar-collapsed="isSidebarCollapsed"
-        @toggle-sidebar="isMobileSidebarOpen = true"
-        @toggle-collapse="isSidebarCollapsed = !isSidebarCollapsed"
-        @open-schedule-modal="isAppointmentModalOpen = true"
-      />
-
-      <main class="main-content" :class="{ 'no-padding': route.meta.layout?.noPadding }">
-        <RouterView />
-      </main>
-    </div>
   </div>
 </template>
 
@@ -114,6 +116,14 @@ onUnmounted(() => {
   background-color: var(--branco);
   height: 100dvh;
   overflow: hidden;
+}
+
+/* Container unificado para sidebar e top bar */
+.unified-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  background-color: #fafbfc;
 }
 
 /* ✨ 6. Estilo para o novo Main Panel */
@@ -128,7 +138,9 @@ onUnmounted(() => {
 
 .main-content {
   flex: 1;
-  padding: 2rem;
+  padding: 1.5rem;
+  border-radius: 1rem 0 0 0rem;
+  border: 1px solid #e5e7eb;
   overflow-y: auto; /* O scroll fica apenas no conteúdo principal */
 }
 .main-content.no-padding {
@@ -153,11 +165,17 @@ onUnmounted(() => {
 
 /* Breakpoint para tablets e celulares */
 @media (max-width: 1024px) {
+  .unified-container {
+    border: none;
+    border-radius: 0;
+    margin: 0;
+  }
   .main-panel {
     width: 100%; /* Ocupa toda a largura no mobile */
   }
   .main-content {
     padding: 1.5rem 1rem;
+    border-radius: 0;
   }
   .main-content.no-padding {
     padding: 0;

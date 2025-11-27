@@ -145,9 +145,9 @@ function handleSearchSubmit() {
   align-items: center;
   height: 64px;
   padding: 0 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-  background-color: var(--branco);
+  background-color: #fafbfc; /* Mesma cor da sidebar */
   gap: 1rem;
+  border-top-right-radius: 1rem; /* Border radius no canto superior direito */
 }
 
 .top-bar-left {

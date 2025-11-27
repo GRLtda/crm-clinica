@@ -1,7 +1,5 @@
-/* 1. Importa as novas fontes solicitadas */
 @import url('https://fonts.googleapis.com/css2?family=Funnel+Display:wght@300..800&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Syne:wght@400..800&display=swap');
 
-/* 2. Define as variáveis globais */
 :root {
   /* Cores */
   --branco: #ffffff;
@@ -13,8 +11,8 @@
 
   /* Fontes */
   --fonte-principal: 'Montserrat', sans-serif;
-  --fonte-titulo: 'Syne', sans-serif; /* Fonte de título atualizada */
-  --dp-font-family: 'Montserrat', sans-serif; /* Atualiza a fonte do Datepicker também */
+  --fonte-titulo: 'Syne', sans-serif;
+  --dp-font-family: 'Montserrat', sans-serif;
   --dp-border-radius: 0.75rem;
   --dp-input-padding: 0.75rem 1rem;
   --dp-primary-color: var(--azul-principal);
@@ -23,13 +21,12 @@
   --dp-hover-color: #eef2ff;
 }
 
-/* 3. Aplica a fonte principal e o fundo com noise ao body */
 body {
   font-family: var(--fonte-principal);
   color: var(--preto);
-  background-color: var(--branco); /* Cor de fundo base */
-  position: relative; /* Necessário para o z-index do pseudo-elemento */
-  z-index: 1; /* Garante que o conteúdo fique sobre o noise */
+  background-color: var(--branco);
+  position: relative;
+  z-index: 1;
 }
 
 

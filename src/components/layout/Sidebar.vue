@@ -109,12 +109,12 @@ const utilityNavLinks = [
 .sidebar {
   display: flex;
   flex-direction: column;
-  width: 280px;
+  width: 240px;
   padding: 1rem;
   background-color: #fafbfc;
-  border-right: 1px solid #e5e7eb;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow-x: hidden;
+  border-top-right-radius: 1rem; /* Border radius no canto superior direito */
 }
 
 .sidebar.is-collapsed {
@@ -317,7 +317,7 @@ const utilityNavLinks = [
   }
   /* Em mobile, sidebar sempre expandida quando visível */
   .sidebar.is-collapsed {
-    width: 280px;
+    width: 240px;
     padding: 1rem;
   }
   .sidebar.is-collapsed .nav-link {
