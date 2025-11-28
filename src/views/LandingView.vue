@@ -142,7 +142,6 @@ onMounted(() => {
           </p>
           <div class="hero-actions animate-slide-up">
             <router-link to="/app" class="btn-primary"> Entrar <KeyRound :size="20" /> </router-link>
-            <button class="btn-secondary">Agentes Digitais <ChevronRight :size="20" /></button>
           </div>
         </div>
         <div class="hero-visual animate-slide-up">

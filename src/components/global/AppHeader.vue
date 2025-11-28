@@ -33,12 +33,7 @@ onUnmounted(() => {
         Agenda Doutor
       </router-link>
 
-      <nav class="main-nav desktop-only">
-        <router-link to="/" class="nav-link">Soluções</router-link>
-        <router-link to="/" class="nav-link">Planos</router-link>
-        <router-link to="/" class="nav-link">Conteúdos</router-link>
-        <router-link to="/" class="nav-link">Sobre</router-link>
-      </nav>
+
 
       <div class="actions desktop-only">
         <router-link to="/login" class="btn-login">Entrar</router-link>
@@ -60,12 +55,7 @@ onUnmounted(() => {
               </button>
             </div>
             
-            <nav class="mobile-links">
-              <router-link to="/" @click="toggleMobileMenu" class="mobile-link">Soluções</router-link>
-              <router-link to="/" @click="toggleMobileMenu" class="mobile-link">Planos</router-link>
-              <router-link to="/" @click="toggleMobileMenu" class="mobile-link">Conteúdos</router-link>
-              <router-link to="/" @click="toggleMobileMenu" class="mobile-link">Sobre</router-link>
-            </nav>
+
 
             <div class="mobile-actions">
               <router-link to="/login" class="btn-login-mobile" @click="toggleMobileMenu">Entrar</router-link>
@@ -152,27 +142,7 @@ onUnmounted(() => {
   border-radius: 50%;
 }
 
-/* NAV */
-.main-nav {
-  display: flex;
-  gap: 2rem;
-  align-items: center;
-}
 
-.nav-link {
-  color: #64748b;
-  font-weight: 500;
-  font-size: 0.95rem;
-  text-decoration: none;
-  transition: all 0.2s ease;
-  padding: 0.5rem 1rem;
-  border-radius: 9999px;
-}
-
-.nav-link:hover {
-  color: #0f172a;
-  background-color: rgba(0, 0, 0, 0.03);
-}
 
 /* ACTIONS */
 .actions {
@@ -243,18 +213,7 @@ onUnmounted(() => {
   padding: 0.5rem;
 }
 
-.mobile-links {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
 
-.mobile-link {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #0f172a;
-  text-decoration: none;
-}
 
 .mobile-actions {
   margin-top: auto;
