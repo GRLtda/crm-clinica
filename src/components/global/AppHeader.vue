@@ -57,28 +57,24 @@ function toggleMobileMenu() {
 <style scoped>
 .app-header {
   position: fixed;
-  top: 1.5rem;
+  top: 0;
   z-index: 1000;
   left: 0;
   right: 0;
-  margin-left: auto;
-  margin-right: auto;
-  width: calc(100% - 3rem);
-  max-width: 1200px;
+  width: 100%;
   padding: 1rem 0;
-  background-color: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(15px);
-  border: 1px solid rgba(229, 231, 235, 0.4);
-  border-radius: 1.5rem;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  background-color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(229, 231, 235, 0.5);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease-in-out;
 }
 .container {
   max-width: 100%;
   margin: 0 auto;
-  padding: 0 1.5rem;
+  padding: 0 5rem;
   display: flex;
-  justify-content: space-between;
+  justify-content: space-around;
   align-items: center;
 }
 .logo {

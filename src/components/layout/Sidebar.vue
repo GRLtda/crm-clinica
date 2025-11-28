@@ -1,7 +1,7 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import UserDropdown from '@/components/global/UserDropdown.vue'
 import ClinicDropdown from '@/components/global/ClinicDropdown.vue'
 import {
@@ -13,10 +13,15 @@ import {
   Settings,
   MoreHorizontal,
   X,
-  Megaphone
+  Megaphone,
+  ChevronDown,
+  MessageSquare,
+  LayoutTemplate,
+  Link,
+  History
 } from 'lucide-vue-next'
 
-defineProps({
+const props = defineProps({
   isCollapsed: {
     type: Boolean,
     default: false
@@ -26,15 +31,47 @@ defineProps({
 const emit = defineEmits(['close', 'toggle-collapse'])
 
 const authStore = useAuthStore()
+const route = useRoute()
 const isUserDropdownOpen = ref(false)
 const isClinicDropdownOpen = ref(false)
+
+// Estado para controlar quais menus estão expandidos
+const expandedItems = ref([])
+
+const toggleExpand = (key) => {
+  if (props.isCollapsed) return
+  const index = expandedItems.value.indexOf(key)
+  if (index === -1) {
+    expandedItems.value.push(key)
+  } else {
+    expandedItems.value.splice(index, 1)
+  }
+}
+
+const isExpanded = (key) => expandedItems.value.includes(key)
+
+// Verifica se um item pai está ativo (se a rota atual é filha dele)
+const isParentActive = (children) => {
+  return children.some(child => route.path.startsWith(child.to))
+}
 
 const mainNavLinks = [
   { icon: LayoutDashboard, text: 'Resumo', to: '/app' },
   { icon: CalendarSearch, text: 'Calendário', to: '/app/calendario' },
   { icon: Calendar, text: 'Atendimentos', to: '/app/atendimentos' },
   { icon: Users, text: 'Pacientes', to: '/app/pacientes' },
-  { icon: Megaphone, text: 'Marketing', to: '/app/marketing' },
+  {
+    icon: Megaphone,
+    text: 'Marketing',
+    key: 'marketing', // Chave única para controle de expansão
+    children: [
+      { text: 'Visão Geral', to: '/app/marketing', icon: LayoutDashboard },
+      { text: 'Mensagens', to: '/app/marketing/mensagens', icon: MessageSquare },
+      { text: 'Modelos', to: '/app/marketing/modelos', icon: LayoutTemplate },
+      { text: 'Conexão', to: '/app/marketing/conexao', icon: Link },
+      { text: 'Histórico', to: '/app/marketing/logs', icon: History },
+    ]
+  },
 ]
 
 const utilityNavLinks = [
@@ -68,16 +105,58 @@ const utilityNavLinks = [
 
     <nav class="sidebar-nav">
       <ul class="nav-links">
-        <li v-for="link in mainNavLinks" :key="link.text">
-          <RouterLink :to="link.to" class="nav-link" :title="isCollapsed ? link.text : ''">
+        <li v-for="link in mainNavLinks" :key="link.text" class="nav-item">
+          <!-- Item com Submenu -->
+          <div v-if="link.children" class="nav-item-wrapper">
+            <div
+              class="nav-link parent-link"
+              :class="{ 'active': isParentActive(link.children), 'expanded': isExpanded(link.key) }"
+              @click="toggleExpand(link.key)"
+              :title="isCollapsed ? link.text : ''"
+            >
+              <component :is="link.icon" :size="20" stroke-width="2" />
+              <span v-show="!isCollapsed" class="nav-text">{{ link.text }}</span>
+              <ChevronDown
+                v-show="!isCollapsed"
+                :size="16"
+                class="chevron-icon"
+                :class="{ 'rotate': isExpanded(link.key) }"
+              />
+            </div>
+
+            <!-- Submenu -->
+            <div
+              class="submenu-wrapper"
+              :class="{ 'is-open': isExpanded(link.key) && !isCollapsed }"
+            >
+              <ul class="submenu">
+                <li v-for="child in link.children" :key="child.text">
+                  <RouterLink :to="child.to" class="submenu-link" active-class="active-child">
+                    <component :is="child.icon" :size="18" stroke-width="2" class="submenu-icon" />
+                    <span class="submenu-text">{{ child.text }}</span>
+                  </RouterLink>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Item Simples -->
+          <RouterLink
+            v-else
+            :to="link.to"
+            class="nav-link"
+            :title="isCollapsed ? link.text : ''"
+            active-class="active-link"
+          >
             <component :is="link.icon" :size="20" stroke-width="2" />
             <span v-show="!isCollapsed" class="nav-text">{{ link.text }}</span>
           </RouterLink>
         </li>
       </ul>
-      <ul class="nav-links">
+
+      <ul class="nav-links utility-links">
         <li v-for="link in utilityNavLinks" :key="link.text">
-          <RouterLink :to="link.to" class="nav-link" :title="isCollapsed ? link.text : ''">
+          <RouterLink :to="link.to" class="nav-link" :title="isCollapsed ? link.text : ''" active-class="active-link">
             <component :is="link.icon" :size="20" stroke-width="2" />
             <span v-show="!isCollapsed" class="nav-text">{{ link.text }}</span>
           </RouterLink>
@@ -114,7 +193,8 @@ const utilityNavLinks = [
   background-color: #fafbfc;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow-x: hidden;
-  border-top-right-radius: 1rem; /* Border radius no canto superior direito */
+  border-top-right-radius: 1rem;
+  height: 100vh;
 }
 
 .sidebar.is-collapsed {
@@ -185,15 +265,31 @@ const utilityNavLinks = [
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  overflow-y: auto; /* Permite scroll se o menu for muito grande */
 }
+
+/* Esconde a barra de rolagem */
+.sidebar-nav::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background-color: #e5e7eb;
+  border-radius: 4px;
+}
+
 .nav-links {
   list-style: none;
   padding: 0;
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
+  gap: 0.25rem;
 }
+
+.nav-item {
+  width: 100%;
+}
+
 .nav-link {
   display: flex;
   align-items: center;
@@ -207,33 +303,108 @@ const utilityNavLinks = [
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
+  cursor: pointer;
+  user-select: none;
 }
+
 .sidebar.is-collapsed .nav-link {
   justify-content: center;
   padding: 0.625rem;
 }
+
 .nav-text {
   transition: opacity 0.25s ease;
   white-space: nowrap;
+  flex-grow: 1;
 }
 .sidebar.is-collapsed .nav-text {
   opacity: 0;
+  width: 0;
+  display: none;
 }
+
 .nav-link:hover {
   background-color: #edf0f4;
   color: var(--preto);
 }
-.router-link-exact-active {
+
+.active-link, .nav-link.active {
   background-color: var(--branco);
   color: var(--preto);
   font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f3f4f6;
+}
+
+/* Chevron Icon */
+.chevron-icon {
+  transition: transform 0.3s ease;
+  color: #9ca3af;
+}
+.chevron-icon.rotate {
+  transform: rotate(180deg);
+}
+
+/* Submenu */
+.submenu-wrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s ease-out;
+}
+
+.submenu-wrapper.is-open {
+  grid-template-rows: 1fr;
+}
+
+.submenu {
+  overflow: hidden;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0 1.5rem; /* Alinhado com o ícone do pai */
+  border-left: 1px solid #e5e7eb; /* Linha guia vertical */
+}
+
+.submenu-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem 0.5rem 1rem; /* Ajustado para a linha */
+  text-decoration: none;
+  color: #6b7280;
+  font-size: 0.8125rem;
+  transition: all 0.2s ease;
+  position: relative;
+  margin-left: -1px; /* Para sobrepor a borda no active */
+  border-left: 2px solid transparent; /* Prepara para o estado ativo */
+}
+
+.submenu-link:hover {
+  color: var(--preto);
+}
+
+.submenu-icon {
+  color: #9ca3af;
+  transition: color 0.2s ease;
+}
+
+.submenu-link:hover .submenu-icon,
+.active-child .submenu-icon {
+  color: var(--azul-principal);
+}
+
+.active-child {
+  color: var(--azul-principal);
+  font-weight: 500;
+  background-color: #f9fafb; /* Fundo sutil no ativo */
+  border-left-color: var(--azul-principal); /* Linha ativa colorida */
 }
 
 /* Rodapé */
 .sidebar-footer {
   position: relative;
   margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f3f4f6;
 }
 .user-profile {
   display: flex;
@@ -329,6 +500,8 @@ const utilityNavLinks = [
   .sidebar.is-collapsed .options-icon,
   .sidebar.is-collapsed .clinic-name {
     opacity: 1;
+    width: auto;
+    display: block;
   }
   .sidebar.is-collapsed .sidebar-header {
     justify-content: flex-start;

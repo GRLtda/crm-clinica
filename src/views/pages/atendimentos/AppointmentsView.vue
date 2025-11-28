@@ -13,6 +13,7 @@ import {
   Play,
   X,
   CalendarPlus,
+  Bell,
 } from 'lucide-vue-next'
 import CreateAppointmentModal from '@/components/pages/dashboard/CreateAppointmentModal.vue'
 import AppointmentInfoPopover from '@/components/pages/atendimentos/AppointmentInfoPopover.vue'
@@ -27,6 +28,18 @@ const toast = useToast()
 const isModalOpen = ref(false)
 const activePopover = ref({ appointment: null, event: null })
 const searchQuery = ref('')
+
+function getStatusIcon(status) {
+  switch (status) {
+    case 'Confirmado': return CheckCircle
+    case 'Agendado': return CalendarDays
+    case 'Em Atendimento': return Play
+    case 'Finalizado': return Check
+    case 'Não Compareceu': return X
+    case 'Cancelado': return X
+    default: return Clock
+  }
+}
 
 const filteredAndSortedAppointments = computed(() => {
   if (!appointmentsStore.appointments || appointmentsStore.appointments.length === 0) return []
@@ -161,134 +174,85 @@ onMounted(() => {
         </button>
       </div>
 
-      <div v-else>
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th class="patient-header">
-                  <User :size="14" />
-                  <span>Paciente</span>
-                </th>
-                <th class="status-header">
-                  <CheckCircle :size="14" />
-                  <span>Status</span>
-                </th>
-                <th class="time-header">
-                  <Clock :size="14" />
-                  <span>Horário</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody v-auto-animate>
-              <template v-if="appointmentsStore.isLoading">
-                <tr v-for="n in 5" :key="`skel-desk-${n}`" class="skeleton-row">
-                  <td>
-                    <div class="patient-info">
-                      <div class="skeleton skeleton-avatar"></div>
-                      <div class="skeleton skeleton-text" style="width: 60%"></div>
-                    </div>
-                  </td>
-                  <td>
-                    <div class="status-wrapper">
-                      <div class="skeleton skeleton-badge"></div>
-                    </div>
-                  </td>
-                  <td class="time-cell">
-                    <div
-                      class="skeleton skeleton-text"
-                      style="width: 70%; max-width: 100px; margin: auto"
-                    ></div>
-                  </td>
-                </tr>
-              </template>
-              <template v-else>
-                <tr
-                  v-for="appt in filteredAndSortedAppointments"
-                  :key="appt._id"
-                  class="appointment-row"
-                  @click="openPopover(appt, $event)"
-                >
-                  <td>
-                    <div class="patient-info">
-                      <div class="patient-avatar">{{ appt.patient.name.charAt(0) }}</div>
-                      <span class="patient-name">{{ appt.patient.name }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <div class="status-wrapper">
-                      <span
-                        :class="useStatusBadge(appt.status).badgeClass"
-                        :style="useStatusBadge(appt.status).badgeStyle"
-                      >
-                        {{ useStatusBadge(appt.status).displayText }}
-                      </span>
-                    </div>
-                  </td>
-                  <td class="time-cell">
-                    {{ formatTime(appt.startTime) }} - {{ formatTime(appt.endTime) }}
-                  </td>
-                </tr>
-              </template>
-            </tbody>
-          </table>
+      <div v-else class="appointments-grid-container">
+        <div v-if="appointmentsStore.isLoading" class="grid-layout">
+           <div v-for="n in 6" :key="`skel-card-${n}`" class="skeleton-card"></div>
         </div>
-
-        <div class="appointments-cards">
+        
+        <div v-else class="grid-layout" v-auto-animate>
           <div
             v-for="appt in filteredAndSortedAppointments"
             :key="appt._id"
             class="appointment-card"
+            @click="openPopover(appt, $event)"
           >
-            <div class="card-content">
-              <div class="card-top">
-                <div class="patient-info">
-                  <div class="patient-avatar">{{ appt.patient.name.charAt(0) }}</div>
+            <div class="card-header">
+              <div class="patient-info">
+                <div class="patient-avatar">{{ appt.patient.name.charAt(0) }}</div>
+                <div class="patient-details">
                   <span class="patient-name">{{ appt.patient.name }}</span>
+                  <span class="patient-phone">{{ appt.patient.phone || 'Sem telefone' }}</span>
                 </div>
-                <span
-                  :class="useStatusBadge(appt.status).badgeClass"
-                  :style="useStatusBadge(appt.status).badgeStyle"
-                >
-                  {{ useStatusBadge(appt.status).displayText }}
-                </span>
               </div>
-              <div class="card-bottom">
-                <Clock :size="14" />
-                <span>{{ formatTime(appt.startTime) }} - {{ formatTime(appt.endTime) }}</span>
+              <div class="status-wrapper">
+                 <span
+                    :class="['status-badge-pill', useStatusBadge(appt.status).badgeClass]"
+                    :style="useStatusBadge(appt.status).badgeStyle"
+                  >
+                    <component :is="getStatusIcon(appt.status)" :size="12" />
+                    {{ useStatusBadge(appt.status).displayText }}
+                  </span>
               </div>
             </div>
-            <div
-              class="card-actions"
-              v-if="
-                appt.status === 'Agendado' ||
-                appt.status === 'Confirmado' ||
-                appt.status === 'Não Compareceu'
-              "
-            >
-              <template v-if="appt.status === 'Agendado'">
+
+            <div class="card-body">
+              <div class="tags-row">
+                 <span class="tag-pill" :class="appt.isReturn ? 'tag-return' : 'tag-first'">
+                    {{ appt.isReturn ? 'Retorno' : 'Primeira Consulta' }}
+                 </span>
+                 <span v-if="appt.sendReminder" class="tag-pill tag-reminder" title="Lembretes Ativos">
+                    <Bell :size="12" /> Lembretes
+                 </span>
+              </div>
+
+              <div class="info-row time-row">
+                <div class="time-badge">
+                  <Clock :size="14" />
+                  <span>{{ formatTime(appt.startTime) }} - {{ formatTime(appt.endTime) }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-footer">
+               <template v-if="appt.status === 'Agendado'">
                 <button
                   @click.stop="handleStatusChange(appt, 'Confirmado')"
-                  class="btn-card-action confirm"
+                  class="btn-action confirm"
+                  title="Confirmar Chegada"
                 >
-                  <Check :size="16" /> Confirmar Chegada
+                  <Check :size="16" /> Confirmar
                 </button>
                 <button
                   @click.stop="handleStatusChange(appt, 'Cancelado')"
-                  class="btn-card-icon cancel"
+                  class="btn-icon cancel"
                   title="Cancelar"
                 >
                   <X :size="18" />
                 </button>
               </template>
               <template v-else-if="appt.status === 'Confirmado'">
-                <button @click.stop="goToAppointmentPage(appt)" class="btn-card-action start">
-                  <Play :size="16" /> Iniciar Atendimento
+                <button @click.stop="goToAppointmentPage(appt)" class="btn-action start">
+                  <Play :size="16" /> Iniciar
                 </button>
               </template>
               <template v-else-if="appt.status === 'Não Compareceu'">
-                <button @click.stop="rebookAppointment(appt)" class="btn-card-action rebook">
+                <button @click.stop="rebookAppointment(appt)" class="btn-action rebook">
                   <CalendarPlus :size="16" /> Reagendar
+                </button>
+              </template>
+              <template v-else>
+                 <button @click.stop="goToAppointmentPage(appt)" class="btn-action view">
+                  Ver Detalhes
                 </button>
               </template>
             </div>
@@ -318,18 +282,21 @@ onMounted(() => {
   margin-bottom: 2rem;
 }
 .title {
-  font-size: 2.25rem;
+  font-size: 2rem;
   font-weight: 700;
+  color: #1e293b;
   margin-bottom: 0.25rem;
+  letter-spacing: -0.02em;
 }
 .subtitle {
-  color: var(--cinza-texto);
+  color: #64748b;
+  font-size: 0.95rem;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .search-wrapper {
@@ -341,169 +308,292 @@ onMounted(() => {
   top: 50%;
   left: 1rem;
   transform: translateY(-50%);
-  color: var(--cinza-texto);
+  color: #94a3b8;
   pointer-events: none;
 }
 
 .search-input {
-  width: 280px;
-  height: 44px;
+  width: 320px;
+  height: 48px;
   padding: 0.75rem 1rem 0.75rem 2.75rem;
-  border-radius: 0.75rem;
-  border: 1px solid #d1d5db;
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
   background-color: var(--branco);
-  font-size: 1rem;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .search-input:focus {
   outline: none;
   border-color: var(--azul-principal);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .content-wrapper {
-  background-color: var(--branco);
-  border: 1px solid #e5e7eb;
-  border-radius: 1rem;
-  overflow: hidden;
   min-height: 60vh;
 }
 
-.state-cell {
-  padding: 4rem;
-  text-align: center;
-  color: var(--cinza-texto);
-  font-size: 1rem;
+/* Grid Layout */
+.appointments-grid-container {
+  padding-bottom: 2rem;
 }
 
-.table-container {
-  overflow-x: auto;
+.grid-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1.5rem;
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-}
-
-th,
-td {
-  padding: 1rem 1.5rem;
-  text-align: left;
-  border-bottom: 1px solid #e5e7eb;
-  vertical-align: middle;
-}
-
-tbody tr:last-child td {
-  border-bottom: none;
-}
-
-th {
-  background-color: #f9fafb;
-  color: var(--cinza-texto);
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  white-space: nowrap;
-  display: table-cell;
-  vertical-align: middle;
-}
-
-th > * {
-  vertical-align: middle;
-  margin-right: 0.5rem;
-}
-
-.patient-header {
-  width: 50%;
-}
-.status-header,
-.time-header {
-  width: 25%;
-  text-align: center;
-}
-
-.appointment-row {
+/* Card Styles */
+.appointment-card {
+  background-color: var(--branco);
+  border: 1px solid #f1f5f9;
+  border-radius: 1rem;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: all 0.2s ease;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  position: relative;
+  overflow: hidden;
 }
-.appointment-row:hover {
-  background-color: #f9fafb;
+
+.appointment-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+  border-color: #e2e8f0;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
 }
 
 .patient-info {
   display: flex;
   align-items: center;
   gap: 1rem;
-  min-width: 0;
 }
+
 .patient-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #eef2ff;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #f8fafc;
   color: var(--azul-principal);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
-  font-size: 1.1rem;
+  font-weight: 700;
+  font-size: 1.25rem;
   flex-shrink: 0;
+  border: 1px solid #f1f5f9;
 }
+
+.patient-details {
+  display: flex;
+  flex-direction: column;
+}
+
 .patient-name {
   font-weight: 600;
-  color: #111827;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: #1e293b;
+  font-size: 1rem;
+  line-height: 1.2;
 }
-.time-cell {
-  font-size: 0.875rem;
-  color: var(--cinza-texto);
-  font-weight: 500;
-  text-align: center;
-  white-space: nowrap;
+
+.patient-phone {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin-top: 2px;
 }
 
 .status-wrapper {
-  display: flex;
-  justify-content: center;
-}
-.status-badge {
-  font-weight: 600;
-  padding: 0.25rem 0.75rem;
-  border-radius: 99px;
-  font-size: 0.8rem;
-  width: fit-content;
-  text-transform: capitalize;
+  flex-shrink: 0;
 }
 
+.status-badge-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tags-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.tag-return {
+  background-color: #f0f9ff;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.tag-first {
+  background-color: #fdf4ff;
+  color: #a21caf;
+  border: 1px solid #f0abfc;
+}
+
+.tag-reminder {
+  background-color: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.time-row {
+  display: flex;
+  align-items: center;
+}
+
+.time-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #f8fafc;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  color: #334155;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border: 1px solid #f1f5f9;
+  width: 100%;
+}
+
+.card-footer {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid #f8fafc;
+}
+
+/* Buttons */
 .btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.75rem;
+  padding: 0 1.5rem;
+  border-radius: 1rem;
   border: none;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
-  text-decoration: none;
   transition: all 0.2s ease;
-  white-space: nowrap;
   background-color: var(--azul-principal);
   color: var(--branco);
-  height: 44px; /* Garante a mesma altura da busca */
+  height: 48px;
+  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);
 }
 .btn-primary:hover {
   background-color: var(--azul-escuro);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 8px -1px rgba(59, 130, 246, 0.3);
 }
 
+.btn-action {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid transparent;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-action.confirm {
+  background-color: #f0fdf4;
+  color: #16a34a;
+  border-color: #dcfce7;
+}
+.btn-action.confirm:hover {
+  background-color: #dcfce7;
+}
+
+.btn-action.start {
+  background-color: #eff6ff;
+  color: #3b82f6;
+  border-color: #dbeafe;
+}
+.btn-action.start:hover {
+  background-color: #dbeafe;
+}
+
+.btn-action.rebook {
+  background-color: #fff7ed;
+  color: #f97316;
+  border-color: #ffedd5;
+}
+.btn-action.rebook:hover {
+  background-color: #ffedd5;
+}
+
+.btn-action.view {
+  background-color: #f8fafc;
+  color: #64748b;
+  border-color: #e2e8f0;
+}
+.btn-action.view:hover {
+  background-color: #f1f5f9;
+  color: #475569;
+}
+
+.btn-icon {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: transparent;
+}
+
+.btn-icon.cancel {
+  color: #ef4444;
+  border-color: #fee2e2;
+  background-color: #fef2f2;
+}
+.btn-icon.cancel:hover {
+  background-color: #fee2e2;
+}
+
+/* Empty State */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -511,7 +601,9 @@ th > * {
   justify-content: center;
   text-align: center;
   padding: 4rem 2rem;
-  min-height: 60vh;
+  background-color: var(--branco);
+  border-radius: 1rem;
+  border: 1px dashed #e2e8f0;
 }
 .empty-state-icon {
   display: flex;
@@ -520,199 +612,58 @@ th > * {
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background-color: #f3f4f6;
+  background-color: #f8fafc;
   margin-bottom: 1.5rem;
-}
-.empty-state-icon svg {
-  color: #9ca3af;
+  color: #94a3b8;
 }
 .empty-state-title {
   font-size: 1.25rem;
   font-weight: 600;
+  color: #1e293b;
   margin-bottom: 0.5rem;
 }
 .empty-state-text {
-  color: var(--cinza-texto);
+  color: #64748b;
   max-width: 400px;
   margin-bottom: 1.5rem;
 }
 
-/* 💀 INÍCIO SKELETON 💀 */
-.skeleton {
-  background-color: #e5e7eb; /* Cor cinza clara */
-  border-radius: 0.5rem;
+/* Skeleton */
+.skeleton-card {
+  height: 240px;
+  background-color: #f1f5f9;
+  border-radius: 1rem;
   animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 @keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.6;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
-.skeleton-row,
-.skeleton-card {
-  pointer-events: none;
-}
-
-.skeleton-row:hover td {
-  background-color: var(--branco) !important; /* Previne o hover da linha */
-}
-
-.skeleton-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.skeleton-text {
-  height: 1rem;
-  width: 100%;
-}
-
-.skeleton-text-sm {
-  height: 0.875rem;
-  width: 100%;
-}
-
-.skeleton-badge {
-  height: 24px;
-  width: 70%;
-  max-width: 90px;
-  border-radius: 99px;
-  flex-shrink: 0;
-}
-/* 💀 FIM SKELETON 💀 */
-
-/* 📱 INÍCIO DOS ESTILOS RESPONSIVOS 📱 */
-
-.appointments-cards {
-  display: none;
-}
-
+/* Responsividade */
 @media (max-width: 1024px) {
   .page-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 1.5rem;
   }
-
   .header-actions {
     width: 100%;
+    flex-direction: column;
+    align-items: stretch;
   }
-
   .search-input {
     width: 100%;
-    flex-grow: 1;
+  }
+  .btn-primary {
+    width: 100%;
   }
 }
 
-@media (max-width: 768px) {
-  .title {
-    font-size: 1.75rem;
-  }
-  .table-container {
-    display: none;
-  }
-
-  .content-wrapper {
-    background-color: transparent;
-    border: none;
-    padding: 0;
-  }
-
-  .appointments-cards {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .appointment-card {
-    display: flex;
-    flex-direction: column;
-    background-color: var(--branco);
-    border: 1px solid #e5e7eb;
-    border-radius: 0.75rem;
-    cursor: default;
-    overflow: hidden; /* Garante que os cantos arredondados sejam respeitados */
-  }
-
-  .card-content {
-    padding: 1rem;
-  }
-
-  .card-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 0.75rem;
-  }
-
-  .card-bottom {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-    color: var(--cinza-texto);
-    font-weight: 500;
-  }
-
-  .card-actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
-    background-color: #f9fafb;
-    border-top: 1px solid #e5e7eb;
-  }
-
-  .btn-card-action {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-weight: 600;
-    font-size: 0.875rem;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    border: none;
-    cursor: pointer;
-    flex-grow: 1;
-    justify-content: center;
-  }
-
-  .btn-card-action.confirm {
-    background-color: #f0fdf4;
-    color: #16a34a;
-  }
-
-  .btn-card-action.start,
-  .btn-card-action.rebook {
-    background-color: #eef2ff;
-    color: var(--azul-principal);
-  }
-
-  .btn-card-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: none;
-    border: 1px solid #d1d5db;
-    border-radius: 0.5rem;
-    width: 34px;
-    height: 34px;
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-
-  .btn-card-icon.cancel {
-    color: #ef4444;
-    border-color: #fecaca;
+@media (max-width: 640px) {
+  .grid-layout {
+    grid-template-columns: 1fr;
   }
 }
 </style>
