@@ -1,216 +1,290 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { Menu, X } from 'lucide-vue-next'
 
 const isMobileMenuOpen = ref(false)
+const isScrolled = ref(false)
 
 function toggleMobileMenu() {
   isMobileMenuOpen.value = !isMobileMenuOpen.value
   document.body.style.overflow = isMobileMenuOpen.value ? 'hidden' : ''
 }
+
+function handleScroll() {
+  isScrolled.value = window.scrollY > 20
+}
+
+onMounted(() => {
+  window.addEventListener('scroll', handleScroll)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
+})
 </script>
 
 <template>
-  <header class="app-header">
-    <div class="container">
-      <router-link to="/" class="logo">Agenda Doutor</router-link>
+  <header class="app-header-wrapper" :class="{ 'is-scrolled': isScrolled }">
+    <div class="app-header-pill">
+      <router-link to="/" class="logo">
+        <div class="logo-icon">
+          <div class="logo-dot"></div>
+        </div>
+        Agenda Doutor
+      </router-link>
 
       <nav class="main-nav desktop-only">
-        <router-link to="/">Soluções</router-link>
-        <router-link to="/">Planos</router-link>
-        <router-link to="/">Conteúdos</router-link>
-        <router-link to="/">Sobre</router-link>
+        <router-link to="/" class="nav-link">Soluções</router-link>
+        <router-link to="/" class="nav-link">Planos</router-link>
+        <router-link to="/" class="nav-link">Conteúdos</router-link>
+        <router-link to="/" class="nav-link">Sobre</router-link>
       </nav>
+
       <div class="actions desktop-only">
-        <router-link to="/login" class="btn-cta">Entrar</router-link>
+        <router-link to="/login" class="btn-login">Entrar</router-link>
       </div>
 
       <button @click="toggleMobileMenu" class="mobile-menu-toggle">
-        <Menu :size="28" />
+        <Menu :size="24" />
       </button>
     </div>
 
-    <Transition name="slide-fade">
-      <div v-if="isMobileMenuOpen" class="mobile-nav-overlay">
-        <div class="mobile-nav-header">
-          <router-link to="/" class="logo" @click="toggleMobileMenu">Agenda Doutor</router-link>
-          <button @click="toggleMobileMenu" class="mobile-menu-toggle">
-            <X :size="28" />
-          </button>
+    <Teleport to="body">
+      <Transition name="fade">
+        <div v-if="isMobileMenuOpen" class="mobile-nav-overlay" @click.self="toggleMobileMenu">
+          <div class="mobile-nav-content">
+            <div class="mobile-nav-header">
+              <span class="logo">Agenda Doutor</span>
+              <button @click="toggleMobileMenu" class="close-btn">
+                <X :size="24" />
+              </button>
+            </div>
+            
+            <nav class="mobile-links">
+              <router-link to="/" @click="toggleMobileMenu" class="mobile-link">Soluções</router-link>
+              <router-link to="/" @click="toggleMobileMenu" class="mobile-link">Planos</router-link>
+              <router-link to="/" @click="toggleMobileMenu" class="mobile-link">Conteúdos</router-link>
+              <router-link to="/" @click="toggleMobileMenu" class="mobile-link">Sobre</router-link>
+            </nav>
+
+            <div class="mobile-actions">
+              <router-link to="/login" class="btn-login-mobile" @click="toggleMobileMenu">Entrar</router-link>
+            </div>
+          </div>
         </div>
-        <nav class="mobile-nav-links">
-          <router-link to="/" @click="toggleMobileMenu" style="--delay: 0.1s">Soluções</router-link>
-          <router-link to="/" @click="toggleMobileMenu" style="--delay: 0.2s">Planos</router-link>
-          <router-link to="/" @click="toggleMobileMenu" style="--delay: 0.3s"
-            >Conteúdos</router-link
-          >
-          <router-link to="/" @click="toggleMobileMenu" style="--delay: 0.4s">Sobre</router-link>
-        </nav>
-        <div class="mobile-actions">
-          <router-link to="/login" class="btn-cta" @click="toggleMobileMenu">Entrar</router-link>
-        </div>
-      </div>
-    </Transition>
+      </Transition>
+    </Teleport>
   </header>
 </template>
 
 <style scoped>
-.app-header {
+.app-header-wrapper {
   position: fixed;
   top: 0;
-  z-index: 1000;
   left: 0;
   right: 0;
-  width: 100%;
+  z-index: 1000;
+  padding: 1.5rem 0;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none; /* Permite clicar através do wrapper, mas não da pílula */
+}
+
+.app-header-wrapper.is-scrolled {
   padding: 1rem 0;
-  background-color: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(229, 231, 235, 0.5);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease-in-out;
 }
-.container {
-  max-width: 100%;
+
+.app-header-pill {
+  pointer-events: auto;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 0 5rem;
+  padding: 0.75rem 1.5rem;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 9999px;
   display: flex;
-  justify-content: space-around;
   align-items: center;
+  justify-content: space-between;
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 2px 4px -1px rgba(0, 0, 0, 0.03),
+    0 0 0 1px rgba(0, 0, 0, 0.02);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 90%; /* Fallback para telas menores */
 }
+
+.is-scrolled .app-header-pill {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 
+    0 10px 15px -3px rgba(0, 0, 0, 0.05),
+    0 4px 6px -2px rgba(0, 0, 0, 0.025),
+    0 0 0 1px rgba(0, 0, 0, 0.02);
+}
+
+/* LOGO */
 .logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   font-weight: 700;
-  font-size: 1.5rem;
-  color: var(--preto);
+  font-size: 1.25rem;
+  color: #0f172a;
   text-decoration: none;
+  letter-spacing: -0.02em;
 }
+
+.logo-icon {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+}
+
+.logo-dot {
+  width: 8px;
+  height: 8px;
+  background: white;
+  border-radius: 50%;
+}
+
+/* NAV */
 .main-nav {
   display: flex;
   gap: 2rem;
-  flex-grow: 1;
-  justify-content: center;
+  align-items: center;
 }
-.main-nav a {
-  color: var(--cinza-texto);
+
+.nav-link {
+  color: #64748b;
   font-weight: 500;
-  transition: color 0.3s ease;
+  font-size: 0.95rem;
   text-decoration: none;
+  transition: all 0.2s ease;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
 }
-.main-nav a:hover {
-  color: var(--preto);
+
+.nav-link:hover {
+  color: #0f172a;
+  background-color: rgba(0, 0, 0, 0.03);
 }
+
+/* ACTIONS */
 .actions {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-}
-.btn-login {
-  font-weight: 600;
-  color: var(--preto);
-  text-decoration: none;
-}
-.btn-cta {
-  background-color: var(--preto);
-  color: var(--branco);
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  transition: background-color 0.3s ease;
-  text-decoration: none;
-}
-.btn-cta:hover {
-  background-color: #333;
+  gap: 1rem;
 }
 
-/* Estilos para Mobile */
+.btn-login {
+  color: #0f172a;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  transition: color 0.2s ease;
+}
+
+.btn-login:hover {
+  color: #2563eb;
+}
+
+
+
+/* MOBILE */
 .mobile-menu-toggle {
   display: none;
   background: none;
   border: none;
+  color: #0f172a;
   cursor: pointer;
-  z-index: 1001;
-  color: var(--preto);
+  padding: 0.5rem;
 }
+
 .mobile-nav-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: auto;
+}
+
+.mobile-nav-content {
   width: 100%;
-  height: 100vh;
-  /* ✨ CORREÇÃO AQUI: Fundo branco sólido para garantir a legibilidade */
-  background-color: var(--branco);
-  z-index: 1000;
+  max-width: 320px;
+  background: white;
+  height: 100%;
+  padding: 2rem;
   display: flex;
   flex-direction: column;
-  padding: 1.5rem;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.1);
 }
+
 .mobile-nav-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4rem;
+  margin-bottom: 3rem;
 }
-.mobile-nav-links {
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+.mobile-links {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  align-items: center;
-  flex-grow: 1;
+  gap: 1.5rem;
 }
-.mobile-nav-links a {
-  font-size: 1.75rem;
+
+.mobile-link {
+  font-size: 1.25rem;
   font-weight: 600;
-  color: var(--preto);
+  color: #0f172a;
   text-decoration: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.75rem;
-  transition: all 0.3s ease;
-  width: 100%;
-  text-align: center;
-  opacity: 0;
-  transform: translateY(10px);
-  animation: fadeIn 0.4s ease forwards;
-  animation-delay: var(--delay);
-}
-.mobile-nav-links a:hover {
-  background-color: var(--cinza-claro);
 }
 
 .mobile-actions {
+  margin-top: auto;
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  padding-top: 2rem;
-  border-top: 1px solid #e5e7eb;
-}
-.mobile-actions .btn-login,
-.mobile-actions .btn-cta {
-  width: 100%;
-  text-align: center;
-  padding: 1rem;
-  border-radius: 0.75rem;
 }
 
-/* Transição para o menu mobile */
-.slide-fade-enter-active {
-  transition: opacity 0.3s ease-out;
+.btn-login-mobile {
+  text-align: center;
+  padding: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+  text-decoration: none;
+  background: #f1f5f9;
+  border-radius: 12px;
 }
-.slide-fade-leave-active {
-  transition: opacity 0.3s ease-in;
+
+
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
 }
-.slide-fade-enter-from,
-.slide-fade-leave-to {
+
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
 }
 
-/* Animação para os itens do menu */
-@keyframes fadeIn {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Media Query para ativar o modo mobile */
 @media (max-width: 900px) {
   .desktop-only {
     display: none;
@@ -218,12 +292,8 @@ function toggleMobileMenu() {
   .mobile-menu-toggle {
     display: block;
   }
-  .container {
-    padding: 0 1rem;
-  }
-  .app-header {
-    width: calc(100% - 2rem);
-    padding: 0.75rem 0;
+  .app-header-pill {
+    padding: 0.75rem 1.25rem;
   }
 }
 </style>
