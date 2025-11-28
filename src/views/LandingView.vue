@@ -2,6 +2,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import AppHeader from '@/components/global/AppHeader.vue'
 import { RouterLink } from 'vue-router'
+import { DotLottieVue } from '@lottiefiles/dotlottie-vue'
 // 💡 Importei os ícones necessários
 import {
   Building,
@@ -89,27 +90,66 @@ function resetMainBackground() {
   el.style.setProperty('--bg-y', '40%') // Posição original
   el.style.transition = 'background 0.6s cubic-bezier(0.23, 1, 0.32, 1)' // Transição suave ao sair
 }
-// 💡 --- FIM DO NOVO CÓDIGO --- 💡
 
-// 🔔 Lógica do carrossel removida (onMounted e onBeforeUnmount)
+// 💡 --- DADOS DAS EMPRESAS --- 💡
+const companyLogos = ref([
+  { id: 1, src: 'https://placehold.co/150x50/e5e7eb/1f2937?text=Clínica+Vida', alt: 'Clínica Vida' },
+  { id: 2, src: 'https://placehold.co/150x50/e5e7eb/1f2937?text=Saúde+Mais', alt: 'Saúde Mais' },
+  { id: 3, src: 'https://placehold.co/150x50/e5e7eb/1f2937?text=Odonto+Prime', alt: 'Odonto Prime' },
+  { id: 4, src: 'https://placehold.co/150x50/e5e7eb/1f2937?text=Derma+Care', alt: 'Derma Care' },
+  { id: 5, src: 'https://placehold.co/150x50/e5e7eb/1f2937?text=Cardio+Center', alt: 'Cardio Center' },
+  { id: 6, src: 'https://placehold.co/150x50/e5e7eb/1f2937?text=Orto+Fisio', alt: 'Orto Fisio' },
+  { id: 7, src: 'https://placehold.co/150x50/e5e7eb/1f2937?text=Neuro+Lab', alt: 'Neuro Lab' },
+  { id: 8, src: 'https://placehold.co/150x50/e5e7eb/1f2937?text=Pediatria+Kids', alt: 'Pediatria Kids' },
+])
 </script>
 
 <template>
   <AppHeader class="header-slide-down" />
   <main ref="mainElement" @mousemove="handleMainMouseMove" @mouseleave="resetMainBackground">
     <section class="hero">
-      <div class="container">
-        <h1 class="hero-title animate-slide-up">Sua clínica no piloto automático</h1>
-        <p class="hero-subtitle animate-slide-up">
-          Impulsione o sucesso da sua clínica com uma solução que elimina tarefas manuais e acelera
-          o seu faturamento.
-        </p>
-        <div class="hero-actions animate-slide-up">
-          <router-link to="/app" class="btn-primary"> Entrar <KeyRound :size="20" /> </router-link>
-          <button class="btn-secondary">Agentes Digitais <ChevronRight :size="20" /></button>
+      <div class="container hero-container">
+        <div class="hero-content">
+          <h1 class="hero-title animate-slide-up">Sua clínica no piloto automático</h1>
+          <p class="hero-subtitle animate-slide-up">
+            Impulsione o sucesso da sua clínica com uma solução que elimina tarefas manuais e acelera
+            o seu faturamento.
+          </p>
+          <div class="hero-actions animate-slide-up">
+            <router-link to="/app" class="btn-primary"> Entrar <KeyRound :size="20" /> </router-link>
+            <button class="btn-secondary">Agentes Digitais <ChevronRight :size="20" /></button>
+          </div>
+        </div>
+        <div class="hero-visual animate-slide-up">
+          <!-- Substitua o src pela URL do seu arquivo .lottie -->
+            <DotLottieVue
+            style="height: 500px; width: 500px"
+            autoplay
+            loop
+            src="https://lottie.host/0704fffd-fed1-42f4-8c91-5de870a1a5c6/9RfCFsGq7R.lottie"
+          />
+
         </div>
       </div>
     </section>
+
+    <!-- 🌟 SEÇÃO DE EMPRESAS (CARROSSEL INFINITO) 🌟 -->
+    <section class="trusted-section">
+      <div class="container">
+        <p class="trusted-title">Mais de 500 clínicas confiam no Agenda Doutor</p>
+        <div class="marquee-wrapper">
+          <div class="marquee-content">
+            <!-- Duplicado para efeito infinito -->
+            <div v-for="i in 2" :key="i" class="marquee-group">
+              <div v-for="logo in companyLogos" :key="logo.id" class="company-logo">
+                <img :src="logo.src" :alt="logo.alt" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
 
     <section class="platform-section">
       <div class="platform-container">
@@ -276,6 +316,9 @@ function resetMainBackground() {
 .hero-actions {
   animation-delay: 0.6s;
 }
+.hero-visual {
+  animation-delay: 0.8s;
+}
 
 /* ESTILOS GERAIS */
 main {
@@ -285,8 +328,16 @@ main {
 
   position: relative;
   overflow: hidden;
-  /* 💡 Fundo agora usa as variáveis CSS 💡 */
-  background: radial-gradient(ellipse at var(--bg-x) var(--bg-y), #dbeafe59 0%, var(--branco) 50%);
+  /* 💡 Fundo quadriculado com pontos de luz 💡 */
+  background-color: #ffffff;
+  background-image:
+    /* Pontos de luz (Radial Gradients) */
+    radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 25%),
+    radial-gradient(circle at 85% 30%, rgba(147, 51, 234, 0.08) 0%, transparent 25%),
+    /* Grid (Linear Gradients) */
+    linear-gradient(to right, rgba(229, 231, 235, 0.5) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(229, 231, 235, 0.5) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
   min-height: calc(100vh - 100px);
 }
 .hero,
@@ -296,124 +347,273 @@ main {
   z-index: 2;
 }
 .hero {
-  text-align: center;
-  padding: 10rem 0 6rem 0;
+  padding: 6rem 0;
+  display: flex;
+  align-items: center;
+  min-height: 80vh; /* Garante altura mínima para centralizar verticalmente */
 }
-.container {
-  max-width: 800px;
+.hero-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4rem;
+  max-width: 1280px; /* Aumentei um pouco para telas maiores */
   margin: 0 auto;
-  padding: 0 1rem;
+  padding: 0 2rem;
+  width: 100%;
 }
+.hero-content {
+  flex: 1;
+  text-align: left;
+  max-width: 640px;
+}
+.hero-visual {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+/* Adiciona um brilho sutil atrás do Lottie */
+.hero-visual::before {
+  content: '';
+  position: absolute;
+  width: 80%;
+  height: 80%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+  z-index: -1;
+  border-radius: 50%;
+  filter: blur(40px);
+}
+
 .hero-title {
-  font-size: 3.75rem;
+  font-family: var(--fonte-titulo);
+  font-size: clamp(2.5rem, 5vw, 4.5rem); /* Tipografia responsiva */
   font-weight: 700;
   line-height: 1.1;
   margin-bottom: 1.5rem;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.03em;
+  color: var(--preto);
 }
 .hero-subtitle {
+  font-family: var(--fonte-principal);
   font-size: 1.25rem;
   color: var(--cinza-texto);
-  max-width: 600px;
-  margin: 0 auto 2.5rem auto;
+  margin-bottom: 3rem;
+  line-height: 1.6;
+  max-width: 90%;
 }
 .hero-actions {
   display: flex;
-  justify-content: center;
-  gap: 1rem;
+  gap: 1.5rem; /* Mais espaço entre os botões */
 }
 .hero-actions .btn-primary,
 .hero-actions .btn-secondary {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 1rem 2rem;
-  font-size: 1rem;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1rem 2.5rem; /* Botões mais largos */
+  font-size: 1.125rem;
   font-weight: 600;
-  border-radius: 2rem;
+  border-radius: 9999px; /* Pill shape completo */
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   text-decoration: none;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 .btn-primary {
   background-color: var(--azul-principal);
   color: var(--branco);
+  border: 2px solid transparent;
 }
 .btn-primary:hover {
   background-color: var(--azul-escuro);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
 }
 .btn-secondary {
   background-color: var(--cinza-claro);
   color: var(--preto);
-  border: none;
+  border: 2px solid transparent;
 }
 .btn-secondary:hover {
   background-color: #e5e7eb;
+  transform: translateY(-2px);
 }
 
-/* SEÇÃO PLATAFORMA */
-.platform-section {
-  padding: 6rem 0;
+/* SEÇÃO DE EMPRESAS (CARROSSEL) */
+.trusted-section {
+  padding: 4rem 0;
+  background-color: transparent;
+  border-bottom: 1px solid #f3f4f6;
+  overflow: hidden;
 }
-.platform-container {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 0 1rem;
+.trusted-title {
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--cinza-texto);
+  margin-bottom: 2.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.marquee-wrapper {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+}
+.marquee-content {
+  display: flex;
+  width: max-content;
+  animation: scroll 40s linear infinite;
+}
+.marquee-group {
   display: flex;
   align-items: center;
   gap: 4rem;
+  padding-right: 4rem; /* Espaço para conectar com o próximo grupo */
 }
+.company-logo img {
+  height: 40px;
+  width: auto;
+  opacity: 0.5;
+  transition: opacity 0.3s ease;
+  filter: grayscale(100%);
+}
+.company-logo img:hover {
+  opacity: 1;
+  filter: grayscale(0%);
+}
+
+@keyframes scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* SEÇÃO PLATAFORMA (NOVO DESIGN) */
+.platform-section {
+  padding: 8rem 0;
+  position: relative;
+  /* Fundo sutil para destacar a seção */
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.platform-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 4rem;
+  display: flex;
+  align-items: center;
+  gap: 5rem;
+  /* Efeito de cartão glassmorphism */
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 2rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.05);
+}
+
 .platform-content {
-  flex-basis: 50%;
+  flex: 1;
   text-align: left;
 }
+
 .platform-icon {
-  margin-bottom: 1rem;
-  color: var(--preto);
+  display: inline-flex;
+  padding: 1rem;
+  background-color: #eff6ff;
+  color: var(--azul-principal);
+  border-radius: 1rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1);
 }
+
 .platform-title {
-  font-size: 2.25rem;
+  font-family: var(--fonte-titulo);
+  font-size: 3rem;
   font-weight: 700;
   margin-bottom: 1.5rem;
+  line-height: 1.1;
+  color: var(--preto);
 }
+
 .platform-description {
+  font-family: var(--fonte-principal);
   font-size: 1.125rem;
   color: var(--cinza-texto);
-  line-height: 1.7;
-  margin-bottom: 2rem;
+  line-height: 1.8;
+  margin-bottom: 2.5rem;
 }
+
 .btn-learn-more {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  font-weight: 600;
-  color: var(--azul-principal);
-  transition: gap 0.3s ease;
-}
-.btn-learn-more:hover {
   gap: 0.5rem;
+  font-weight: 600;
+  color: var(--branco);
+  background-color: var(--preto);
+  padding: 1rem 2rem;
+  border-radius: 9999px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
-/* EFEITO 3D NA IMAGEM */
-.platform-image-wrapper {
-  flex-basis: 50%;
-  transform-style: preserve-3d;
+.btn-learn-more:hover {
+  background-color: #333;
+  transform: translateY(-2px);
+  gap: 0.75rem;
 }
+
+/* EFEITO 3D NA IMAGEM (ATUALIZADO) */
+.platform-image-wrapper {
+  flex: 1;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
 .platform-image {
   border-radius: 1rem;
-  box-shadow: 0 20px 40px rgba(80, 80, 120, 0.2);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
   transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
   overflow: hidden;
+  border: 8px solid #ffffff; /* Borda branca grossa estilo moldura */
+  background-color: #fff;
 }
+
 .platform-image img {
   width: 100%;
   display: block;
+  border-radius: 0.5rem;
 }
 
 /* SEÇÃO DE PLANOS */
 .plans-section {
-  padding: 6rem 0;
+  padding: 8rem 0;
+  position: relative;
 }
+
+/* Fundo decorativo para a seção de planos */
+.plans-section::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, rgba(59, 130, 246, 0.05) 0%, transparent 70%);
+  z-index: -1;
+  pointer-events: none;
+}
+
 .container-plans {
   max-width: 1200px;
   margin: 0 auto;
@@ -421,17 +621,21 @@ main {
   text-align: center;
 }
 .section-title {
+  font-family: var(--fonte-titulo);
   font-size: 2.5rem;
   font-weight: 700;
   margin-bottom: 1rem;
+  color: var(--preto);
 }
 .section-subtitle {
+  font-family: var(--fonte-principal);
   font-size: 1.125rem;
   color: var(--cinza-texto);
   margin-bottom: 4rem;
   max-width: 600px;
   margin-left: auto;
   margin-right: auto;
+  line-height: 1.6;
 }
 .plans-grid {
   display: flex;
@@ -439,69 +643,115 @@ main {
   gap: 2rem;
   text-align: left;
 }
+
+/* Card Moderno */
 .plan-card {
-  border: 1px solid #e5e7eb;
-  border-radius: 0.75rem;
-  padding: 2.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 1.5rem; /* Bordas mais arredondadas */
+  padding: 3rem;
   display: flex;
   flex-direction: column;
-  background-color: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
+  background-color: #ffffff;
   width: 100%;
+  max-width: 500px; /* Limite de largura para ficar elegante */
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
+
+.plan-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilo Featured (Dark Premium) */
 .plan-card.featured {
-  background-color: var(--preto);
-  color: var(--branco);
-  border-color: var(--preto);
+  background-color: #0f172a; /* Azul muito escuro/Preto */
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 }
+
+/* Efeito de brilho no topo do card featured */
+.plan-card.featured::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.5), transparent);
+}
+
 .plan-name {
-  font-size: 1.25rem;
+  font-family: var(--fonte-titulo);
+  font-size: 1.5rem;
   font-weight: 600;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  color: inherit;
 }
+
 .plan-price {
-  font-size: 3rem;
+  font-family: var(--fonte-titulo);
+  font-size: 3.5rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
 }
+
 .plan-period {
+  font-family: var(--fonte-principal);
   font-size: 1rem;
   font-weight: 500;
   color: var(--cinza-texto);
+  margin-left: 0.5rem;
 }
 .featured .plan-period {
-  color: #a1a1aa;
+  color: #94a3b8;
 }
+
 .plan-description {
-  margin-bottom: 2rem;
-  min-height: 40px;
+  font-size: 1rem;
+  line-height: 1.6;
+  margin-bottom: 2.5rem;
+  color: var(--cinza-texto);
 }
 .featured .plan-description {
-  color: #d4d4d8;
+  color: #cbd5e1;
 }
+
 .plan-features {
   list-style: none;
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem;
   padding: 0;
   flex-grow: 1;
 }
 .plan-features li {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
   margin-bottom: 1rem;
+  font-size: 1rem;
 }
+
 .benefit svg {
   color: var(--azul-principal);
+  flex-shrink: 0;
 }
+.featured .benefit svg {
+  color: #60a5fa; /* Azul mais claro no escuro */
+}
+
 .limitation svg {
   color: #ef4444;
+  flex-shrink: 0;
 }
 .featured .limitation {
-  color: #a1a1aa;
+  color: #94a3b8;
 }
 .btn-outline {
   width: 100%;
@@ -602,6 +852,15 @@ main {
 @media (max-width: 768px) {
   .hero {
     padding: 8rem 0 5rem 0;
+    text-align: center;
+  }
+  .hero-container {
+    flex-direction: column;
+    gap: 3rem;
+  }
+  .hero-content {
+    text-align: center;
+    max-width: 100%;
   }
   .hero-title {
     font-size: 2.5rem;
@@ -618,6 +877,14 @@ main {
     width: 100%;
     max-width: 300px;
     justify-content: center;
+  }
+  .hero-visual {
+    width: 100%;
+    overflow: hidden;
+  }
+  .hero-visual > * {
+    max-width: 100%;
+    height: auto !important;
   }
 
   .platform-section {
