@@ -207,9 +207,9 @@ onMounted(() => {
 
             <div class="card-body">
               <div class="tags-row">
-                 <span class="tag-pill" :class="appt.isReturn ? 'tag-return' : 'tag-first'">
+                 <!-- <span class="tag-pill" :class="appt.isReturn ? 'tag-return' : 'tag-first'">
                     {{ appt.isReturn ? 'Retorno' : 'Primeira Consulta' }}
-                 </span>
+                 </span> -->
                  <span v-if="appt.sendReminder" class="tag-pill tag-reminder" title="Lembretes Ativos">
                     <Bell :size="12" /> Lembretes
                  </span>
