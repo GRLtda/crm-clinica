@@ -41,6 +41,13 @@ export function useStatusBadge(status) {
         color: '#64748b',
       },
     },
+    'em-atendimento': {
+      class: 'em-atendimento',
+      style: {
+        backgroundColor: '#f3e8ff', // Roxo claro
+        color: '#7e22ce', // Roxo escuro
+      },
+    },
     // V-- Alteração aqui --V
     beta: {
       class: 'beta',

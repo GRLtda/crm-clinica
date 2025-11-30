@@ -5,6 +5,7 @@ const props = defineProps({
   question: { type: Object, required: true },
   modelValue: { type: [String, Number, Boolean, Array, null], default: null },
   qId: { type: String, required: true },
+  disabled: { type: Boolean, default: false },
 })
 const emit = defineEmits(['update:modelValue'])
 
@@ -40,6 +41,7 @@ function handleCheckboxChange(e, option) {
       v-model="localValue"
       class="form-input"
       :id="'q-' + qId"
+      :disabled="disabled"
     />
   </div>
 
@@ -48,6 +50,7 @@ function handleCheckboxChange(e, option) {
     v-model="localValue"
     class="form-textarea"
     :id="'q-' + qId"
+    :disabled="disabled"
   ></textarea>
 
   <div v-if="question.questionType === 'yes_no'" class="choice-group">
@@ -57,6 +60,7 @@ function handleCheckboxChange(e, option) {
         :id="'q-' + qId + '-sim'"
         :value="true"
         v-model="localValue"
+        :disabled="disabled"
       />
       <label :for="'q-' + qId + '-sim'">Sim</label>
     </div>
@@ -66,6 +70,7 @@ function handleCheckboxChange(e, option) {
         :id="'q-' + qId + '-nao'"
         :value="false"
         v-model="localValue"
+        :disabled="disabled"
       />
       <label :for="'q-' + qId + '-nao'">Não</label>
     </div>
@@ -78,6 +83,7 @@ function handleCheckboxChange(e, option) {
         :id="'q-' + qId + '-' + option"
         :value="option"
         v-model="localValue"
+        :disabled="disabled"
       />
       <label :for="'q-' + qId + '-' + option">{{ option }}</label>
     </div>
@@ -91,6 +97,7 @@ function handleCheckboxChange(e, option) {
         :value="option"
         :checked="Array.isArray(modelValue) && modelValue.includes(option)"
         @change="(e) => handleCheckboxChange(e, option)"
+        :disabled="disabled"
       />
       <label :for="'q-' + qId + '-' + option">{{ option }}</label>
     </div>
@@ -117,6 +124,13 @@ function handleCheckboxChange(e, option) {
 }
 .form-textarea {
   min-height: 120px;
+  resize: none;
+}
+.form-input:disabled,
+.form-textarea:disabled {
+  background-color: #f9fafb;
+  color: #6b7280;
+  cursor: default;
 }
 .choice-group {
   display: flex;
@@ -138,9 +152,19 @@ function handleCheckboxChange(e, option) {
   cursor: pointer;
   transition: all 0.2s ease;
 }
-.choice-item label:hover {
+.choice-item label:hover:not(:has(input:disabled)) {
   border-color: #9ca3af;
   background-color: #f9fafb;
+}
+.choice-item input:disabled + label {
+  cursor: default;
+  background-color: #f9fafb;
+  color: #6b7280;
+  border-color: #e5e7eb;
+}
+.choice-item input:disabled + label:hover {
+  background-color: #f9fafb;
+  border-color: #e5e7eb;
 }
 .choice-item label::before {
   content: '';

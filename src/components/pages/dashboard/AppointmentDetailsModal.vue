@@ -1,5 +1,4 @@
 <script setup>
-// ✨ 1. ADICIONAR onUnmounted
 import { computed, ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppointmentsStore } from '@/stores/appointments'
@@ -8,55 +7,54 @@ import {
   X,
   Calendar,
   Clock,
-  User,
   Phone,
-  Trash2,
-  CalendarOff,
-  CalendarPlus,
-  CheckCircle,
-  RefreshCw,
-  CalendarCheck,
-  SquarePen,
-  ChevronDown,
+  Mail,
+  Check,
+  XCircle,
+  MessageSquare,
+  FileText,
+  Activity,
+  ChevronLeft,
+  ChevronRight,
+  MapPin,
+  User,
+  MessageCircle,
+  ExternalLink,
+  Play,
+  Bell,
+  RotateCw,
+  CalendarClock
 } from 'lucide-vue-next'
 import { useStatusBadge } from '@/composables/useStatusBadge.js'
 import { formatPhone } from '@/directives/phone-mask.js'
 
 const props = defineProps({
   event: { type: Object, required: true },
+  hasPrevious: { type: Boolean, default: false },
+  hasNext: { type: Boolean, default: false },
+  currentIndex: { type: Number, default: 0 },
+  totalCount: { type: Number, default: 0 },
 })
 
-const emit = defineEmits(['close', 'edit'])
+const emit = defineEmits(['close', 'edit', 'previous', 'next', 'return', 'reschedule'])
 
 const appointmentsStore = useAppointmentsStore()
 const toast = useToast()
 const router = useRouter()
 
 const patient = computed(() => props.event.originalEvent.patient)
+const appointment = computed(() => props.event.originalEvent)
 
-// ✨ ========= CORREÇÃO AQUI ========= ✨
-// Em vez de passar um 'computed' para o 'useStatusBadge',
-// nós criamos um 'computed' que CHAMA o 'useStatusBadge' com a string.
 const badgeInfo = computed(() => {
-  // Passamos a string reativa para a função helper
   return useStatusBadge(props.event.originalEvent.status)
 })
 
-// Agora, criamos computed refs para cada valor que o template precisa
-const badgeClass = computed(() => badgeInfo.value.badgeClass)
-const badgeStyle = computed(() => badgeInfo.value.badgeStyle)
-const displayText = computed(() => badgeInfo.value.displayText)
-// ✨ ========= FIM DA CORREÇÃO ========= ✨
-
-// ✨ 2. Computed para verificar se é retorno
 const isReturn = computed(() => {
   return props.event.originalEvent?.isReturn === true
 })
 
-// ✨ 3. ADICIONAR CONTROLE DO DROPDOWN
-const isStatusDropdownOpen = ref(false)
 const isConfirmingCancel = ref(false)
-const cancelConfirmTimer = ref(null) // Timer para a confirmação
+const cancelConfirmTimer = ref(null)
 
 function clearCancelTimer() {
   if (cancelConfirmTimer.value) {
@@ -65,33 +63,40 @@ function clearCancelTimer() {
   }
 }
 
-function toggleStatusDropdown() {
-  isStatusDropdownOpen.value = !isStatusDropdownOpen.value
-  if (!isStatusDropdownOpen.value) {
-    resetCancelConfirmation()
+function formatTime(dateString) {
+  try {
+    const date = new Date(dateString)
+    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  } catch (error) {
+    return '--:--'
   }
 }
 
-function closeDropdown() {
-  resetCancelConfirmation()
-  isStatusDropdownOpen.value = false
-}
-
-function formatTime(dateString, formatStr) {
+function formatDate(dateString) {
   try {
     const date = new Date(dateString)
-    const options = { timeZone: 'America/Sao_Paulo' }
-
-    if (formatStr === 'dd/MM/yyyy') {
-      return date.toLocaleDateString('pt-BR', options)
-    }
-
-    options.hour = '2-digit'
-    options.minute = '2-digit'
-    return date.toLocaleTimeString('pt-BR', options)
+    return date.toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      timeZone: 'America/Sao_Paulo'
+    })
   } catch (error) {
-    console.error('Erro ao formatar data:', dateString, error)
     return 'Data inválida'
+  }
+}
+
+function formatTimelineDate(dateString) {
+  try {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  } catch (error) {
+    return ''
   }
 }
 
@@ -104,22 +109,25 @@ function goToPatient() {
   }
 }
 
-// ✨ 4. FUNÇÃO 'updateStatus' MODIFICADA (PARA FECHAR O DROPDOWN)
+function openWhatsApp() {
+  if (patient.value && patient.value.phone) {
+    const phone = patient.value.phone.replace(/\D/g, '')
+    const message = `Olá ${patient.value.name}, tudo bem?`
+    window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank')
+  } else {
+    toast.warning('Paciente sem telefone cadastrado.')
+  }
+}
+
 async function updateStatus(status) {
-  closeDropdown() // Fecha o dropdown e reseta a confirmação
   const appointmentId = props.event.originalEvent._id
   const success = await appointmentsStore.updateAppointmentStatus(appointmentId, status)
   if (success) {
-    toast.success(`Agendamento ${status.toLowerCase()} com sucesso!`)
+    toast.success(`Status atualizado para: ${status}`)
     emit('close')
   } else {
     toast.error('Erro ao atualizar status.')
   }
-}
-
-function resetCancelConfirmation() {
-  clearCancelTimer()
-  isConfirmingCancel.value = false
 }
 
 function handleCancelClick() {
@@ -128,583 +136,810 @@ function handleCancelClick() {
     updateStatus('Cancelado')
   } else {
     isConfirmingCancel.value = true
-    // Inicia o timer de 5 segundos para reverter
     cancelConfirmTimer.value = setTimeout(() => {
-      resetCancelConfirmation()
+      isConfirmingCancel.value = false
     }, 5000)
   }
 }
 
-function handleReschedule() {
-  // console.log('DEBUG (DetailsModal): Emitindo @edit (reagendar) com:', props.event.originalEvent)
-  emit('edit', { ...props.event.originalEvent, _mode: 'reschedule' })
-  emit('close')
+function handleStartService() {
+  updateStatus('Em Atendimento')
 }
 
-function handleRebook() {
-  // console.log('DEBUG (DetailsModal): Emitindo @edit (remarcar) com:', props.event.originalEvent)
-  emit('edit', { ...props.event.originalEvent, _mode: 'rebook' })
-  emit('close')
+function handleFinishService() {
+  updateStatus('Realizado')
 }
 
-// Garante que o timer seja limpo se o componente for destruído
+function handleApprove() {
+  updateStatus('Confirmado')
+}
+
 onUnmounted(() => {
   clearCancelTimer()
 })
 </script>
 
 <template>
-  <div class="modal-overlay" @click.self="$emit('close')">
-    <div class="modal-content">
-      <header class="modal-header">
-        <div>
-          <h2>Resumo do Agendamento</h2>
-          <p>Detalhes do atendimento agendado.</p>
+  <div class="drawer-overlay" @click.self="$emit('close')">
+    <!-- Botão de fechar fora do drawer -->
+    <button @click="$emit('close')" class="close-btn-outside">
+      <X :size="24" />
+    </button>
+
+    <div class="drawer-content">
+      <!-- Header -->
+      <header class="drawer-header">
+        <div class="header-left">
+          <h2>Detalhes do Agendamento</h2>
+          <span class="appointment-id">ID #{{ appointment._id.slice(-6).toUpperCase() }}</span>
         </div>
-        <button @click="$emit('close')" class="btn-icon">
-          <X :size="24" />
-        </button>
+        <div class="header-right">
+           <!-- Paginação visual -->
+          <div class="pagination-controls">
+            <span class="page-info">{{ currentIndex + 1 }} de {{ totalCount }}</span>
+            <div class="nav-buttons">
+              <button 
+                class="nav-btn" 
+                :disabled="!hasPrevious" 
+                @click="$emit('previous')"
+                title="Anterior"
+              >
+                <ChevronLeft :size="16" />
+              </button>
+              <button 
+                class="nav-btn" 
+                :disabled="!hasNext" 
+                @click="$emit('next')"
+                title="Próximo"
+              >
+                <ChevronRight :size="16" />
+              </button>
+            </div>
+          </div>
+        </div>
       </header>
 
-      <div class="modal-body">
-        <div class="patient-summary">
-          <div class="patient-avatar">{{ patient.name.charAt(0) }}</div>
-          <div class="patient-details">
-            <div class="name-with-status">
-              <h3 class="patient-name" @click="goToPatient">{{ patient.name }}</h3>
-              <span :class="badgeClass" :style="badgeStyle">{{ displayText }}</span>
+      <div class="drawer-body">
+        <!-- Personal Detail -->
+        <section class="section">
+          <h3 class="section-title">Dados do Paciente</h3>
+          <div class="patient-card">
+            <div class="patient-avatar">
+              <img v-if="patient.photoUrl" :src="patient.photoUrl" alt="Patient" />
+              <span v-else>{{ patient.name.charAt(0) }}</span>
             </div>
-            <div class="patient-contact">
-              <Phone :size="14" />
-              <span>{{ formatPhone(patient.phone) }}</span>
+            <div class="patient-info">
+              <h4 @click="goToPatient" class="patient-name">{{ patient.name }}</h4>
+              <div class="contact-row">
+                 <div class="contact-item">
+                    <Phone :size="14" />
+                    <span>{{ formatPhone(patient.phone) }}</span>
+                 </div>
+                 <div class="contact-item" v-if="patient.email">
+                    <Mail :size="14" />
+                    <span>{{ patient.email }}</span>
+                 </div>
+              </div>
+            </div>
+            <div class="patient-actions">
+               <button @click="openWhatsApp" class="action-btn whatsapp" title="WhatsApp">
+                  <MessageCircle :size="18" />
+               </button>
+               <button @click="goToPatient" class="action-btn profile" title="Ver Perfil">
+                  <ExternalLink :size="18" />
+               </button>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div class="appointment-details">
-          <div class="detail-item">
-            <Calendar :size="16" />
-            <span>{{
-              new Date(event.start).toLocaleDateString('pt-BR', {
-                timeZone: 'America/Sao_Paulo',
-              })
-            }}</span>
-          </div>
-          <div class="detail-item">
-            <Clock :size="16" />
-            <span>{{ formatTime(event.start) }} - {{ formatTime(event.end) }}</span>
-          </div>
-          <div v-if="isReturn" class="info-chip return-chip">
-            <RefreshCw :size="16" />
-            <span>Este é um agendamento de retorno.</span>
-          </div>
-        </div>
+        <!-- Reason -->
+        <section class="section">
+           <div class="reason-box">
+              <h4 class="reason-title">Motivo / Queixa</h4>
+              <p class="reason-text">
+                {{ appointment.notes || 'Nenhuma observação registrada para este agendamento.' }}
+              </p>
+           </div>
+        </section>
+
+        <!-- Booking Information -->
+        <section class="section">
+           <h3 class="section-title">Informações do Agendamento</h3>
+           <div class="booking-info-card">
+              <div class="booking-row">
+                 <div class="booking-item">
+                    <span class="label">Data</span>
+                    <div class="value">
+                       <Calendar :size="16" />
+                       <span>{{ formatDate(event.start) }}</span>
+                    </div>
+                 </div>
+                 <div class="booking-item">
+                    <span class="label">Tipo</span>
+                    <div class="value">
+                       <MessageSquare :size="16" />
+                       <span>{{ isReturn ? 'Retorno' : 'Consulta' }}</span>
+                    </div>
+                 </div>
+              </div>
+              <div class="booking-row mt-4">
+                 <div class="booking-item full-width">
+                    <span class="label">Status Atual</span>
+                    <div :class="['status-pill', badgeInfo.badgeClass]" :style="badgeInfo.badgeStyle">
+                       {{ badgeInfo.displayText }}
+                    </div>
+                 </div>
+              </div>
+           </div>
+        </section>
+
+        <!-- Ações Rápidas -->
+        <section class="section">
+           <div class="actions-grid">
+              <button @click="$emit('return')" class="action-card-btn">
+                 <div class="icon-box">
+                    <RotateCw :size="20" />
+                 </div>
+                 <div class="action-text">
+                    <span class="action-label">Retorno</span>
+                    <span class="action-desc">Agendar nova consulta</span>
+                 </div>
+              </button>
+              <button @click="$emit('reschedule')" class="action-card-btn">
+                 <div class="icon-box">
+                    <CalendarClock :size="20" />
+                 </div>
+                 <div class="action-text">
+                    <span class="action-label">Reagendar</span>
+                    <span class="action-desc">Alterar horário atual</span>
+                 </div>
+              </button>
+           </div>
+        </section>
+
+        <!-- Timeline (History) -->
+        <section class="section" v-if="appointment.timeline && appointment.timeline.length > 0">
+           <h3 class="section-title">Histórico</h3>
+           <div class="timeline-history">
+              <div 
+                v-for="(item, index) in appointment.timeline" 
+                :key="index" 
+                class="history-item"
+              >
+                 <div class="history-marker">
+                    <!-- Ícone específico para lembrete enviado -->
+                    <Bell v-if="item.action === 'REMINDER_SENT'" :size="12" class="marker-icon" />
+                    <!-- Check para itens passados (exceto o último) -->
+                    <Check v-else-if="index < appointment.timeline.length - 1" :size="12" class="marker-icon" />
+                    <!-- Ponto para o último item (atual) -->
+                    <div v-else class="marker-dot"></div>
+                 </div>
+                 
+                 <div class="history-content">
+                    <div class="history-header">
+                       <span class="history-date">{{ formatTimelineDate(item.timestamp) }}</span>
+                       <span class="history-user" v-if="item.user">por {{ item.user.name }}</span>
+                       <span class="history-user" v-else>Sistema</span>
+                    </div>
+                    <p class="history-description">{{ item.description }}</p>
+                 </div>
+              </div>
+           </div>
+        </section>
       </div>
 
-      <footer class="modal-footer">
-        <div class="reschedule-actions">
-          <button
-            @click="handleReschedule"
-            class="btn-secondary"
-            :disabled="event.originalEvent.status === 'Cancelado'"
-          >
-            <RefreshCw :size="16" />
-            Retorno
-          </button>
-          <button
-            @click="handleRebook"
-            class="btn-secondary"
-            :disabled="event.originalEvent.status === 'Cancelado'"
-          >
+      <!-- Footer -->
+      <footer class="drawer-footer">
+         <button
+            v-if="appointment.status !== 'Cancelado' && appointment.status !== 'Realizado'"
+            @click="handleCancelClick"
+            :class="['btn-decline', { 'confirming': isConfirmingCancel }]"
+         >
+            <XCircle :size="18" />
+            {{ isConfirmingCancel ? 'Confirmar?' : 'Cancelar' }}
+         </button>
+         
+         <!-- Se não confirmado, mostra Confirmar -->
+         <button
+            v-if="appointment.status !== 'Confirmado' && appointment.status !== 'Cancelado' && appointment.status !== 'Realizado' && appointment.status !== 'Em Atendimento'"
+            @click="handleApprove"
+            class="btn-approve"
+         >
+            <Check :size="18" />
+            Confirmar
+         </button>
 
-            <CalendarPlus :size="16" />
-            Reagendar
-          </button>
-        </div>
+         <!-- Se Confirmado, mostra Iniciar Atendimento -->
+         <button
+            v-if="appointment.status === 'Confirmado'"
+            @click="handleStartService"
+            class="btn-approve"
+         >
+            <Play :size="18" />
+            Iniciar Atendimento
+         </button>
 
-        <div class="status-actions">
-          <div
-            v-if="event.originalEvent.status !== 'Cancelado'"
-            class="dropdown-wrapper"
-            v-click-outside="closeDropdown"
-          >
-            <button @click="toggleStatusDropdown" class="btn-secondary btn-dropdown-toggle">
-              <SquarePen :size="16" />
-              <span>Alterar Status</span>
-              <ChevronDown :size="16" :class="{ 'rotate-180': isStatusDropdownOpen }" />
-            </button>
-
-            <div v-if="isStatusDropdownOpen" class="dropdown-menu">
-              <button
-                v-if="event.originalEvent.status !== 'Confirmado'"
-                @click="updateStatus('Confirmado')"
-                class="dropdown-item success"
-              >
-                <CheckCircle :size="16" />
-                <span>Confirmar Chegada</span>
-              </button>
-              <button @click="updateStatus('Não Compareceu')" class="dropdown-item outline-danger">
-                <CalendarOff :size="16" />
-                <span>Não Compareceu</span>
-              </button>
-              <button
-                @click="handleCancelClick"
-                :class="[
-                  'dropdown-item',
-                  isConfirmingCancel ? 'danger-confirm is-confirming' : 'danger',
-                ]"
-              >
-                <Trash2 :size="16" />
-                <span>{{ isConfirmingCancel ? 'Confirmar Cancelamento' : 'Cancelar' }}</span>
-              </button>
-            </div>
-          </div>
-        </div>
+         <!-- Se Em Atendimento, mostra Finalizar -->
+         <button
+            v-if="appointment.status === 'Em Atendimento'"
+            @click="handleFinishService"
+            class="btn-approve"
+         >
+            <Check :size="18" />
+            Finalizar Atendimento
+         </button>
       </footer>
     </div>
   </div>
 </template>
 
 <style scoped>
-.modal-overlay {
+.drawer-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(249, 250, 251, 0.7);
-  backdrop-filter: blur(10px);
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(2px);
   z-index: 1000;
-  padding: 1rem;
-}
-
-.modal-content {
-  background: var(--branco);
-  width: 100%;
-  max-width: 900px;
-  height: auto;
-  min-height: 300px;
-  border-radius: 1rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
   display: flex;
-  flex-direction: column;
-  animation: modal-fade-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  justify-content: flex-end;
 }
 
-@keyframes modal-fade-in {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.info-chip {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  margin-top: 1rem;
-  margin-bottom: 1rem;
-}
-
-.return-chip {
-  background-color: #eef2ff;
-  color: #3730a3;
-  border: 1px solid #c7d2fe;
-}
-
-.modal-header {
-  padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-.modal-header h2 {
-  font-size: 1.25rem;
-  margin-bottom: 0.25rem;
-}
-.modal-header p {
-  color: var(--cinza-texto);
-  margin: 0;
-}
-.btn-icon {
-  background: none;
+.close-btn-outside {
+  position: absolute;
+  top: 1rem;
+  right: 496px; /* 480px (width) + 16px (gap) */
+  background: #fff;
   border: none;
+  color: #6b7280;
   cursor: pointer;
   padding: 0.5rem;
   border-radius: 50%;
-  color: var(--cinza-texto);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+  z-index: 1010;
 }
-.btn-icon:hover {
-  background-color: #f3f4f6;
+.close-btn-outside:hover {
+  color: #111827;
+  transform: scale(1.1);
 }
 
-.modal-body {
-  padding: 2.5rem;
+.drawer-content {
+  width: 100%;
+  max-width: 480px;
+  height: 100%;
+  background: #fff;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  animation: slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  z-index: 1005;
+}
+
+@keyframes slide-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+/* Header */
+.drawer-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #f3f4f6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.header-left h2 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.appointment-id {
+  font-size: 0.75rem;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.page-info {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.nav-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.nav-btn {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  padding: 0.25rem;
+  color: #6b7280;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  transition: all 0.2s;
+}
+.nav-btn:hover:not(:disabled) {
+  border-color: #d1d5db;
+  color: #374151;
+  background: #f9fafb;
+}
+.nav-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f3f4f6;
+}
+
+/* Body */
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 2rem;
-  flex-grow: 1;
 }
 
-.patient-summary {
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 1rem;
+}
+
+/* Patient Card */
+.patient-card {
   display: flex;
-  align-items: center;
   gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  position: relative;
 }
 
 .patient-avatar {
-  width: 64px;
-  height: 64px;
-  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background-color: #eef2ff;
-  color: var(--azul-principal);
+  background: #e0e7ff;
+  color: #4f46e5;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
   font-weight: 600;
-}
-
-.name-with-status {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.25rem;
-}
-
-.patient-details .patient-name {
   font-size: 1.25rem;
+  overflow: hidden;
+}
+.patient-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.patient-info {
+  flex: 1;
+  min-width: 0; /* Permite que o texto trunque dentro do flex */
+}
+
+.patient-name {
+  font-size: 1rem;
   font-weight: 600;
-  margin-bottom: 0;
+  color: #111827;
+  margin: 0 0 0.25rem 0;
   cursor: pointer;
-  transition: color 0.2s;
-}
-
-.patient-details .patient-name:hover {
-  color: var(--azul-principal);
-}
-
-.status-badge {
-  font-weight: 600;
-  padding: 0.25rem 0.75rem;
-  border-radius: 99px;
-  font-size: 0.8rem;
-  text-transform: capitalize;
   white-space: nowrap;
-  height: fit-content;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.patient-name:hover {
+  color: #4f46e5;
 }
 
-.patient-contact {
+.contact-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.contact-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  color: var(--cinza-texto);
-  font-size: 0.875rem;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  color: #6b7280;
 }
 
-.appointment-details {
+.patient-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.action-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #6b7280;
+}
+.action-btn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  color: #374151;
+}
+.action-btn.whatsapp:hover {
+  background: #dcfce7;
+  color: #16a34a;
+  border-color: #bbf7d0;
+}
+.action-btn.profile:hover {
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
+}
+
+/* Reason Box */
+.reason-box {
+  background: #f9fafb;
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+
+.reason-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin: 0 0 0.5rem 0;
+}
+
+.reason-text {
+  font-size: 0.875rem;
+  color: #374151;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Grid Sections */
+.grid-2-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.info-block {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  padding-left: 1rem;
-  border-left: 2px solid #e5e7eb;
+  gap: 0.5rem;
 }
 
-.detail-item {
+.block-header {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  color: #374151;
+  gap: 0.5rem;
+  color: #6b7280;
+}
+.block-header h4 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.block-content {
+  font-size: 0.875rem;
+  color: #111827;
   font-weight: 500;
+  margin: 0;
 }
 
-.detail-item svg {
-  color: var(--cinza-texto);
-}
-
-.modal-footer {
-  padding: 1rem 1.5rem;
-  border-top: 1px solid #e5e7eb;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  background-color: #f9fafb;
-  flex-shrink: 0;
-}
-
-.status-actions {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.btn-secondary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: var(--branco);
-  border: 1px solid #d1d5db;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
-  cursor: pointer;
+.badge-return {
+  display: inline-block;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 0.75rem;
   font-weight: 600;
-  transition: background-color 0.2s;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  width: fit-content;
 }
 
-.btn-secondary:hover {
-  background-color: #f9fafb;
-}
-
-.btn-secondary:disabled {
-  background-color: #f9fafb;
-  cursor: not-allowed;
-}
-
-.btn-danger {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: #fee2e2;
-  color: #ef4444;
-  border: 1px solid #fecaca;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  font-weight: 600;
-  transition: background-color 0.2s;
-}
-
-.btn-danger:hover {
-  background: #fecaca;
-}
-
-.btn-outline-danger {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: var(--branco);
-  color: #ef4444;
-  border: 1px solid #ef4444;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  font-weight: 600;
-  transition: background-color 0.2s;
-}
-.btn-outline-danger:hover {
-  background-color: #fef2f2;
-}
-
-.btn-success {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: #dcfce7;
-  color: #166534;
-  border: 1px solid #bbf7d0;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  font-weight: 600;
-  transition: background-color 0.2s;
-}
-.btn-success:hover {
-  background: #bbf7d0;
-}
-
-/* ===== ESTILOS DO NOVO DROPDOWN DE STATUS ===== */
-.dropdown-wrapper {
-  position: relative;
-}
-
-.btn-dropdown-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  min-width: 180px; /* Largura mínima para o botão no desktop */
-}
-
-.btn-dropdown-toggle svg {
-  transition: transform 0.2s ease;
-}
-.btn-dropdown-toggle .rotate-180 {
-  transform: rotate(180deg);
-}
-
-.dropdown-menu {
-  position: absolute;
-  bottom: 100%; /* Aparece acima do botão */
-  right: 0;
-  width: 240px; /* Largura do menu */
-  background: var(--branco);
+/* Booking Info */
+.booking-info-card {
   border: 1px solid #e5e7eb;
-  border-radius: 0.75rem; /* Borda mais arredondada para popups */
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.07);
-  z-index: 1010; /* Acima do overlay do modal */
-  margin-bottom: 0.5rem;
-  padding: 0.5rem;
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.booking-row {
+  display: flex;
+  gap: 1.5rem;
+}
+.booking-row.mt-4 {
+  margin-top: 1rem;
+}
+
+.booking-item {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  animation: modal-fade-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.booking-item.full-width {
+  width: 100%;
 }
 
-.dropdown-item {
+.booking-item .label {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.booking-item .value {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  padding: 0.75rem 1rem;
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  font-weight: 500;
+  gap: 0.5rem;
   font-size: 0.875rem;
-  border-radius: 0.5rem;
-  transition: background-color 0.15s ease;
+  font-weight: 500;
+  color: #111827;
 }
 
-.dropdown-item:hover {
-  background-color: #f3f4f6; /* Cor de hover suave */
+.status-pill {
+  display: inline-flex;
+  padding: 0.25rem 0.75rem;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  width: fit-content;
 }
 
-/* Cores dos ícones e texto */
-.dropdown-item.success {
-  color: #166534; /* Verde do btn-success */
-}
-.dropdown-item.outline-danger {
-  color: #ef4444; /* Vermelho do btn-outline-danger */
-}
-.dropdown-item.danger {
-  color: #ef4444; /* Vermelho do btn-danger */
-}
-
-.dropdown-item.danger-confirm {
-  color: var(--branco);
-  background-color: #dc2626;
-}
-
-/* ✨ ESTILOS PARA A ANIMAÇÃO DE CONFIRMAÇÃO ✨ */
-.dropdown-item.is-confirming {
+/* Timeline History Styles */
+.timeline-history {
+  display: flex;
+  flex-direction: column;
   position: relative;
-  overflow: hidden;
+  padding-left: 0.5rem;
 }
 
-.dropdown-item.is-confirming::before {
+.history-item {
+  display: flex;
+  gap: 1rem;
+  position: relative;
+  padding-bottom: 1.5rem;
+}
+
+.history-item:last-child {
+  padding-bottom: 0;
+}
+
+/* Linha conectora */
+.history-item:not(:last-child)::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 100%;
-  background-color: rgba(255, 255, 255, 0.2);
-  animation: fill-in 5s linear forwards;
+  top: 24px;
+  left: 11px; /* Centralizado com o marker (24px width / 2 - 1px) */
+  bottom: 0;
+  width: 2px;
+  background-color: #e5e7eb; /* Cor clara e suave */
   z-index: 0;
 }
 
-@keyframes fill-in {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-
-.reschedule-actions {
+.history-marker {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
   display: flex;
-  gap: 0.75rem;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  flex-shrink: 0;
+  background-color: #10b981; /* Verde esmeralda vibrante */
+  color: #fff;
+  /* border: 2px solid #fff; Borda branca para separar da linha */
+  box-shadow: 0 0 0 1px #e5e7eb; /* Anel sutil externo */
 }
 
-/* ===== INÍCIO DAS MELHORIAS PARA MOBILE ===== */
+/* Estilo para o último item (ponto atual) */
+.history-item:last-child .history-marker {
+  background-color: #fff;
+  border: 2px solid #f59e0b; /* Amarelo/Laranja moderno */
+  box-shadow: 0 0 0 4px #fef3c7; /* Anel de foco suave */
+  padding: 0;
+}
 
-@media (max-width: 768px) {
-  .modal-overlay {
-    padding: 0;
-    background: var(--branco);
-    backdrop-filter: none;
-    align-items: stretch;
-  }
+.marker-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #f59e0b;
+  border-radius: 50%;
+}
 
-  .modal-content {
-    width: 100%;
-    height: 100%;
-    max-width: 100%;
-    min-height: auto;
-    border-radius: 0;
-    box-shadow: none;
-    border: none;
-  }
+.marker-icon {
+  stroke-width: 3px;
+}
 
-  .modal-body {
-    flex-grow: 1;
-    padding: 1.5rem;
-    gap: 1.5rem;
-  }
+.history-content {
+  flex: 1;
+  padding-top: 0.125rem;
+}
 
-  .name-with-status {
-    flex-wrap: wrap;
-    gap: 0.5rem 0.75rem;
-  }
+.history-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  flex-wrap: wrap;
+}
 
-  .modal-footer {
-    flex-direction: column;
-    gap: 0.75rem;
-    background-color: var(--branco);
-    padding: 1.5rem;
-    border-top: 1px solid #e5e7eb;
-  }
+.history-date {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #9ca3af;
+}
 
-  .reschedule-actions {
-    display: flex;
-    gap: 0.75rem;
-  }
+.history-user {
+  font-size: 0.75rem;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+}
 
-  .status-actions {
-    display: flex;
-    gap: 0.75rem;
-  }
+.history-description {
+  font-size: 0.875rem;
+  color: #374151;
+  margin: 0;
+  line-height: 1.4;
+}
 
-  .modal-footer .btn-secondary,
-  .modal-footer .btn-danger,
-  .modal-footer .btn-outline-danger,
-  .modal-footer .btn-success {
-    width: 100%;
-    justify-content: center;
-    padding: 1rem;
-  }
+/* Footer */
+.drawer-footer {
+  padding: 1.5rem;
+  border-top: 1px solid #f3f4f6;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  background: #fff;
+}
 
-  /* ✨ ADICIONAR ESTAS REGRAS NO FINAL DO BLOCO MEDIA QUERY */
-  .dropdown-wrapper {
-    width: 100%;
-  }
+.btn-approve {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  background: #4f46e5;
+  color: #fff;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-approve:hover {
+  background: #4338ca;
+}
 
-  .btn-dropdown-toggle {
-    width: 100%;
-    justify-content: center; /* Centraliza no mobile, como os outros botões */
-    padding: 1rem;
-  }
+.btn-decline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #374151;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
 
-  .dropdown-menu {
-    width: 100%; /* Menu ocupa a largura total no mobile */
-    right: auto;
-    left: 0;
-  }
+.btn-decline:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+.btn-decline.confirming {
+  background: #fee2e2;
+  color: #ef4444;
+  border-color: #fecaca;
+}
+
+/* Action Buttons */
+.actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.action-card-btn {
+  display: flex;
+  align-items: center;
+  text-align: left;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #374151;
+}
+
+.action-card-btn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.action-card-btn .icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+}
+
+.action-card-btn:hover .icon-box {
+  color: #4f46e5;
+  background: #e0e7ff;
+}
+
+.action-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.action-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.action-desc {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.125rem;
 }
 </style>

@@ -511,9 +511,9 @@ async function handleSubmit() {
           <h2>
             {{
               isRebookMode
-                ? 'Agendar Retorno'
+                ? 'Reagendar Horário'
                 : isRescheduleMode
-                  ? 'Reagendar Horário'
+                  ? 'Agendar Retorno'
                   : 'Novo Agendamento'
             }}
           </h2>

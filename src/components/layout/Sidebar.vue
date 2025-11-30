@@ -74,10 +74,6 @@ const mainNavLinks = [
   },
 ]
 
-const utilityNavLinks = [
-  { icon: LifeBuoy, text: 'Ajuda', to: '/app/ajuda' },
-  { icon: Settings, text: 'Configurações', to: '/app/configuracoes' },
-]
 </script>
 
 <template>
@@ -146,7 +142,8 @@ const utilityNavLinks = [
             :to="link.to"
             class="nav-link"
             :title="isCollapsed ? link.text : ''"
-            active-class="active-link"
+            :active-class="link.to === '/app' ? '' : 'active-link'"
+            :exact-active-class="link.to === '/app' ? 'active-link' : ''"
           >
             <component :is="link.icon" :size="20" stroke-width="2" />
             <span v-show="!isCollapsed" class="nav-text">{{ link.text }}</span>
@@ -154,14 +151,6 @@ const utilityNavLinks = [
         </li>
       </ul>
 
-      <ul class="nav-links utility-links">
-        <li v-for="link in utilityNavLinks" :key="link.text">
-          <RouterLink :to="link.to" class="nav-link" :title="isCollapsed ? link.text : ''" active-class="active-link">
-            <component :is="link.icon" :size="20" stroke-width="2" />
-            <span v-show="!isCollapsed" class="nav-text">{{ link.text }}</span>
-          </RouterLink>
-        </li>
-      </ul>
     </nav>
 
     <div class="sidebar-footer">
@@ -305,6 +294,7 @@ const utilityNavLinks = [
   overflow: hidden;
   cursor: pointer;
   user-select: none;
+  border: 1px solid transparent;
 }
 
 .sidebar.is-collapsed .nav-link {

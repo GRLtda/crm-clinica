@@ -6,11 +6,13 @@ import Sidebar from '@/components/layout/Sidebar.vue'
 import TopBar from '@/components/layout/TopBar.vue' // ✨ 1. Importar a TopBar
 import CreateAppointmentModal from '@/components/pages/dashboard/CreateAppointmentModal.vue' // ✨ 2. Importar o Modal
 
+import { useLayoutStore } from '@/stores/layout'
+
 const route = useRoute()
 const authStore = useAuthStore()
+const layoutStore = useLayoutStore()
 const isMobileSidebarOpen = ref(false)
 const isAppointmentModalOpen = ref(false) // ✨ 3. Estado para o modal global
-const isSidebarCollapsed = ref(false) // Estado para controlar sidebar colapsada
 
 function removeManifest() {
   const manifestLink = document.querySelector('link[rel="manifest"]')
@@ -77,17 +79,17 @@ onUnmounted(() => {
     <div class="unified-container">
       <Sidebar
         class="sidebar-component"
-        :class="{ 'is-mobile-open': isMobileSidebarOpen, 'is-collapsed': isSidebarCollapsed }"
-        :is-collapsed="isSidebarCollapsed"
+        :class="{ 'is-mobile-open': isMobileSidebarOpen, 'is-collapsed': layoutStore.isSidebarCollapsed }"
+        :is-collapsed="layoutStore.isSidebarCollapsed"
         @close="isMobileSidebarOpen = false"
-        @toggle-collapse="isSidebarCollapsed = !isSidebarCollapsed"
+        @toggle-collapse="layoutStore.toggleSidebar()"
       />
 
       <div class="main-panel">
         <TopBar
-          :is-sidebar-collapsed="isSidebarCollapsed"
+          :is-sidebar-collapsed="layoutStore.isSidebarCollapsed"
           @toggle-sidebar="isMobileSidebarOpen = true"
-          @toggle-collapse="isSidebarCollapsed = !isSidebarCollapsed"
+          @toggle-collapse="layoutStore.toggleSidebar()"
           @open-schedule-modal="isAppointmentModalOpen = true"
         />
 
@@ -115,7 +117,6 @@ onUnmounted(() => {
   display: flex;
   background-color: var(--branco);
   height: 100dvh;
-  overflow: hidden;
 }
 
 /* Container unificado para sidebar e top bar */

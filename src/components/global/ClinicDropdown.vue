@@ -14,20 +14,14 @@ function navigateTo(path, query = {}) {
     <ul>
       <li>
         <button @click="navigateTo('/app/configuracoes')" class="dropdown-item">
-          <Info :size="16" />
-          <span>Detalhes da Clínica</span>
-        </button>
-      </li>
-      <li>
-        <button @click="navigateTo('/app/configuracoes')" class="dropdown-item">
           <Settings :size="16" />
           <span>Configurações</span>
         </button>
       </li>
       <li>
-        <button @click="navigateTo('/app/configuracoes', { tab: 'funcionarios' })" class="dropdown-item">
-          <UserPlus :size="16" />
-          <span>Convidar Membro</span>
+        <button @click="navigateTo('/app/ajuda')" class="dropdown-item">
+          <Info :size="16" />
+          <span>Ajuda</span>
         </button>
       </li>
     </ul>
@@ -37,7 +31,7 @@ function navigateTo(path, query = {}) {
 <style scoped>
 .dropdown-menu {
   position: absolute;
-  top: 100%; /* Posiciona abaixo do botão */
+  top: 100%;
   right: 0;
   margin-top: 0.5rem;
   background-color: var(--branco);

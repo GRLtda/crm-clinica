@@ -343,6 +343,42 @@ const allCalendarEvents = computed(() => {
   return [...formattedEvents.value, ...closedTimeEvents.value]
 })
 
+// --- ✨ LÓGICA DE NAVEGAÇÃO ENTRE AGENDAMENTOS ✨ ---
+const sortedCalendarEvents = computed(() => {
+  if (!formattedEvents.value) return []
+  return [...formattedEvents.value].sort((a, b) => {
+    if (a.start < b.start) return -1
+    if (a.start > b.start) return 1
+    return 0
+  })
+})
+
+const currentAppointmentIndex = computed(() => {
+  if (!selectedEventForDetails.value || !sortedCalendarEvents.value.length) return -1
+  
+  const currentId = selectedEventForDetails.value.originalEvent?._id
+  if (!currentId) return -1
+  
+  return sortedCalendarEvents.value.findIndex(e => e.originalEvent._id === currentId)
+})
+
+const totalAppointmentsCount = computed(() => sortedCalendarEvents.value.length)
+
+const hasPreviousAppointment = computed(() => currentAppointmentIndex.value > 0)
+const hasNextAppointment = computed(() => currentAppointmentIndex.value !== -1 && currentAppointmentIndex.value < totalAppointmentsCount.value - 1)
+
+function handlePreviousAppointment() {
+  if (hasPreviousAppointment.value) {
+    selectedEventForDetails.value = sortedCalendarEvents.value[currentAppointmentIndex.value - 1]
+  }
+}
+
+function handleNextAppointment() {
+  if (hasNextAppointment.value) {
+    selectedEventForDetails.value = sortedCalendarEvents.value[currentAppointmentIndex.value + 1]
+  }
+}
+
 function formatTime(dateString) {
   if (!dateString) return ''
   return new Date(dateString).toLocaleTimeString('pt-BR', {
@@ -365,38 +401,25 @@ function handleCellClick(date) {
   isModalOpen.value = true
 }
 
-function handleEventClick(event) {
+function handleEventClick(event, e) {
+  // Prevent propagation if needed, though vue-cal usually handles this
+  if (e && e.stopPropagation) e.stopPropagation()
+
   if (event.class && event.class.includes('clinic-closed-event')) {
     return
   }
+  
+  console.log('DEBUG: Event clicked', event)
   selectedEventForDetails.value = event
-  isDetailsModalOpen.value = true
+  
+  // Ensure modal opens after state update
+  nextTick(() => {
+    isDetailsModalOpen.value = true
+  })
 }
 
-function handleModalClose() {
-  isModalOpen.value = false
-  fetchDataForView()
-}
+// Removed redundant onEventClick function as it was identical/unused
 
-function handleDetailsModalClose() {
-  isDetailsModalOpen.value = false
-  fetchDataForView()
-}
-
-function openModal(date) {
-  // Limpa dados antigos e define a data (se houver)
-  initialAppointmentData.value = date ? { startTime: date } : null
-  isModalOpen.value = true
-}
-
-function onEventClick(event) {
-  if (event.class && event.class.includes('clinic-closed-event')) {
-    return
-  }
-  console.log('DEBUG (inicio.vue): onEventClick. Evento selecionado:', event)
-  selectedEventForDetails.value = event
-  isDetailsModalOpen.value = true
-}
 
 function closeModal() {
   isModalOpen.value = false
@@ -427,43 +450,47 @@ function handleReschedule(appointmentToReschedule) {
     return
   }
 
-  // 1. Define os dados iniciais para o modo "Reagendar"
+  // 1. Define os dados iniciais para o modo "Reagendar" (Update)
   const patientData = appointmentToReschedule.patient
-
-  // ✨ DEBUG 4: Ver o paciente
-  // console.log('DEBUG (inicio.vue): Paciente extraído:', patientData)
-
   const patientId = typeof patientData === 'object' ? patientData._id : patientData
 
-  // ✨ DEBUG 5: Ver o ID do paciente
-  // console.log('DEBUG (inicio.vue): ID do Paciente:', patientId)
-
   if (!patientId) {
-    console.error('DEBUG (inicio.vue): Erro! Não foi possível extrair o ID do paciente.')
     toast.error('Não foi possível identificar o paciente para o reagendamento.')
-    closeDetailsModal() // Apenas fecha o modal de detalhes
+    closeDetailsModal()
     return
   }
 
   initialAppointmentData.value = {
     patient: patientId,
-    // (Opcional) Se a store precisar saber qual agendamento antigo cancelar:
-    // oldAppointmentId: appointmentToReschedule._id
+    _id: appointmentToReschedule._id, // ID do agendamento para update
+    _mode: 'rebook', // Modo de atualização
+    startTime: appointmentToReschedule.startTime,
+    endTime: appointmentToReschedule.endTime,
+    date: appointmentToReschedule.startTime // Data atual para referência
   }
 
-  // ✨ DEBUG 6: Ver os dados que serão enviados para o modal de criação
-  // console.log(
-  //   'DEBUG (inicio.vue): Dados definidos para o CreateAppointmentModal:',
-  //   initialAppointmentData.value,
-  // )
-
-  // 2. Fecha o modal de detalhes
   isDetailsModalOpen.value = false
-
-  // 3. Abre o modal de criação (em modo reagendamento)
   nextTick(() => {
-    // ✨ DEBUG 7: Confirmando abertura do modal
-    // console.log('DEBUG (inicio.vue): Abrindo o CreateAppointmentModal.')
+    isModalOpen.value = true
+  })
+}
+
+function handleReturn(appointment) {
+  const patientData = appointment.originalEvent.patient
+  const patientId = typeof patientData === 'object' ? patientData._id : patientData
+
+  if (!patientId) {
+    toast.error('Não foi possível identificar o paciente.')
+    return
+  }
+
+  initialAppointmentData.value = {
+    patient: patientId,
+    _mode: 'reschedule', // Modo de retorno (cria novo com isReturn: true)
+  }
+
+  isDetailsModalOpen.value = false
+  nextTick(() => {
     isModalOpen.value = true
   })
 }
@@ -479,8 +506,16 @@ function handleReschedule(appointmentToReschedule) {
     <AppointmentDetailsModal
       v-if="isDetailsModalOpen"
       :event="selectedEventForDetails"
+      :has-previous="hasPreviousAppointment"
+      :has-next="hasNextAppointment"
+      :current-index="currentAppointmentIndex"
+      :total-count="totalAppointmentsCount"
       @close="isDetailsModalOpen = false"
       @edit="handleEditAction"
+      @previous="handlePreviousAppointment"
+      @next="handleNextAppointment"
+      @return="handleReturn(selectedEventForDetails)"
+      @reschedule="handleReschedule(selectedEventForDetails.originalEvent)"
     />
 
     <div class="calendar-container" :class="{ 'is-loading': appointmentsStore.isLoading }">

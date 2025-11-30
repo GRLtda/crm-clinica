@@ -4,6 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAppointmentsStore } from '@/stores/appointments'
 import { useRecordsStore } from '@/stores/records'
 import { usePatientsStore } from '@/stores/patients'
+import { useAnamnesisStore } from '@/stores/anamnesis'
+import { useLayoutStore } from '@/stores/layout'
 import { useEditor, EditorContent} from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
@@ -13,6 +15,7 @@ import EditorToolbar from '@/components/shared/EditorToolbar.vue'
 import StyledSelect from '@/components/global/StyledSelect.vue'
 import RecordAttachments from '@/components/pages/appointments/RecordAttachments.vue'
 import SaveStatusIndicator from '@/components/shared/SaveStatusIndicator.vue'
+import AnamnesisAnswersModal from '@/components/pages/dashboard/AnamnesisAnswersModal.vue'
 
 import {
   User,
@@ -29,7 +32,15 @@ import {
   Pill,
   LoaderCircle,
   Menu,
-  X
+  X,
+  Phone,
+  Mail,
+  MessageCircle,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
+  CheckCircle2,
+  Pencil
 } from 'lucide-vue-next'
 import { useToast } from 'vue-toastification'
 
@@ -38,6 +49,8 @@ const router = useRouter()
 const appointmentsStore = useAppointmentsStore()
 const recordsStore = useRecordsStore()
 const patientsStore = usePatientsStore()
+const anamnesisStore = useAnamnesisStore()
+const layoutStore = useLayoutStore()
 const toast = useToast()
 
 let debounceTimeout = null
@@ -55,10 +68,35 @@ const isLoadingData = ref(true)
 const isMobile = ref(false)
 const isKeyboardOpen = ref(false)
 const mobileToolbarStyle = ref({})
+const isSidebarOpen = ref(false) 
 
 const currentRecord = computed(() => recordsStore.currentRecord)
 const saveStatus = ref('idle')
 const lastSaved = ref(null)
+
+// ✨ State for "See More" functionality
+const showAllPending = ref(false)
+const showAllAnswered = ref(false)
+
+// ✨ State for Anamnesis Modal
+const selectedAnamnesis = ref(null)
+const showAnamnesisModal = ref(false)
+const isEditingAnamnesis = ref(false) // ✨ New state
+const anamnesisTab = ref('pending') // 'pending' | 'answered'
+
+function openAnamnesisModal(anamnesis, editMode = false) {
+  selectedAnamnesis.value = anamnesis
+  isEditingAnamnesis.value = editMode
+  showAnamnesisModal.value = true
+}
+
+function handleAnamnesisSaved(updatedData) {
+  isEditingAnamnesis.value = false
+  // Atualiza o objeto selecionado com os novos dados (ex: status, updatedAt)
+  if (selectedAnamnesis.value) {
+    selectedAnamnesis.value = { ...selectedAnamnesis.value, ...updatedData }
+  }
+}
 
 // Cronômetro
 const elapsedTimeInSeconds = ref(0)
@@ -232,6 +270,14 @@ onMounted(async () => {
     window.visualViewport.addEventListener('scroll', handleViewportChange)
   }
   handleViewportChange() // Verificação inicial
+
+  // ✨ Collapse Sidebar on Mount
+  layoutStore.setSidebarCollapsed(true)
+
+  // ✨ Fetch Anamneses
+  if (patientId) {
+    await anamnesisStore.fetchAnamnesisForPatient(patientId)
+  }
 })
 
 onBeforeUnmount(() => {
@@ -306,6 +352,7 @@ async function saveAndFinish() {
 
 const menuItems = [
   { id: 'record', label: 'Registro do Atendimento', icon: FileText },
+  { id: 'patient-info', label: 'Informações do Paciente', icon: User },
   { id: 'exams', label: 'Exames', icon: Stethoscope },
   { id: 'prescriptions', label: 'Prescrições', icon: Calendar },
   { id: 'documents', label: 'Documentos', icon: Paperclip },
@@ -451,6 +498,151 @@ const menuItems = [
           </div>
         </div>
 
+        <div v-else-if="activeTab === 'patient-info'" class="tab-content tab-content-fixed">
+          <div class="patient-info-layout">
+            <!-- Left Column: General Info -->
+            <div class="info-column">
+              <h3 class="column-title">Dados do Paciente</h3>
+              
+              <!-- Patient Card -->
+              <div class="patient-profile-card">
+                <div class="profile-header">
+                  <div class="profile-avatar">
+                    {{ patient?.name?.charAt(0) || 'P' }}
+                  </div>
+                  <div class="profile-info">
+                    <h2 class="profile-name">{{ patient?.name || 'Nome do Paciente' }}</h2>
+                    <div class="profile-contact">
+                      <div class="contact-item" v-if="patient?.phone">
+                        <Phone :size="14" />
+                        <span>{{ patient.phone }}</span>
+                      </div>
+                      <div class="contact-item" v-if="patient?.email">
+                        <Mail :size="14" />
+                        <span>{{ patient.email }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="profile-actions">
+                    <button class="action-btn-circle" title="Enviar Mensagem">
+                      <MessageCircle :size="18" />
+                    </button>
+                    <button class="action-btn-circle" title="Ver Perfil">
+                      <ExternalLink :size="18" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Details Card -->
+              <div class="info-card mt-4">
+                <div class="info-grid">
+                  <div class="info-item">
+                    <span class="label">CPF</span>
+                    <span class="value">{{ patient?.cpf || 'N/A' }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">DATA DE NASCIMENTO</span>
+                    <span class="value">{{ patient?.birthDate ? new Date(patient.birthDate).toLocaleDateString('pt-BR') : 'N/A' }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">IDADE</span>
+                    <span class="value">{{ patientAge }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">CONVÊNIO</span>
+                    <span class="value">{{ patient?.healthInsurance || 'N/A' }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column: Anamneses (Scrollable) -->
+            <div class="anamnesis-column">
+              <h3 class="column-title">Anamneses</h3>
+              
+              <div class="anamnesis-scroll-area info-card">
+                <!-- Tabs Header -->
+                <div class="anamnesis-tabs">
+                  <button 
+                    class="tab-btn" 
+                    :class="{ active: anamnesisTab === 'pending' }"
+                    @click="anamnesisTab = 'pending'"
+                  >
+                    <Clock :size="18" />
+                    Pendentes
+                    <span class="count-badge" v-if="anamnesisStore.pendingAnamneses.length">
+                      {{ anamnesisStore.pendingAnamneses.length }}
+                    </span>
+                  </button>
+                  <button 
+                    class="tab-btn" 
+                    :class="{ active: anamnesisTab === 'answered' }"
+                    @click="anamnesisTab = 'answered'"
+                  >
+                    <CheckCircle2 :size="18" />
+                    Realizadas
+                    <span class="count-badge" v-if="anamnesisStore.answeredAnamneses.length">
+                      {{ anamnesisStore.answeredAnamneses.length }}
+                    </span>
+                  </button>
+                </div>
+
+                <!-- Pending Tab -->
+                <div v-if="anamnesisTab === 'pending'" class="anamnesis-group">
+                  <div v-if="anamnesisStore.pendingAnamneses.length === 0" class="empty-list">
+                    Nenhuma anamnese pendente.
+                  </div>
+                  <div v-else class="list-wrapper">
+                    <ul class="anamnesis-list">
+                      <li 
+                        v-for="anamnesis in anamnesisStore.pendingAnamneses" 
+                        :key="anamnesis._id" 
+                        class="anamnesis-item pending"
+                      >
+                        <div class="anamnesis-info">
+                          <span class="anamnesis-name">{{ anamnesis.template?.name || 'Anamnese Sem Título' }}</span>
+                          <span class="anamnesis-date">Enviada em: {{ new Date(anamnesis.createdAt).toLocaleDateString('pt-BR') }}</span>
+                        </div>
+                        <div class="anamnesis-actions">
+                            <span class="status-badge pending">Pendente</span>
+                            <button class="btn-edit-small" @click="openAnamnesisModal(anamnesis, true)" title="Responder">
+                                <Pencil :size="14" />
+                            </button>
+                        </div>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                <!-- Answered Tab -->
+                <div v-if="anamnesisTab === 'answered'" class="anamnesis-group">
+                  <div v-if="anamnesisStore.answeredAnamneses.length === 0" class="empty-list">
+                    Nenhuma anamnese realizada.
+                  </div>
+                  <div v-else class="list-wrapper">
+                    <ul class="anamnesis-list">
+                      <li 
+                        v-for="anamnesis in anamnesisStore.answeredAnamneses" 
+                        :key="anamnesis._id" 
+                        class="anamnesis-item completed"
+                      >
+                        <div class="anamnesis-info">
+                          <span class="anamnesis-name">{{ anamnesis.template?.name || 'Anamnese Sem Título' }}</span>
+                          <span class="anamnesis-date">Respondida em: {{ new Date(anamnesis.updatedAt).toLocaleDateString('pt-BR') }}</span>
+                        </div>
+                        <button class="btn-view-anamnesis" @click="openAnamnesisModal(anamnesis)">
+                          Ver Respostas
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div v-else-if="activeTab === 'exams'" class="tab-content tab-content-padded">
           <div class="empty-state-container">
             <div class="empty-state">
@@ -507,10 +699,505 @@ const menuItems = [
         </div>
       </main>
     </div>
+
+    <AnamnesisAnswersModal
+      v-if="selectedAnamnesis"
+      :anamnesis="selectedAnamnesis"
+      :is-open="showAnamnesisModal"
+      :is-editing="isEditingAnamnesis"
+      @close="showAnamnesisModal = false"
+      @saved="handleAnamnesisSaved"
+    />
   </div>
 </template>
 
 <style scoped>
+.tab-content-fixed {
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.patient-info-layout {
+  display: flex;
+  gap: 2rem;
+  padding: 2rem;
+  height: 100%;
+  overflow: hidden;
+  background-color: #f8f9fa;
+}
+
+.column-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 1rem;
+}
+
+.info-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Prevent unwanted scrollbar */
+  gap: 1rem;
+}
+
+.anamnesis-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Patient Profile Card */
+.patient-profile-card {
+  background-color: var(--branco);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.profile-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background-color: #e0e7ff;
+  color: var(--azul-principal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+.profile-info {
+  flex-grow: 1;
+}
+
+.profile-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.profile-contact {
+  display: flex;
+  gap: 1.5rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.profile-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.action-btn-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid #e5e7eb;
+  background-color: white;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-btn-circle:hover {
+  background-color: #f9fafb;
+  color: var(--azul-principal);
+  border-color: var(--azul-principal);
+}
+
+/* Info Card */
+.info-card {
+  background-color: var(--branco);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.anamnesis-scroll-area.info-card {
+  padding: 0;
+  border: 1px solid #e5e7eb;
+  overflow: hidden; /* Container overflow hidden */
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* Force full height */
+}
+
+.mt-4 {
+  margin-top: 1rem;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.info-item .label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.info-item .value {
+  font-size: 0.95rem;
+  color: #111827;
+  font-weight: 500;
+}
+
+/* Anamnesis Scroll Area */
+.anamnesis-scroll-area {
+  flex-grow: 1;
+  /* overflow-y: auto; Removed, moved to .anamnesis-group */
+}
+
+/* Custom Scrollbar */
+.anamnesis-scroll-area::-webkit-scrollbar {
+  width: 6px;
+}
+.anamnesis-scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+.anamnesis-scroll-area::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+.anamnesis-scroll-area::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+.anamnesis-group {
+  padding: 1.5rem;
+  overflow-y: auto; /* Scroll happens here */
+  flex-grow: 1; /* Take remaining space */
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.anamnesis-tabs {
+  display: flex;
+  gap: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0 1.5rem; /* Add padding to match card content */
+  padding-top: 1rem;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  padding: 0.75rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.tab-btn:hover {
+  color: #374151;
+}
+
+.tab-btn.active {
+  color: var(--azul-principal);
+  font-weight: 600;
+}
+
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; /* Overlap border */
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: var(--azul-principal);
+  border-radius: 2px 2px 0 0;
+}
+
+.count-badge {
+  background-color: #f3f4f6;
+  color: #4b5563;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 99px;
+  font-weight: 600;
+}
+
+.tab-btn.active .count-badge {
+  background-color: #eff6ff;
+  color: var(--azul-principal);
+}
+
+.group-header {
+  display: none; /* Hide old headers */
+}
+
+.group-subtitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0;
+}
+
+.list-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.see-more-container {
+  display: flex;
+  justify-content: center;
+  padding-top: 0.5rem;
+  position: relative;
+}
+
+/* Gradient effect for the button container */
+.see-more-container::before {
+  content: '';
+  position: absolute;
+  top: -20px;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: linear-gradient(to bottom, rgba(248, 249, 250, 0), rgba(248, 249, 250, 1));
+  pointer-events: none;
+}
+
+.btn-see-more-bottom {
+  background: none;
+  border: none;
+  color: var(--azul-principal);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 1rem;
+  transition: all 0.2s ease;
+  z-index: 1; /* Ensure button is above gradient */
+}
+
+.btn-see-more-bottom:hover {
+  opacity: 0.8;
+}
+
+.empty-list {
+  color: #9ca3af;
+  font-style: italic;
+  font-size: 0.9rem;
+  padding: 1rem;
+  background-color: #f9fafb;
+  border-radius: 0.75rem;
+  text-align: center;
+}
+
+.anamnesis-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.anamnesis-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  background-color: var(--branco);
+  transition: all 0.2s ease;
+}
+
+.anamnesis-item:hover {
+  border-color: var(--azul-principal);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.anamnesis-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.anamnesis-name {
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.95rem;
+}
+
+.anamnesis-date {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-badge.pending {
+  background-color: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #ffedd5;
+}
+
+.btn-view-anamnesis {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+  background-color: white;
+  color: var(--azul-principal);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-view-anamnesis:hover {
+  background-color: var(--azul-principal);
+  color: white;
+  border-color: var(--azul-principal);
+}
+
+.anamnesis-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.btn-edit-small {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid #e5e7eb;
+  background-color: white;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-edit-small:hover {
+  background-color: #f9fafb;
+  color: var(--azul-principal);
+  border-color: var(--azul-principal);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .in-progress-appointment-layout {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .content-area {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .tab-content-fixed {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .patient-info-layout {
+    flex-direction: column;
+    padding: 1rem;
+    gap: 1rem;
+    overflow: visible !important; /* Let it grow */
+    height: auto !important; /* Let it grow */
+  }
+  .info-column {
+    overflow: visible !important;
+    flex: 0 0 auto;
+  }
+  .anamnesis-column {
+    height: auto;
+    overflow: visible;
+    flex: 0 0 auto;
+  }
+  .anamnesis-scroll-area.info-card {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .anamnesis-group {
+    overflow: visible !important;
+    height: auto !important;
+  }
+  .anamnesis-tabs {
+    display: flex;
+    width: 100%;
+    padding: 0;
+    padding-top: 1rem;
+    overflow-x: visible;
+    white-space: normal;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .anamnesis-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .tab-btn {
+    flex: 1;
+    justify-content: center;
+    padding: 0.75rem 0.25rem;
+    text-align: center;
+    font-size: 0.9rem;
+  }
+  .profile-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+  .profile-contact {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .loading-container {
   display: flex;
   flex-direction: column;
@@ -536,7 +1223,7 @@ const menuItems = [
 .in-progress-appointment-layout {
   display: flex;
   flex-direction: column;
-  height: 93vh;
+  height: calc(100vh - 5rem); /* Adjusted to fit viewport better */
   background-color: #f8f9fa;
   border-radius: 1vh;
   overflow: hidden;

@@ -11,7 +11,7 @@ import {
   Building,
   CornerDownRight,
 } from 'lucide-vue-next'
-import AnamnesisQuestionInputs from '../public/AnamnesisQuestionInputs.vue'
+import AnamnesisQuestionsRenderer from '../public/AnamnesisQuestionsRenderer.vue'
 
 const route = useRoute()
 const anamnesisStore = useAnamnesisStore()
@@ -284,72 +284,11 @@ async function handleSubmit() {
           </header>
 
           <form @submit.prevent="handleSubmit">
-            <div
-              v-for="(question, index) in responseData.template.questions"
-              :key="question.qId"
-              class="question-block"
-              :class="{ 'has-error': validationErrors[question.qId] }"
-            >
-              <label class="question-title"
-                ><span>{{ index + 1 }}.</span> {{ question.title }}</label
-              >
-
-              <AnamnesisQuestionInputs
-                v-if="answers[question.qId]"
-                :question="question"
-                :qId="question.qId"
-                v-model="answers[question.qId].answer"
-              />
-              <span v-if="validationErrors[question.qId]" class="error-text"
-                >Este campo é obrigatório.</span
-              >
-
-              <div
-                v-for="group in question.conditionalQuestions"
-                :key="group.showWhenAnswerIs"
-                class="conditional-group"
-              >
-                <Transition name="slide-fade">
-                  <div
-                    class="sub-question-wrapper"
-                    v-if="
-                      answers[question.qId] &&
-                      String(answers[question.qId].answer) ===
-                        group.showWhenAnswerIs
-                    "
-                  >
-                    <div
-                      v-for="(subQuestion, subIndex) in group.questions"
-                      :key="subQuestion.qId"
-                      class="question-block sub-question"
-                      :class="{ 'has-error': validationErrors[subQuestion.qId] }"
-                    >
-                      <label class="question-title">
-                        <CornerDownRight :size="18" class="sub-q-icon" />
-                        <span class="sub-q-number"
-                          >{{ index + 1 }}.{{
-                            getSubQuestionLetter(subIndex)
-                          }}</span
-                        >
-                        {{ subQuestion.title }}
-                      </label>
-
-                      <AnamnesisQuestionInputs
-                        v-if="answers[subQuestion.qId]"
-                        :question="subQuestion"
-                        :qId="subQuestion.qId"
-                        v-model="answers[subQuestion.qId].answer"
-                      />
-                      <span
-                        v-if="validationErrors[subQuestion.qId]"
-                        class="error-text"
-                        >Este campo é obrigatório.</span
-                      >
-                    </div>
-                  </div>
-                </Transition>
-              </div>
-            </div>
+            <AnamnesisQuestionsRenderer
+              :questions="responseData.template.questions"
+              :answers="answers"
+              :validationErrors="validationErrors"
+            />
             <button type="submit" class="submit-button">Enviar Respostas</button>
             <p class="lpgd">Ao clicar em 'Enviar Respostas', declaro, sob minha responsabilidade, que todas as informações prestadas neste formulário são verdadeiras e completas, e autorizo seu uso exclusivamente para fins de atendimento clínico, conforme a Lei nº 13.709/2018 (LGPD).</p>
           </form>
