@@ -196,6 +196,11 @@ onUnmounted(() => {
               </button>
             </div>
           </div>
+
+          <!-- Botão de fechar mobile -->
+          <button @click="$emit('close')" class="close-btn-mobile">
+            <X :size="24" />
+          </button>
         </div>
       </header>
 
@@ -409,9 +414,49 @@ onUnmounted(() => {
   transform: scale(1.1);
 }
 
+.close-btn-mobile {
+  display: none; /* Escondido por padrão no desktop */
+  background: transparent;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.5rem;
+  margin-right: -0.5rem; /* Ajuste fino de alinhamento */
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+@media (max-width: 640px) {
+  .close-btn-outside {
+    display: none;
+  }
+  
+  .close-btn-mobile {
+    display: flex;
+  }
+
+  .header-right {
+    gap: 0.5rem;
+  }
+
+  .pagination-controls {
+    gap: 0.5rem;
+  }
+
+  .page-info {
+    font-size: 0.75rem;
+  }
+  
+  .nav-btn {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+  }
+}
+
 .drawer-content {
-  width: 100%;
-  max-width: 480px;
   height: 100%;
   background: #fff;
   box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
