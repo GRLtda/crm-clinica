@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { ref } from 'vue'
+import { useLayoutStore } from '@/stores/layout'
 
 export const isGlobalOffline = ref(false)
 
@@ -13,7 +14,7 @@ const apiClient = axios.create({
 apiClient.interceptors.response.use(
   (response) => {
     if (isGlobalOffline.value) {
-        isGlobalOffline.value = false
+      isGlobalOffline.value = false
     }
     return response
   },
@@ -23,6 +24,11 @@ apiClient.interceptors.response.use(
       isGlobalOffline.value = true
     } else {
       isGlobalOffline.value = false
+    }
+
+    if (error.response && error.response.data && error.response.data.code === 'SUBSCRIPTION_REQUIRED') {
+      const layoutStore = useLayoutStore()
+      layoutStore.openSubscriptionModal()
     }
 
     return Promise.reject(error)

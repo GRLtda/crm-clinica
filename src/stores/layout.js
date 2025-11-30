@@ -3,6 +3,7 @@ import { ref } from 'vue'
 
 export const useLayoutStore = defineStore('layout', () => {
     const isSidebarCollapsed = ref(false)
+    const isSubscriptionModalOpen = ref(false)
 
     function toggleSidebar() {
         isSidebarCollapsed.value = !isSidebarCollapsed.value
@@ -12,9 +13,20 @@ export const useLayoutStore = defineStore('layout', () => {
         isSidebarCollapsed.value = value
     }
 
+    function openSubscriptionModal() {
+        isSubscriptionModalOpen.value = true
+    }
+
+    function closeSubscriptionModal() {
+        isSubscriptionModalOpen.value = false
+    }
+
     return {
         isSidebarCollapsed,
+        isSubscriptionModalOpen,
         toggleSidebar,
         setSidebarCollapsed,
+        openSubscriptionModal,
+        closeSubscriptionModal,
     }
 })

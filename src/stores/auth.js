@@ -7,6 +7,7 @@ import {
   forgotPassword as apiForgotPassword,
   resetPassword as apiResetPassword,
 } from '@/api/auth'
+import { createCheckoutSession } from '@/api/subscriptions/subscriptions.service'
 import apiClient from '@/api/index'
 import { useClinicStore } from './clinic'
 
@@ -157,6 +158,25 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /**
+   * Inicia o processo de assinatura via Stripe.
+   */
+  async function subscribe() {
+    try {
+      const response = await createCheckoutSession()
+      const { url } = response.data
+      if (url) {
+        window.location.href = url
+        return { success: true }
+      } else {
+        return { success: false, error: 'URL de checkout não retornada.' }
+      }
+    } catch (error) {
+      console.error('Erro ao iniciar assinatura:', error)
+      return { success: false, error }
+    }
+  }
+
   return {
     user,
     token,
@@ -169,5 +189,6 @@ export const useAuthStore = defineStore('auth', () => {
     fetchUser,
     requestPasswordReset,
     performPasswordReset,
+    subscribe,
   }
 })

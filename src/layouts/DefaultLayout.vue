@@ -5,12 +5,17 @@ import { useAuthStore } from '@/stores/auth'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import TopBar from '@/components/layout/TopBar.vue' // ✨ 1. Importar a TopBar
 import CreateAppointmentModal from '@/components/pages/dashboard/CreateAppointmentModal.vue' // ✨ 2. Importar o Modal
+import SubscriptionModal from '@/components/global/SubscriptionModal.vue'
 
 import { useLayoutStore } from '@/stores/layout'
+import { useToast } from 'vue-toastification'
+import { useRouter } from 'vue-router'
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const layoutStore = useLayoutStore()
+const toast = useToast()
 const isMobileSidebarOpen = ref(false)
 const isAppointmentModalOpen = ref(false) // ✨ 3. Estado para o modal global
 
@@ -69,6 +74,21 @@ watch(
   { immediate: true },
 )
 
+watch(
+  () => route.query,
+  (query) => {
+    if (query.success === 'true') {
+      toast.success('Assinatura realizada com sucesso!')
+      // Remove os parâmetros da URL
+      router.replace({ query: { ...query, success: undefined } })
+    } else if (query.canceled === 'true') {
+      toast.info('Assinatura cancelada ou não finalizada.')
+      router.replace({ query: { ...query, canceled: undefined } })
+    }
+  },
+  { immediate: true }
+)
+
 onUnmounted(() => {
   removeManifest()
 })
@@ -103,6 +123,8 @@ onUnmounted(() => {
       v-if="isAppointmentModalOpen"
       @close="isAppointmentModalOpen = false"
     />
+
+    <SubscriptionModal />
 
     <div
       v-if="isMobileSidebarOpen"
